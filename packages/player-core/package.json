@@ -14,7 +14,8 @@
     "test": "tsx --test tests/playerCore.test.ts"
   },
   "dependencies": {
-    "shaka-player": "^5.3.5"
+    "shaka-player": "^5.3.5",
+    "youtubei.js": "^18.3.0"
   },
   "devDependencies": {
     "tsx": "^4.23.15",

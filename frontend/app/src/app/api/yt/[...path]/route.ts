@@ -9,8 +9,16 @@ export async function POST(
     const subpath = path ? path.join('/') : '';
     const search = req.nextUrl.search;
     
+    // Ensure InnerTube public key is always present
+    const defaultKey = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
+    const queryParams = new URLSearchParams(search);
+    if (!queryParams.has('key')) {
+      queryParams.set('key', defaultKey);
+    }
+    queryParams.set('prettyPrint', 'false');
+
     // YouTube InnerTube API endpoint
-    const targetUrl = `https://www.youtube.com/youtubei/v1/${subpath}${search}`;
+    const targetUrl = `https://www.youtube.com/youtubei/v1/${subpath}?${queryParams.toString()}`;
 
     const bodyText = await req.text();
 

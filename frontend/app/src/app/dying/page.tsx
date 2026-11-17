@@ -125,7 +125,7 @@ export default function DyingShowcasePage() {
   }, [isPlaying]);
 
   return (
-    <OledBase grain className="flex min-h-screen flex-col pb-36">
+    <OledBase className="flex min-h-screen flex-col pb-36">
       {/* Live Ambient Aura Background */}
       <AmbientAura
         className="fixed inset-0 pointer-events-none -z-10"

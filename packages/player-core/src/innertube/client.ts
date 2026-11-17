@@ -7,17 +7,28 @@ import {
 } from '../types';
 import { NativeHttpAdapter, NetworkAdapter } from '../adapters/network';
 
+export const INNERTUBE_PUBLIC_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
+
 export const INNERTUBE_CONTEXTS: Record<InnerTubeClientName, InnerTubeContext> = {
   VISIONOS: {
     client: {
-      clientName: '99',
-      clientVersion: '1.0',
+      clientName: 'VISIONOS',
+      clientVersion: '1.02',
       hl: 'en',
       gl: 'US',
       deviceMake: 'Apple',
-      deviceModel: 'Reality Device',
       osName: 'visionOS',
-      osVersion: '1.0',
+      platform: 'MOBILE',
+    },
+  },
+  IOS: {
+    client: {
+      clientName: 'iOS',
+      clientVersion: '20.11.6',
+      hl: 'en',
+      gl: 'US',
+      deviceMake: 'Apple',
+      osName: 'iOS',
       platform: 'MOBILE',
     },
   },
@@ -86,7 +97,7 @@ export class InnerTubeClient {
     clientName: InnerTubeClientName = 'VISIONOS'
   ): Promise<PlayerResponse> {
     const context = INNERTUBE_CONTEXTS[clientName];
-    const endpoint = `${this.baseUrl}/youtubei/v1/player?prettyPrint=false`;
+    const endpoint = `${this.baseUrl}/youtubei/v1/player?key=${INNERTUBE_PUBLIC_KEY}&prettyPrint=false`;
 
     const payload = {
       context,
@@ -118,7 +129,7 @@ export class InnerTubeClient {
     params?: string
   ): Promise<Track[]> {
     const context = INNERTUBE_CONTEXTS[clientName];
-    const endpoint = `${this.baseUrl}/youtubei/v1/search?prettyPrint=false`;
+    const endpoint = `${this.baseUrl}/youtubei/v1/search?key=${INNERTUBE_PUBLIC_KEY}&prettyPrint=false`;
 
     const payload: Record<string, any> = {
       context,

@@ -38,33 +38,6 @@ import { Track } from '@mp/player-core';
 
 const DEMO_PRESETS: Track[] = [
   {
-    id: 'jfKfPfyJRdk',
-    videoId: 'jfKfPfyJRdk',
-    title: 'Lofi Hip Hop Radio — Beats to Relax/Study to',
-    artist: 'Lofi Girl',
-    duration: 180,
-    thumbnail:
-      'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: '5qap5aO4i9A',
-    videoId: '5qap5aO4i9A',
-    title: 'Lofi Hip Hop Radio — Beats to Sleep/Chill to',
-    artist: 'Lofi Girl',
-    duration: 210,
-    thumbnail:
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'DWcJFNfaw90',
-    videoId: 'DWcJFNfaw90',
-    title: 'Synthetic Dreamscape (Ambient Immersion)',
-    artist: 'GaneGan Soundlab',
-    duration: 245,
-    thumbnail:
-      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&auto=format&fit=crop&q=80',
-  },
-  {
     id: 'kXYiU_JCYtU',
     videoId: 'kXYiU_JCYtU',
     title: 'Numb (Official Music Video)',
@@ -72,6 +45,33 @@ const DEMO_PRESETS: Track[] = [
     duration: 187,
     thumbnail:
       'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=400&auto=format&fit=crop&q=80',
+  },
+  {
+    id: '1w7OgIMMRc4',
+    videoId: '1w7OgIMMRc4',
+    title: 'In The End (Official HD Video)',
+    artist: 'Linkin Park',
+    duration: 216,
+    thumbnail:
+      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80',
+  },
+  {
+    id: '4NRXx6U8ABQ',
+    videoId: '4NRXx6U8ABQ',
+    title: 'Blinding Lights',
+    artist: 'The Weeknd',
+    duration: 200,
+    thumbnail:
+      'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=400&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'dQw4w9WgXcQ',
+    videoId: 'dQw4w9WgXcQ',
+    title: 'Never Gonna Give You Up',
+    artist: 'Rick Astley',
+    duration: 213,
+    thumbnail:
+      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&auto=format&fit=crop&q=80',
   },
 ];
 
@@ -155,7 +155,7 @@ export default function Home() {
     : null;
 
   return (
-    <OledBase grain className="flex min-h-screen flex-col pb-28">
+    <OledBase className="flex min-h-screen flex-col pb-28">
       {/* Hidden headless HTMLMediaElement managed by ShakaMseAudioDriver */}
       <audio ref={audioRef} playsInline preload="auto" className="hidden" />
 

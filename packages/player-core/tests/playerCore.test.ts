@@ -19,8 +19,9 @@ import {
 
 describe('@mp/player-core unit tests', () => {
   it('defines InnerTube contexts with correct specifications', () => {
-    assert.equal(INNERTUBE_CONTEXTS.VISIONOS.client.clientName, '99');
-    assert.equal(INNERTUBE_CONTEXTS.VISIONOS.client.clientVersion, '1.0');
+    assert.equal(INNERTUBE_CONTEXTS.VISIONOS.client.clientName, 'VISIONOS');
+    assert.equal(INNERTUBE_CONTEXTS.VISIONOS.client.clientVersion, '1.02');
+    assert.equal(INNERTUBE_CONTEXTS.IOS.client.clientName, 'iOS');
     assert.equal(INNERTUBE_CONTEXTS.WEB_REMIX.client.clientName, 'WEB_REMIX');
     assert.equal(INNERTUBE_CONTEXTS.WEB.client.clientName, 'WEB');
     assert.equal(INNERTUBE_CONTEXTS.MWEB.client.clientName, 'MWEB');
@@ -104,11 +105,11 @@ describe('@mp/player-core unit tests', () => {
     cache.clear();
 
     assert.equal(cache.isBenched('VISIONOS'), false);
-    assert.deepEqual(cache.getActiveClients(), ['VISIONOS', 'WEB_REMIX', 'WEB', 'MWEB']);
+    assert.deepEqual(cache.getActiveClients(), ['VISIONOS', 'IOS', 'WEB_REMIX', 'WEB', 'MWEB']);
 
     cache.bench('VISIONOS', 'Playback restricted');
     assert.equal(cache.isBenched('VISIONOS'), true);
-    assert.deepEqual(cache.getActiveClients(), ['WEB_REMIX', 'WEB', 'MWEB']);
+    assert.deepEqual(cache.getActiveClients(), ['IOS', 'WEB_REMIX', 'WEB', 'MWEB']);
 
     cache.unbench('VISIONOS');
     assert.equal(cache.isBenched('VISIONOS'), false);

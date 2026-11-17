@@ -8,6 +8,7 @@ import { InnerTubeClient } from '../innertube/client';
 
 export const CLIENT_WALK_PRIORITY: readonly InnerTubeClientName[] = [
   'VISIONOS',
+  'IOS',
   'WEB_REMIX',
   'WEB',
   'MWEB',
