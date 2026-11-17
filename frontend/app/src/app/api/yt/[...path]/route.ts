@@ -27,15 +27,16 @@ export async function POST(
       'User-Agent':
         req.headers.get('user-agent') ||
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-      Origin: 'https://www.youtube.com',
-      Referer: 'https://www.youtube.com/',
+      Origin: 'https://music.youtube.com',
+      Referer: 'https://music.youtube.com/',
+      'X-YouTube-Client-Name': req.headers.get('x-youtube-client-name') || '67',
+      'X-YouTube-Client-Version': req.headers.get('x-youtube-client-version') || '1.20240101.01.00',
     };
 
-    const clientName = req.headers.get('x-youtube-client-name');
-    if (clientName) forwardHeaders['X-YouTube-Client-Name'] = clientName;
-
-    const clientVersion = req.headers.get('x-youtube-client-version');
-    if (clientVersion) forwardHeaders['X-YouTube-Client-Version'] = clientVersion;
+    const visitorData = req.headers.get('x-goog-visitor-id');
+    if (visitorData) {
+      forwardHeaders['X-Goog-Visitor-Id'] = visitorData;
+    }
 
     const res = await fetch(targetUrl, {
       method: 'POST',
