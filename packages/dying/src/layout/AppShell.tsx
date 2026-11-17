@@ -10,6 +10,11 @@ export interface AppShellProps extends React.HTMLAttributes<HTMLDivElement> {
   sidebar?: React.ReactNode;
 
   /**
+   * Top navigation or search header slot.
+   */
+  header?: React.ReactNode;
+
+  /**
    * Floating bottom player dock slot (e.g. FloatingPlayerPill).
    */
   playerDock?: React.ReactNode;
@@ -31,7 +36,7 @@ export interface AppShellProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * AppShell: Apple Music dark responsive frame.
+ * AppShell: Apple Music & YouTube Music dark responsive frame.
  * Features:
  * - Desktop: fixed 240px left sidebar rail.
  * - Mobile/Tablet: accessible slide-over drawer with Radix Dialog focus trapping & backdrop blur.
@@ -44,6 +49,7 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
     {
       className,
       sidebar,
+      header,
       playerDock,
       overlay,
       children,
@@ -132,6 +138,13 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
             </div>
             <div className="w-9" aria-hidden="true" />
           </header>
+
+          {/* Global / Desktop Header Slot */}
+          {header && (
+            <div className="shrink-0 z-20 w-full border-b border-border-subtle bg-canvas/80 backdrop-blur-xl">
+              {header}
+            </div>
+          )}
 
           {/* Full-width scrollable viewport (scrollbar stays at the far right edge) */}
           <main className="relative flex-1 w-full overflow-y-auto overflow-x-hidden scroll-smooth">

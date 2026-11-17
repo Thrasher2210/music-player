@@ -7,7 +7,7 @@ export interface MediaCardProps
   title: string;
   subtitle?: string;
   imageUrl: string;
-  aspect?: "square" | "portrait";
+  aspect?: "square" | "portrait" | "video";
   overlayText?: string;
   onPlay?: () => void;
 }
@@ -52,7 +52,11 @@ export const MediaCard = React.forwardRef<HTMLDivElement, MediaCardProps>(
         className={cn(
           "group relative flex flex-col shrink-0 cursor-pointer select-none",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas rounded-xl",
-          aspect === "portrait" ? "w-36 sm:w-44 md:w-48" : "w-40 sm:w-48 md:w-52",
+          aspect === "portrait"
+            ? "w-36 sm:w-44 md:w-48"
+            : aspect === "video"
+            ? "w-64 sm:w-72 md:w-80"
+            : "w-40 sm:w-48 md:w-52",
           className
         )}
         {...props}
@@ -61,7 +65,11 @@ export const MediaCard = React.forwardRef<HTMLDivElement, MediaCardProps>(
         <div
           className={cn(
             "relative w-full overflow-hidden rounded-xl md:rounded-2xl bg-surface border border-border-subtle shadow-md transition-all duration-300 group-hover:border-border-muted group-hover:shadow-xl",
-            aspect === "portrait" ? "aspect-[3/4]" : "aspect-square"
+            aspect === "portrait"
+              ? "aspect-[3/4]"
+              : aspect === "video"
+              ? "aspect-video"
+              : "aspect-square"
           )}
         >
           <img
@@ -80,14 +88,26 @@ export const MediaCard = React.forwardRef<HTMLDivElement, MediaCardProps>(
 
           {/* Play Button on Hover */}
           {onPlay && (
-            <div className="absolute inset-0 flex items-end justify-end p-3 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div
+              className={cn(
+                "absolute inset-0 transition-opacity duration-200",
+                aspect === "video"
+                  ? "flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100"
+                  : "flex items-end justify-end p-3 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100"
+              )}
+            >
               <button
                 type="button"
                 onClick={handlePlayClick}
                 aria-label={`Play ${title}`}
-                className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white text-black shadow-2xl transition-all duration-200 scale-90 group-hover:scale-100 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+                className={cn(
+                  "flex items-center justify-center rounded-full shadow-2xl transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
+                  aspect === "video"
+                    ? "h-12 w-12 bg-black/80 hover:bg-black text-white border border-white/20 backdrop-blur-md scale-90 group-hover:scale-100 hover:scale-110 active:scale-95"
+                    : "h-10 w-10 sm:h-11 sm:w-11 bg-white text-black scale-90 group-hover:scale-100 hover:scale-110 active:scale-95"
+                )}
               >
-                <Play size={18} className="fill-current" />
+                <Play size={aspect === "video" ? 20 : 18} className="fill-current" />
               </button>
             </div>
           )}
