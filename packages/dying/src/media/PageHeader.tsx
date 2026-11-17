@@ -13,18 +13,18 @@ export const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-white/[0.08] mb-8 select-none",
+          "flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-border-subtle mb-8 select-none",
           className
         )}
         {...props}
       >
         <div className="flex flex-col gap-1 min-w-0">
           {kicker && (
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#86868b]">
+            <span className="text-xs font-semibold uppercase tracking-wider text-text-kicker">
               {kicker}
             </span>
           )}
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight truncate">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-text-primary leading-tight truncate">
             {title}
           </h1>
         </div>

@@ -45,15 +45,15 @@ export const SpringButton = React.forwardRef<HTMLButtonElement, SpringButtonProp
       primary:
         "bg-white text-black font-semibold hover:bg-neutral-200 shadow-lg shadow-black/40 active:bg-neutral-300",
       glass:
-        "border border-white/[0.08] bg-[#1e1e22]/80 text-white backdrop-blur-xl hover:bg-[#28282c] hover:border-white/[0.16] shadow-md shadow-black/40 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.2] before:to-transparent",
+        "border border-border-subtle bg-surface/80 text-text-primary backdrop-blur-xl hover:bg-surface-hover hover:border-border-muted shadow-md shadow-black/40 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.2] before:to-transparent",
       ghost:
-        "bg-transparent text-[#98989d] hover:text-white hover:bg-white/[0.06]",
+        "bg-transparent text-text-secondary hover:text-text-primary hover:bg-white/[0.06]",
       outline:
-        "border border-white/[0.12] bg-transparent text-white hover:bg-white/[0.05] hover:border-white/[0.2]",
+        "border border-border-muted bg-transparent text-text-primary hover:bg-white/[0.05] hover:border-white/[0.2]",
       playPause:
         "bg-white text-black font-bold shadow-xl shadow-black/40 hover:scale-105 active:scale-95",
       pill:
-        "bg-[#2c2c2e] text-white font-medium hover:bg-[#28282c] active:bg-[#1e1e22]",
+        "bg-surface-active text-text-primary font-medium hover:bg-surface-hover active:bg-surface",
     };
 
     const isIconOnly =
@@ -83,6 +83,7 @@ export const SpringButton = React.forwardRef<HTMLButtonElement, SpringButtonProp
         disabled={disabled}
         className={cn(
           "relative inline-flex items-center justify-center select-none overflow-hidden font-medium transition-colors cursor-pointer",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
           isIconOnly ? iconOnlySizes[size] : sizeClasses[size],
           variantClasses[variant],
           glow &&
@@ -97,10 +98,10 @@ export const SpringButton = React.forwardRef<HTMLButtonElement, SpringButtonProp
             {isPlaying ? (
               <motion.span
                 key="pause"
-                initial={{ opacity: 0, scale: 0.6, rotate: -45 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.6, rotate: 45 }}
-                transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ type: "spring", stiffness: 450, damping: 28 }}
                 className="flex items-center justify-center"
               >
                 <Pause
@@ -111,11 +112,11 @@ export const SpringButton = React.forwardRef<HTMLButtonElement, SpringButtonProp
             ) : (
               <motion.span
                 key="play"
-                initial={{ opacity: 0, scale: 0.6, rotate: 45 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.6, rotate: -45 }}
-                transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                className="flex items-center justify-center translate-x-0.5"
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ type: "spring", stiffness: 450, damping: 28 }}
+                className="flex items-center justify-center"
               >
                 <Play
                   size={playPauseIconSizes[size]}

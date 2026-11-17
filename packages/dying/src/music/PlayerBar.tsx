@@ -85,7 +85,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
     <GlassPanel
       variant="heavy"
       className={cn(
-        "h-22 w-full px-4 sm:px-6 flex items-center justify-between border-t border-white/[0.08] backdrop-blur-3xl z-40 select-none",
+        "h-22 w-full px-4 sm:px-6 flex items-center justify-between border-t border-border-subtle backdrop-blur-3xl z-40 select-none",
         className
       )}
       {...props}
@@ -96,7 +96,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
           <>
             <div
               onClick={onExpandNowPlaying}
-              className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 cursor-pointer group shadow-lg"
+              className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border-subtle bg-surface cursor-pointer group shadow-lg"
             >
               {currentTrack.thumbnailUrl ? (
                 <img
@@ -105,7 +105,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-neutral-500">
+                <div className="flex h-full w-full items-center justify-center text-xs text-text-tertiary">
                   ♪
                 </div>
               )}
@@ -117,17 +117,17 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             <div className="flex flex-col min-w-0 pr-2">
               <span
                 onClick={onExpandNowPlaying}
-                className="truncate text-sm font-semibold text-white hover:underline cursor-pointer"
+                className="truncate text-sm font-semibold text-text-primary hover:underline cursor-pointer"
               >
                 {currentTrack.title}
               </span>
-              <span className="truncate text-xs text-neutral-400">
+              <span className="truncate text-xs text-text-secondary">
                 {currentTrack.artist}
               </span>
             </div>
           </>
         ) : (
-          <div className="text-xs text-neutral-500 font-medium">No track playing</div>
+          <div className="text-xs text-text-tertiary font-medium">No track playing</div>
         )}
       </div>
 
@@ -140,7 +140,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             size="sm"
             onClick={onShuffleToggle}
             aria-label="Shuffle"
-            className={cn("text-neutral-400", isShuffle && "text-white font-bold")}
+            className={cn("text-text-secondary", isShuffle && "text-white font-bold")}
           >
             <Shuffle size={16} />
           </SpringButton>
@@ -150,7 +150,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             size="sm"
             onClick={onPrevious}
             aria-label="Previous track"
-            className="text-neutral-300 hover:text-white"
+            className="text-text-secondary hover:text-white"
           >
             <SkipBack size={18} className="fill-current" />
           </SpringButton>
@@ -161,7 +161,6 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             isPlaying={isPlaying}
             onClick={onPlayPause}
             aria-label={isPlaying ? "Pause" : "Play"}
-            glow
           />
 
           <SpringButton
@@ -169,7 +168,7 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             size="sm"
             onClick={onNext}
             aria-label="Next track"
-            className="text-neutral-300 hover:text-white"
+            className="text-text-secondary hover:text-white"
           >
             <SkipForward size={18} className="fill-current" />
           </SpringButton>
@@ -179,15 +178,18 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             size="sm"
             onClick={onRepeatToggle}
             aria-label="Repeat mode"
-            className={cn("text-neutral-400", repeatMode !== "off" && "text-white font-bold")}
+            className={cn("text-text-secondary", repeatMode !== "off" && "text-white font-bold")}
           >
             <Repeat size={16} />
           </SpringButton>
         </div>
 
-        {/* Scrub bar & timing row */}
-        <div className="flex w-full items-center gap-3 text-[11px] font-mono text-neutral-400">
-          <span className="w-10 text-right tabular-nums">{formatTime(currentTime)}</span>
+        {/* Scrubber row */}
+        <div className="flex items-center gap-3 w-full">
+          <span className="w-9 text-right font-mono text-[11px] text-text-tertiary">
+            {formatTime(currentTime)}
+          </span>
+
           <div className="flex-1">
             <ScrubSlider
               size="sm"
@@ -199,49 +201,43 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               tooltipFormatter={(val) => formatTime(val)}
             />
           </div>
-          <span className="w-10 text-left tabular-nums">{formatTime(duration)}</span>
+
+          <span className="w-9 text-left font-mono text-[11px] text-text-tertiary">
+            {formatTime(duration)}
+          </span>
         </div>
       </div>
 
-      {/* Right: Lyrics, Queue, Volume */}
+      {/* Right: Auxiliary Controls (Queue, Lyrics, Volume) */}
       <div className="flex items-center justify-end gap-3 w-1/4 min-w-[180px]">
-        {/* Lyrics Toggle */}
         <SpringButton
           variant="ghost"
           size="sm"
           onClick={onLyricsToggle}
-          aria-label="Lyrics"
-          className={cn(
-            "p-2 text-neutral-400 hover:text-white",
-            showLyrics && "text-white bg-white/[0.1]"
-          )}
+          aria-label="Toggle Lyrics"
+          className={cn("text-text-secondary hover:text-white", showLyrics && "text-white font-bold bg-white/10")}
         >
-          <Mic2 size={17} />
+          <Mic2 size={16} />
         </SpringButton>
 
-        {/* Queue Toggle */}
         <SpringButton
           variant="ghost"
           size="sm"
           onClick={onQueueToggle}
-          aria-label="Queue"
-          className={cn(
-            "p-2 text-neutral-400 hover:text-white",
-            showQueue && "text-white bg-white/[0.1]"
-          )}
+          aria-label="Toggle Queue"
+          className={cn("text-text-secondary hover:text-white", showQueue && "text-white font-bold bg-white/10")}
         >
-          <ListMusic size={17} />
+          <ListMusic size={16} />
         </SpringButton>
 
-        {/* Volume controls */}
-        <div className="flex items-center gap-2 w-28 group">
+        <div className="flex items-center gap-2 w-28">
           <button
             type="button"
             onClick={onMuteToggle}
             aria-label={isMuted ? "Unmute" : "Mute"}
-            className="text-neutral-400 hover:text-white transition-colors"
+            className="text-text-secondary hover:text-white transition-colors p-1 rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-focus"
           >
-            <VolumeIcon size={18} />
+            <VolumeIcon size={16} />
           </button>
           <div className="flex-1">
             <ScrubSlider

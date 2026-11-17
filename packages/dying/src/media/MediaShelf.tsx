@@ -29,14 +29,14 @@ export const MediaShelf = React.forwardRef<HTMLDivElement, MediaShelfProps>(
         {/* Section Header */}
         <div className="flex items-center justify-between mb-4 px-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
               {title}
             </h2>
             {(seeAllHref || onSeeAll) && (
               seeAllHref ? (
                 <a
                   href={seeAllHref}
-                  className="flex items-center text-xs sm:text-sm font-semibold text-[#86868b] hover:text-white transition-colors ml-2 group/link"
+                  className="flex items-center text-xs sm:text-sm font-semibold text-text-tertiary hover:text-white transition-colors ml-2 group/link focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-focus rounded"
                 >
                   <span>See All</span>
                   <ChevronRight size={16} className="transition-transform group-hover/link:translate-x-0.5" />
@@ -45,7 +45,7 @@ export const MediaShelf = React.forwardRef<HTMLDivElement, MediaShelfProps>(
                 <button
                   type="button"
                   onClick={onSeeAll}
-                  className="flex items-center text-xs sm:text-sm font-semibold text-[#86868b] hover:text-white transition-colors ml-2 group/link"
+                  className="flex items-center text-xs sm:text-sm font-semibold text-text-tertiary hover:text-white transition-colors ml-2 group/link focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-focus rounded"
                 >
                   <span>See All</span>
                   <ChevronRight size={16} className="transition-transform group-hover/link:translate-x-0.5" />
@@ -54,13 +54,13 @@ export const MediaShelf = React.forwardRef<HTMLDivElement, MediaShelfProps>(
             )}
           </div>
 
-          {/* Optional scroll arrow navigation for desktop */}
+          {/* Scroll navigation for desktop */}
           <div className="hidden md:flex items-center gap-1.5 opacity-0 group-hover/shelf:opacity-100 transition-opacity duration-200">
             <button
               type="button"
               onClick={() => scroll("left")}
               aria-label="Scroll left"
-              className="p-1.5 rounded-full bg-[#1c1c1e] text-[#86868b] hover:text-white hover:bg-[#28282c] border border-white/[0.08] transition-all"
+              className="p-1.5 rounded-full bg-surface text-text-tertiary hover:text-white hover:bg-surface-hover border border-border-subtle transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-focus"
             >
               <ChevronLeft size={16} />
             </button>
@@ -68,7 +68,7 @@ export const MediaShelf = React.forwardRef<HTMLDivElement, MediaShelfProps>(
               type="button"
               onClick={() => scroll("right")}
               aria-label="Scroll right"
-              className="p-1.5 rounded-full bg-[#1c1c1e] text-[#86868b] hover:text-white hover:bg-[#28282c] border border-white/[0.08] transition-all"
+              className="p-1.5 rounded-full bg-surface text-text-tertiary hover:text-white hover:bg-surface-hover border border-border-subtle transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-focus"
             >
               <ChevronRight size={16} />
             </button>

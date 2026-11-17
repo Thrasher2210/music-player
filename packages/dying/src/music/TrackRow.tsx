@@ -8,20 +8,20 @@ export interface TrackData {
   title: string;
   artist: string;
   album?: string;
-  duration: number | string; // seconds number or "03:45"
+  duration?: number; // in seconds
   thumbnailUrl?: string;
   isLiked?: boolean;
 }
 
 export interface TrackRowProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onPlay" | "onPause" | "onSelect"> {
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onPlay" | "onSelect"> {
   track: TrackData;
   index?: number;
   isActive?: boolean;
   isPlaying?: boolean;
-  onPlay?: (track: TrackData) => void;
-  onPause?: (track: TrackData) => void;
   onSelect?: (track: TrackData) => void;
+  onPlay?: (track: TrackData) => void;
+  onPause?: () => void;
   onLikeToggle?: (track: TrackData, liked: boolean) => void;
   onActionClick?: (track: TrackData, event: React.MouseEvent) => void;
   showThumbnail?: boolean;
@@ -29,10 +29,9 @@ export interface TrackRowProps
   compact?: boolean;
 }
 
-function formatDuration(duration: number | string): string {
-  if (typeof duration === "string") return duration;
-  const mins = Math.floor(duration / 60);
-  const secs = Math.floor(duration % 60);
+function formatDuration(seconds: number = 0): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
   return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 }
 
@@ -44,15 +43,15 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
       index,
       isActive = false,
       isPlaying = false,
+      onSelect,
       onPlay,
       onPause,
-      onSelect,
       onLikeToggle,
       onActionClick,
       showThumbnail = true,
       showAlbum = true,
       compact = false,
-      onClick,
+      tabIndex,
       ...props
     },
     ref
@@ -60,19 +59,14 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
     const [isHovered, setIsHovered] = useState(false);
     const [liked, setLiked] = useState(track.isLiked || false);
 
-    const handleRowClick = (e: React.MouseEvent<HTMLDivElement>) => {
-      onClick?.(e);
-      if (onSelect) {
-        onSelect(track);
-      } else {
-        onPlay?.(track);
-      }
+    const handleRowClick = () => {
+      onSelect?.(track);
     };
 
     const handlePlayPauseClick = (e: React.MouseEvent) => {
       e.stopPropagation();
       if (isActive && isPlaying) {
-        onPause?.(track);
+        onPause?.();
       } else {
         onPlay?.(track);
       }
@@ -88,15 +82,24 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
     return (
       <div
         ref={ref}
+        role="row"
+        tabIndex={tabIndex ?? 0}
+        onClick={handleRowClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onClick={handleRowClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleRowClick();
+          }
+        }}
         className={cn(
-          "group relative flex items-center select-none rounded-xl px-3 transition-colors duration-150 cursor-pointer",
-          compact ? "h-11 py-1 text-xs" : "h-14 py-2 text-sm",
+          "group relative flex items-center w-full px-3 py-2 rounded-xl text-sm transition-all duration-150 cursor-pointer select-none",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-1 focus-visible:ring-offset-canvas",
+          compact ? "h-12 py-1" : "h-14 py-2",
           isActive
-            ? "bg-[#3a3a3c] text-white shadow-sm"
-            : "text-[#98989d] hover:bg-[#28282c] hover:text-white",
+            ? "bg-surface-active/80 text-text-primary"
+            : "hover:bg-surface-hover/70 text-text-primary",
           className
         )}
         {...props}
@@ -110,7 +113,7 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
                   type="button"
                   onClick={handlePlayPauseClick}
                   aria-label="Pause"
-                  className="text-white hover:scale-110 active:scale-95 transition-transform"
+                  className="text-white hover:scale-110 active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-full p-1"
                 >
                   <Pause size={16} className="fill-current" />
                 </button>
@@ -122,24 +125,24 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
                 type="button"
                 onClick={handlePlayPauseClick}
                 aria-label="Play"
-                className="text-white hover:scale-110 active:scale-95 transition-transform"
+                className="text-white hover:scale-110 active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-full p-1"
               >
-                <Play size={16} className="fill-current translate-x-0.5" />
+                <Play size={16} className="fill-current" />
               </button>
             ) : (
-              <SoundWave isPlaying={false} size="sm" color="#98989d" />
+              <SoundWave isPlaying={false} size="sm" color="var(--text-secondary)" />
             )
           ) : isHovered ? (
             <button
               type="button"
               onClick={handlePlayPauseClick}
               aria-label="Play"
-              className="text-white hover:scale-110 active:scale-95 transition-transform"
+              className="text-white hover:scale-110 active:scale-95 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus rounded-full p-1"
             >
-              <Play size={16} className="fill-current translate-x-0.5" />
+              <Play size={16} className="fill-current" />
             </button>
           ) : (
-            <span className="font-mono text-xs text-[#86868b] group-hover:hidden">
+            <span className="font-mono text-xs text-text-tertiary group-hover:hidden">
               {index !== undefined ? index + 1 : ""}
             </span>
           )}
@@ -147,7 +150,7 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
 
         {/* Artwork Thumbnail */}
         {showThumbnail && (
-          <div className="relative mr-3 h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#1c1c1e] border border-white/[0.08]">
+          <div className="relative mr-3 h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-surface border border-border-subtle">
             {track.thumbnailUrl ? (
               <img
                 src={track.thumbnailUrl}
@@ -156,24 +159,24 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
                 loading="lazy"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-white/[0.04] text-[10px] text-[#86868b]">
+              <div className="flex h-full w-full items-center justify-center bg-white/[0.04] text-[10px] text-text-tertiary">
                 ♪
               </div>
             )}
           </div>
         )}
 
-        {/* Title & Artist — High Contrast Typography */}
+        {/* Title & Artist */}
         <div className="flex min-w-0 flex-1 flex-col justify-center pr-4">
           <span
             className={cn(
               "truncate font-medium leading-snug",
-              isActive ? "text-white font-semibold" : "text-white group-hover:text-white"
+              isActive ? "text-white font-semibold" : "text-text-primary"
             )}
           >
             {track.title}
           </span>
-          <span className="truncate text-xs text-[#98989d] group-hover:text-[#c7c7cc]">
+          <span className="truncate text-xs text-text-secondary">
             {track.artist}
           </span>
         </div>
@@ -181,7 +184,7 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
         {/* Album (Desktop) */}
         {showAlbum && (
           <div className="hidden md:flex min-w-0 flex-1 items-center pr-4">
-            <span className="truncate text-xs text-[#86868b] group-hover:text-[#98989d]">
+            <span className="truncate text-xs text-text-tertiary group-hover:text-text-secondary">
               {track.album || "—"}
             </span>
           </div>
@@ -195,17 +198,17 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
             onClick={handleLikeClick}
             aria-label={liked ? "Unlike" : "Like"}
             className={cn(
-              "p-1.5 rounded-lg transition-all",
+              "p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
               liked
-                ? "text-red-500 opacity-100 hover:scale-110"
-                : "text-[#86868b] opacity-0 group-hover:opacity-100 hover:text-white hover:scale-110"
+                ? "text-status-error opacity-100 hover:scale-110"
+                : "text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-white hover:scale-110"
             )}
           >
             <Heart size={16} className={liked ? "fill-current" : ""} />
           </button>
 
           {/* Duration */}
-          <span className="w-12 text-right font-mono text-xs tabular-nums text-[#86868b] group-hover:text-[#c7c7cc]">
+          <span className="w-12 text-right font-mono text-xs tabular-nums text-text-tertiary group-hover:text-text-secondary">
             {formatDuration(track.duration)}
           </span>
 
@@ -218,7 +221,7 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
                 onActionClick(track, e);
               }}
               aria-label="Track actions"
-              className="opacity-0 group-hover:opacity-100 p-1.5 text-[#86868b] hover:text-white rounded-lg hover:bg-white/[0.08] transition-all"
+              className="opacity-0 group-hover:opacity-100 p-1.5 text-text-tertiary hover:text-white rounded-lg hover:bg-white/[0.08] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
             >
               <MoreHorizontal size={16} />
             </button>

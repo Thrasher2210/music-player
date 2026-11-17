@@ -23,6 +23,7 @@ export const MediaCard = React.forwardRef<HTMLDivElement, MediaCardProps>(
       overlayText,
       onPlay,
       onClick,
+      tabIndex,
       ...props
     },
     ref
@@ -40,9 +41,17 @@ export const MediaCard = React.forwardRef<HTMLDivElement, MediaCardProps>(
     return (
       <div
         ref={ref}
+        tabIndex={tabIndex ?? 0}
         onClick={handleCardClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onPlay?.();
+          }
+        }}
         className={cn(
           "group relative flex flex-col shrink-0 cursor-pointer select-none",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas rounded-xl",
           aspect === "portrait" ? "w-36 sm:w-44 md:w-48" : "w-40 sm:w-48 md:w-52",
           className
         )}
@@ -51,7 +60,7 @@ export const MediaCard = React.forwardRef<HTMLDivElement, MediaCardProps>(
         {/* Artwork Container */}
         <div
           className={cn(
-            "relative w-full overflow-hidden rounded-xl md:rounded-2xl bg-[#1c1c1e] border border-white/[0.08] shadow-md transition-all duration-300 group-hover:border-white/[0.18] group-hover:shadow-xl",
+            "relative w-full overflow-hidden rounded-xl md:rounded-2xl bg-surface border border-border-subtle shadow-md transition-all duration-300 group-hover:border-border-muted group-hover:shadow-xl",
             aspect === "portrait" ? "aspect-[3/4]" : "aspect-square"
           )}
         >
@@ -64,7 +73,7 @@ export const MediaCard = React.forwardRef<HTMLDivElement, MediaCardProps>(
 
           {/* Optional Overlay Text / Badge */}
           {overlayText && (
-            <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md border border-white/[0.1] text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+            <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md border border-border-subtle text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
               {overlayText}
             </div>
           )}
@@ -76,9 +85,9 @@ export const MediaCard = React.forwardRef<HTMLDivElement, MediaCardProps>(
                 type="button"
                 onClick={handlePlayClick}
                 aria-label={`Play ${title}`}
-                className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white text-black shadow-2xl transition-all duration-200 scale-90 group-hover:scale-100 hover:scale-110 active:scale-95"
+                className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-white text-black shadow-2xl transition-all duration-200 scale-90 group-hover:scale-100 hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
               >
-                <Play size={18} className="fill-current translate-x-0.5" />
+                <Play size={18} className="fill-current" />
               </button>
             </div>
           )}
@@ -86,11 +95,11 @@ export const MediaCard = React.forwardRef<HTMLDivElement, MediaCardProps>(
 
         {/* Text Details */}
         <div className="flex flex-col mt-2.5 px-0.5 min-w-0">
-          <span className="truncate text-sm font-semibold text-white tracking-tight group-hover:text-white transition-colors">
+          <span className="truncate text-sm font-semibold text-text-primary tracking-tight group-hover:text-white transition-colors">
             {title}
           </span>
           {subtitle && (
-            <span className="truncate text-xs text-[#98989d] mt-0.5">
+            <span className="truncate text-xs text-text-secondary mt-0.5">
               {subtitle}
             </span>
           )}

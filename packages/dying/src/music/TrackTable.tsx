@@ -1,6 +1,7 @@
 import React from "react";
-import { Clock } from "lucide-react";
+import { Clock, Music2 } from "lucide-react";
 import { TrackRow, TrackData } from "./TrackRow";
+import { EmptyState } from "../components/Feedback";
 import { cn } from "../utils/cn";
 
 export interface TrackTableProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -9,7 +10,7 @@ export interface TrackTableProps extends React.HTMLAttributes<HTMLDivElement> {
   isPlaying?: boolean;
   onTrackSelect?: (track: TrackData) => void;
   onTrackPlay?: (track: TrackData) => void;
-  onTrackPause?: (track: TrackData) => void;
+  onTrackPause?: () => void;
   onLikeToggle?: (track: TrackData, liked: boolean) => void;
   onActionClick?: (track: TrackData, event: React.MouseEvent) => void;
   showHeader?: boolean;
@@ -43,12 +44,16 @@ export const TrackTable = React.forwardRef<HTMLDivElement, TrackTableProps>(
     return (
       <div
         ref={ref}
+        role="table"
         className={cn("w-full select-none", className)}
         {...props}
       >
         {/* Table Header */}
         {showHeader && tracks.length > 0 && (
-          <div className="flex items-center px-3 pb-2 mb-1 border-b border-white/[0.08] text-xs font-semibold uppercase tracking-wider text-[#86868b]">
+          <div
+            role="rowheader"
+            className="flex items-center px-3 pb-2 mb-1 border-b border-border-subtle text-xs font-semibold uppercase tracking-wider text-text-kicker"
+          >
             {/* Number Column */}
             <div className="w-8 shrink-0 text-center mr-3">#</div>
 
@@ -77,7 +82,7 @@ export const TrackTable = React.forwardRef<HTMLDivElement, TrackTableProps>(
 
         {/* Track Rows */}
         {tracks.length > 0 ? (
-          <div className="flex flex-col gap-0.5">
+          <div role="rowgroup" className="flex flex-col gap-0.5">
             {tracks.map((track, idx) => {
               const isCurrent = track.id === currentTrackId;
               return (
@@ -100,10 +105,11 @@ export const TrackTable = React.forwardRef<HTMLDivElement, TrackTableProps>(
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-center text-[#86868b] border border-dashed border-white/[0.08] rounded-2xl bg-[#1c1c1e]/40 my-4">
-            <span className="text-3xl mb-2 opacity-50">🎵</span>
-            <p className="text-sm font-medium">{emptyMessage}</p>
-          </div>
+          <EmptyState
+            icon={<Music2 size={24} className="stroke-1" />}
+            title={emptyMessage}
+            description="Search for artists, songs, or albums to start playing."
+          />
         )}
       </div>
     );

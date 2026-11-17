@@ -25,7 +25,7 @@ export const SidebarBrand: React.FC<SidebarBrandProps> = ({
   return (
     <div
       className={cn(
-        "flex items-center justify-between px-4 pt-5 pb-3",
+        "flex items-center justify-between px-4 pt-5 pb-3 select-none",
         className
       )}
       {...props}
@@ -36,17 +36,17 @@ export const SidebarBrand: React.FC<SidebarBrandProps> = ({
         </div>
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-semibold tracking-tight text-white">
+            <span className="truncate text-sm font-semibold tracking-tight text-text-primary">
               {title}
             </span>
             {badge && (
-              <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.2 text-[10px] font-medium text-white/80">
+              <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/80">
                 {badge}
               </span>
             )}
           </div>
           {subtitle && (
-            <span className="truncate text-[11px] text-[#86868b]">{subtitle}</span>
+            <span className="truncate text-[11px] text-text-tertiary">{subtitle}</span>
           )}
         </div>
       </div>
@@ -88,12 +88,12 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
       <div className={cn("px-3 py-1.5", containerClassName)}>
         <div
           className={cn(
-            "group relative flex h-8 w-full items-center gap-2 rounded-lg border border-white/[0.08] bg-[#1e1e22] px-2.5 transition-all duration-150",
-            "focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/20",
+            "group relative flex h-8 w-full items-center gap-2 rounded-lg border border-border-subtle bg-surface px-2.5 transition-all duration-150",
+            "focus-within:border-border-focus focus-within:ring-1 focus-within:ring-border-focus",
             disabled && "cursor-not-allowed opacity-50"
           )}
         >
-          <Search className="h-3.5 w-3.5 shrink-0 text-[#86868b] transition-colors group-focus-within:text-white" />
+          <Search className="h-3.5 w-3.5 shrink-0 text-text-tertiary transition-colors group-focus-within:text-white" />
           <input
             ref={ref}
             type="text"
@@ -102,7 +102,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
             placeholder={placeholder}
             disabled={disabled}
             className={cn(
-              "h-full w-full bg-transparent text-xs text-white placeholder-[#86868b] outline-none",
+              "h-full w-full bg-transparent text-xs text-text-primary placeholder:text-text-tertiary outline-none",
               className
             )}
             {...props}
@@ -111,13 +111,13 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
             <button
               type="button"
               onClick={onClear}
-              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[#86868b] hover:bg-white/10 hover:text-white"
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-text-tertiary hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-focus"
               aria-label="Clear search"
             >
               <X className="h-3 w-3" />
             </button>
           ) : shortcutBadge ? (
-            <kbd className="pointer-events-none shrink-0 rounded border border-white/10 bg-white/5 px-1 py-0.5 text-[9px] font-mono text-[#86868b]">
+            <kbd className="pointer-events-none shrink-0 rounded border border-border-subtle bg-white/5 px-1 py-0.5 text-[9px] font-mono text-text-tertiary">
               {shortcutBadge}
             </kbd>
           ) : null}
@@ -147,13 +147,13 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   ...props
 }) => {
   return (
-    <div className={cn("px-2 py-2", className)}>
+    <div className={cn("px-2 py-2 select-none", className)}>
       {title && (
         <div className="flex items-center justify-between px-3 py-1 mb-0.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#86868b]">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-text-kicker">
             {title}
           </span>
-          {action && <div className="text-[#86868b] hover:text-white">{action}</div>}
+          {action && <div className="text-text-tertiary hover:text-white">{action}</div>}
         </div>
       )}
       <nav className="flex flex-col gap-0.5" {...props}>
@@ -196,7 +196,7 @@ export const SidebarNavItem: React.FC<SidebarNavItemProps> = ({
         <span
           className={cn(
             "flex h-4 w-4 shrink-0 items-center justify-center transition-colors",
-            active ? "text-white" : "text-[#98989d] group-hover:text-white"
+            active ? "text-white" : "text-text-secondary group-hover:text-white"
           )}
         >
           {icon}
@@ -209,7 +209,7 @@ export const SidebarNavItem: React.FC<SidebarNavItemProps> = ({
             "ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium",
             active
               ? "bg-white/15 text-white"
-              : "bg-white/5 text-[#86868b] group-hover:text-white"
+              : "bg-white/5 text-text-tertiary group-hover:text-white"
           )}
         >
           {badge}
@@ -220,10 +220,11 @@ export const SidebarNavItem: React.FC<SidebarNavItemProps> = ({
 
   const baseClasses = cn(
     "group relative flex h-8 w-full items-center gap-2.5 rounded-lg px-3 text-xs font-medium transition-all duration-150 outline-none text-left select-none cursor-pointer",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar",
     active
-      ? "bg-[#2c2c2e] text-white shadow-sm"
-      : "text-[#98989d] hover:bg-[#28282c] hover:text-white",
-    disabled && "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-[#98989d]",
+      ? "bg-surface-active text-text-primary shadow-sm"
+      : "text-text-secondary hover:bg-surface-hover hover:text-text-primary",
+    disabled && "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-text-secondary",
     className
   );
 
@@ -265,7 +266,7 @@ export const SidebarFooter: React.FC<SidebarFooterProps> = ({
   return (
     <div
       className={cn(
-        "mt-auto border-t border-white/[0.08] p-3 text-xs text-[#98989d]",
+        "mt-auto border-t border-border-subtle p-3 text-xs text-text-secondary select-none",
         className
       )}
       {...props}
@@ -291,7 +292,7 @@ export const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       <aside
         ref={ref}
         className={cn(
-          "flex h-screen w-[240px] min-w-[240px] max-w-[240px] flex-col border-r border-white/[0.08] bg-[#121214] text-white select-none",
+          "flex h-screen w-[240px] min-w-[240px] max-w-[240px] flex-col border-r border-border-subtle bg-sidebar text-text-primary select-none",
           className
         )}
         {...props}
