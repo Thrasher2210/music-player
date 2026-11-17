@@ -1,3 +1,11 @@
+// Tokens & Governance
+export {
+  dyingTokens,
+  primitiveTokens,
+  semanticTokens,
+  componentTokens,
+} from "./tokens/index";
+
 // Primitives
 export { GlassPanel, type GlassPanelProps } from "./primitives/GlassPanel";
 export { GlassCard, type GlassCardProps } from "./primitives/GlassCard";
