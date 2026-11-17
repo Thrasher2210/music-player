@@ -1,0 +1,21 @@
+{
+  "name": "@mp/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no linter yet'"
+  },
+  "dependencies": {
+    "webextension-polyfill": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/webextension-polyfill": "^0.12.3",
+    "typescript": "^5.9.2",
+    "wxt": "^0.20.0"
+  }
+}

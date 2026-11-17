@@ -1,0 +1,8 @@
+packages:
+  - packages/*
+  - frontend/app
+  - frontend/extension
+  - backend/api
+  - backend/worker
+  - backend/db
+  - backend/shared

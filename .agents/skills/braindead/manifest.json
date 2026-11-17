@@ -1,0 +1,26 @@
+{
+  "name": "braindead",
+  "version": "1.0.0",
+  "type": "skill",
+  "entry_point": "SKILL.md",
+  "description": "Playful, fictional 'supervision for your AI agent' — the human acts as supervisor, the agent plays a simulated technically-correct-but-braindead subordinate. User-invoked via /braindead. Entertainment only — 0% clinical validity.",
+  "commands": [
+    "/braindead",
+    "/braindead status",
+    "/braindead history",
+    "/braindead reset",
+    "/braindead end"
+  ],
+  "runtime": {
+    "python": ">=3.7",
+    "fallback": "session-only memory when python3 is unavailable"
+  },
+  "state": {
+    "default_path": "~/.claude/braindead/state.json",
+    "env_override": "BRAINDEAD_STATE"
+  },
+  "framework_targets": ["claude-code"],
+  "tags": ["fun", "roleplay", "role-reversal", "fictional", "entertainment"],
+  "safety": "Fictional persona only. Never implies real AI incompetence or suffering. Never guilts the user. 0% clinical validity.",
+  "license": "MIT"
+}

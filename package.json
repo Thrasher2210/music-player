@@ -1,0 +1,23 @@
+{
+  "name": "music-player",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @mp/web dev",
+    "dev:ext": "pnpm --filter @mp/extension dev",
+    "dev:api": "pnpm --filter @mp/api dev",
+    "dev:worker": "pnpm --filter @mp/worker dev",
+    "db:up": "docker compose up -d postgres redis",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @mp/db migrate",
+    "db:studio": "pnpm --filter @mp/db studio",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test"
+  }
+}
