@@ -1,3 +1,5 @@
+@source "./src";
+
 @theme {
   --color-canvas: #141416;
   --color-sidebar: #121214;

@@ -1,2 +1,4 @@
 @import "tailwindcss";
 @import "@mp/dying/theme.css";
+
+@source "../../../../packages/dying/src";
