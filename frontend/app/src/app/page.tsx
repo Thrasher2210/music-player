@@ -8,15 +8,11 @@ import {
   Library,
   Plus,
   Heart,
-  ChevronLeft,
-  ChevronRight,
-  MoreVertical,
   Cast,
   Sun,
   Moon,
   Sparkles,
   Play,
-  Pause,
   X,
 } from 'lucide-react';
 import {
@@ -30,8 +26,18 @@ import {
   MediaCard,
   TrackTable,
   FloatingPlayerPill,
-  FullImmersionLyrics,
+  MoodChipBar,
+  MoodChipData,
+  QuickPicksGrid,
+  QuickPicksColumn,
+  QuickPickRow,
+  FullPlayerView,
+  FullPlayerTab,
+  RelatedItem,
   Flex,
+  Box,
+  Stack,
+  Grid,
   Text,
   Heading,
   Separator,
@@ -41,229 +47,26 @@ import {
   Tooltip,
   Input,
   Avatar,
-  type TrackData,
-  type LyricLine,
+  Skeleton,
 } from '@mp/dying';
 import { usePlayerStore, toTrackData } from '../stores/playerStore';
-import { type Track } from '@mp/player-core';
+import {
+  type Track,
+  type MediaShelfData,
+} from '@mp/player-core';
 
-// ==========================================
-// 1. MOCK & DEMO DATA (Matching YouTube Music Reference)
-// ==========================================
+interface PlaylistNav {
+  id: string;
+  name: string;
+  subtitle: string;
+  pinned?: boolean;
+}
 
-const MOOD_CHIPS = [
-  'Podcasts',
-  'Romance',
-  'Feel good',
-  'Work out',
-  'Party',
-  'Relax',
-  'Energise',
-  'Sad',
-  'Commute',
-  'Focus',
-  'Sleep',
-];
-
-const USER_PLAYLISTS = [
+const USER_PLAYLISTS: PlaylistNav[] = [
   { id: 'liked', name: 'Liked music', subtitle: 'Auto playlist', pinned: true },
-  { id: 'pl-1', name: 'SynthWave-mix', subtitle: 'Anshul Khaire' },
-  { id: 'pl-2', name: 'Custom', subtitle: 'Anshul Khaire' },
-  { id: 'pl-3', name: 'THE BEST OF SKRILLEX', subtitle: 'Ton SparkleCl' },
-  { id: 'pl-4', name: 'Tokyo night', subtitle: 'Anshul Khaire' },
-  { id: 'pl-5', name: 'Vapor Drive', subtitle: 'Anshul Khaire' },
-  { id: 'pl-6', name: 'Best BreakCore Playlist', subtitle: 'Anshul Khaire' },
-  { id: 'pl-7', name: 'Minecraft - Volume Beta', subtitle: 'Anshul Khaire' },
-  { id: 'pl-8', name: '2025 Recap', subtitle: 'Curated' },
-];
-
-// 16:9 Landscape Video Cards ("Listen again" shelf)
-const LISTEN_AGAIN_TRACKS: Track[] = [
-  {
-    id: 'pehli-dafa-video',
-    videoId: 'kXYiU_JCYtU',
-    title: 'Pehli Dafa',
-    artist: 'Played • Atif Aslam',
-    album: 'Pehli Dafa Single',
-    duration: 254,
-    thumbnail:
-      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'papercut-video',
-    videoId: '1w7OgIMMRc4',
-    title: 'Papercut',
-    artist: 'Linkin Park • 380m views',
-    album: 'Hybrid Theory',
-    duration: 185,
-    thumbnail:
-      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'drive-sunset-video',
-    videoId: '4NRXx6U8ABQ',
-    title: 'Drive Into the Sunset 昭和の懐かしいシティポップ 1980',
-    artist: 'Vintage J-Pop Station • 11k views',
-    album: 'ChillDrive Playlist',
-    duration: 320,
-    thumbnail:
-      'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'emptiness-machine-video',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'The Emptiness Machine',
-    artist: 'Linkin Park • 240m views',
-    album: 'From Zero',
-    duration: 191,
-    thumbnail:
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'midnight-tokyo-video',
-    videoId: 'kXYiU_JCYtU',
-    title: 'Midnight in Tokyo',
-    artist: 'Komorebi & ChilledCat • 85m views',
-    album: 'Tokyo Lo-Fi Tape',
-    duration: 214,
-    thumbnail:
-      'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&auto=format&fit=crop&q=80',
-  },
-];
-
-// 4-row Column Grid List ("Song mixes" section)
-const SONG_MIXES_TRACKS: Track[] = [
-  {
-    id: 'mix-1',
-    videoId: 'kXYiU_JCYtU',
-    title: 'Pehli Dafa',
-    artist: 'Atif Aslam',
-    album: 'Pehli Dafa',
-    duration: 254,
-    thumbnail:
-      'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-2',
-    videoId: '1w7OgIMMRc4',
-    title: 'Bring Me To Life',
-    artist: 'Evanescence',
-    album: 'Fallen',
-    duration: 236,
-    thumbnail:
-      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-3',
-    videoId: '4NRXx6U8ABQ',
-    title: "That's So True",
-    artist: 'Gracie Abrams',
-    album: 'The Secret of Us (Deluxe)',
-    duration: 182,
-    thumbnail:
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-4',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Love Me Not',
-    artist: 'Ravyn Lenae',
-    album: "Bird's Eye",
-    duration: 215,
-    thumbnail:
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-5',
-    videoId: 'kXYiU_JCYtU',
-    title: 'Classical Dragon (feat. Tim Henson)',
-    artist: 'Polyphia',
-    album: 'Remember That You Will Die',
-    duration: 198,
-    thumbnail:
-      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-6',
-    videoId: '1w7OgIMMRc4',
-    title: 'CELINE',
-    artist: 'Drake',
-    album: 'For All The Dogs',
-    duration: 221,
-    thumbnail:
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-7',
-    videoId: '4NRXx6U8ABQ',
-    title: 'Numb',
-    artist: 'Linkin Park',
-    album: 'Meteora (20th Anniversary)',
-    duration: 187,
-    thumbnail:
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-8',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Blinding Lights',
-    artist: 'The Weeknd',
-    album: 'After Hours',
-    duration: 200,
-    thumbnail:
-      'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-9',
-    videoId: 'kXYiU_JCYtU',
-    title: 'Birds of a Feather',
-    artist: 'Billie Eilish',
-    album: 'HIT ME HARD AND SOFT',
-    duration: 196,
-    thumbnail:
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-10',
-    videoId: '1w7OgIMMRc4',
-    title: 'Not Like Us',
-    artist: 'Kendrick Lamar',
-    album: 'GNX',
-    duration: 274,
-    thumbnail:
-      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-11',
-    videoId: '4NRXx6U8ABQ',
-    title: 'APT.',
-    artist: 'ROSÉ & Bruno Mars',
-    album: 'rosie',
-    duration: 173,
-    thumbnail:
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'mix-12',
-    videoId: 'dQw4w9WgXcQ',
-    title: 'Starboy',
-    artist: 'The Weeknd feat. Daft Punk',
-    album: 'Starboy',
-    duration: 230,
-    thumbnail:
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80',
-  },
-];
-
-const DEFAULT_LYRICS: LyricLine[] = [
-  { time: 0, text: '♪ (Acoustic Prelude & Subdued Vinyl) ♪' },
-  { time: 6, text: 'Looking through the dark acrylic glass tonight' },
-  { time: 12, text: 'Monochrome reflections in the OLED light' },
-  { time: 18, text: 'No latency, no friction in the stream' },
-  { time: 24, text: 'Living inside the high-fidelity dream' },
-  { time: 30, text: '♪ (Bass Drop & Deep Resonance) ♪' },
-  { time: 36, text: 'Hear every subtle detail crystal clear' },
-  { time: 42, text: 'The purest sound is waiting right here' },
+  { id: 'pl-1', name: 'Top Mixes', subtitle: 'Curated for you' },
+  { id: 'pl-2', name: 'Chill Drive', subtitle: 'Relaxed grooves' },
+  { id: 'pl-3', name: 'Focus Flow', subtitle: 'Deep work beats' },
 ];
 
 export default function HomePage() {
@@ -278,6 +81,7 @@ export default function HomePage() {
     repeatMode,
     isShuffle,
     bufferedPercent,
+    queue,
     playTrack,
     togglePlay,
     pause,
@@ -288,25 +92,63 @@ export default function HomePage() {
     toggleMute,
     toggleRepeat,
     toggleShuffle,
+    addToQueue,
+    removeFromQueue,
     search,
+    getHomeFeed,
+    getNextRadio,
   } = usePlayerStore();
 
+  // Search & Navigation State
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [activeMood, setActiveMood] = useState<string | null>(null);
   const [activeNav, setActiveNav] = useState<'home' | 'explore' | 'library' | 'liked'>('home');
-  const [isLyricsOpen, setIsLyricsOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<'oled' | 'dark' | 'light'>('oled');
+
+  // Live YouTube Music Feed State
+  const [moodChips, setMoodChips] = useState<MoodChipData[]>([]);
+  const [activeMoodChipId, setActiveMoodChipId] = useState<string | null>(null);
+  const [quickPicks, setQuickPicks] = useState<Track[]>([]);
+  const [shelves, setShelves] = useState<MediaShelfData[]>([]);
+  const [isLoadingFeed, setIsLoadingFeed] = useState(true);
+
+  // Full-Screen Player Modal & Related Items State
+  const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
+  const [fullPlayerTab, setFullPlayerTab] = useState<FullPlayerTab>('upNext');
+  const [relatedItems, setRelatedItems] = useState<RelatedItem[]>([]);
+
   const [, startTransition] = useTransition();
 
-  // Initialize audio engine on client mount
+  // Initialize audio engine and load initial real YouTube Music live feed
   useEffect(() => {
     initialize();
-    // Default to true OLED black for YouTube Music aesthetic
     document.documentElement.setAttribute('data-theme', 'oled');
     document.documentElement.classList.add('dark');
-  }, [initialize]);
+
+    let isMounted = true;
+    setIsLoadingFeed(true);
+
+    getHomeFeed()
+      .then((feed) => {
+        if (!isMounted) return;
+        if (feed.chips && feed.chips.length > 0) {
+          setMoodChips(feed.chips);
+        }
+        setQuickPicks(feed.quickPicks || []);
+        setShelves(feed.shelves || []);
+      })
+      .catch((err) => {
+        console.error('Failed to load YouTube Music home feed:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingFeed(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialize, getHomeFeed]);
 
   const switchTheme = (theme: 'oled' | 'dark' | 'light') => {
     setCurrentTheme(theme);
@@ -318,88 +160,111 @@ export default function HomePage() {
     }
   };
 
-  // Handle Search Input Change
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value);
-    if (value.trim()) {
-      setIsSearching(true);
-      const timer = setTimeout(async () => {
+  // Play track and automatically seed infinite Up Next queue with live radio
+  const handlePlayTrackWithRadio = useCallback(
+    async (track: Track) => {
+      await playTrack(track);
+      const vid = track.videoId || track.id;
+      if (vid) {
         try {
-          const results = await search(value.trim());
-          startTransition(() => {
-            setSearchResults(results);
-            setIsSearching(false);
-          });
-        } catch {
-          setIsSearching(false);
+          const radio = await getNextRadio(vid);
+          if (radio.related && radio.related.length > 0) {
+            setRelatedItems(radio.related);
+          }
+        } catch (err) {
+          console.error('Failed to seed next radio:', err);
         }
-      }, 350);
-      return () => clearTimeout(timer);
-    } else {
-      setSearchResults([]);
-      setIsSearching(false);
-    }
-  }, [search]);
+      }
+    },
+    [playTrack, getNextRadio]
+  );
+
+  // Mood Chip Selection: dynamically swap live feed
+  const handleSelectMoodChip = useCallback(
+    async (chip: MoodChipData) => {
+      setIsLoadingFeed(true);
+      try {
+        if (activeMoodChipId === chip.id) {
+          setActiveMoodChipId(null);
+          const feed = await getHomeFeed();
+          if (feed.chips && feed.chips.length > 0) setMoodChips(feed.chips);
+          setQuickPicks(feed.quickPicks || []);
+          setShelves(feed.shelves || []);
+        } else {
+          setActiveMoodChipId(chip.id);
+          const feed = await getHomeFeed(chip.params);
+          if (feed.chips && feed.chips.length > 0) setMoodChips(feed.chips);
+          setQuickPicks(feed.quickPicks || []);
+          setShelves(feed.shelves || []);
+        }
+      } catch (err) {
+        console.error('Failed to swap mood feed:', err);
+      } finally {
+        setIsLoadingFeed(false);
+      }
+    },
+    [activeMoodChipId, getHomeFeed]
+  );
+
+  // Search handling
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchQuery(value);
+      if (value.trim()) {
+        setIsSearching(true);
+        const timer = setTimeout(async () => {
+          try {
+            const results = await search(value.trim());
+            startTransition(() => {
+              setSearchResults(results);
+              setIsSearching(false);
+            });
+          } catch {
+            setIsSearching(false);
+          }
+        }, 350);
+        return () => clearTimeout(timer);
+      } else {
+        setSearchResults([]);
+        setIsSearching(false);
+      }
+    },
+    [search]
+  );
 
   const handleClearSearch = useCallback(() => {
     setSearchQuery('');
     setSearchResults([]);
     setIsSearching(false);
-    setActiveMood(null);
   }, []);
-
-  const handleMoodSelect = useCallback((mood: string) => {
-    if (activeMood === mood) {
-      setActiveMood(null);
-      handleClearSearch();
-    } else {
-      setActiveMood(mood);
-      handleSearchChange(mood);
-    }
-  }, [activeMood, handleClearSearch, handleSearchChange]);
-
-  const handleTrackSelect = useCallback((trackData: TrackData) => {
-    const matchedTrack: Track =
-      searchResults.find((t) => (t.id || t.videoId) === trackData.id) ||
-      LISTEN_AGAIN_TRACKS.find((t) => (t.id || t.videoId) === trackData.id) ||
-      SONG_MIXES_TRACKS.find((t) => (t.id || t.videoId) === trackData.id) || {
-        id: trackData.id,
-        videoId: trackData.id,
-        title: trackData.title,
-        artist: trackData.artist,
-        duration:
-          typeof trackData.duration === 'number'
-            ? trackData.duration
-            : Number(trackData.duration) || 0,
-        thumbnail: trackData.thumbnailUrl || '',
-        album: trackData.album || '',
-      };
-    playTrack(matchedTrack);
-  }, [searchResults, playTrack]);
 
   const isSearchActive = searchQuery.trim().length > 0;
   const isCurrentlyPlaying = playbackState === 'playing';
 
-  // Group song mixes into columns of 4 for the dense grid list
-  const mixColumns = useMemo(() => {
-    const columns: Track[][] = [];
-    for (let i = 0; i < SONG_MIXES_TRACKS.length; i += 4) {
-      columns.push(SONG_MIXES_TRACKS.slice(i, i + 4));
+  // Group quick picks into 4-song clusters for YouTube Music desktop grid
+  const quickPickClusters = useMemo(() => {
+    const clusters: Track[][] = [];
+    for (let i = 0; i < quickPicks.length; i += 4) {
+      clusters.push(quickPicks.slice(i, i + 4));
     }
-    return columns;
-  }, []);
+    return clusters;
+  }, [quickPicks]);
 
   return (
     <AppShell
       sidebar={
         <Sidebar className="w-60 bg-sidebar border-r border-border-subtle flex flex-col justify-between">
-          <div className="flex flex-col h-full overflow-hidden">
+          <Flex direction="col" className="h-full overflow-hidden">
             {/* Top Brand Logo */}
             <SidebarBrand
               logo={
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-white shadow-md">
+                <Flex
+                  align="center"
+                  justify="center"
+                  className="h-7 w-7 rounded-full bg-red-600 text-white shadow-md"
+                >
                   <Play size={14} className="fill-current ml-0.5" />
-                </div>
+                </Flex>
               }
               title="Music"
               subtitle="GaneGan Engine"
@@ -433,25 +298,25 @@ export default function HomePage() {
               />
             </SidebarNav>
 
-            <div className="px-3 py-2">
+            <Box className="px-3 py-2">
               <Separator />
-            </div>
+            </Box>
 
-            {/* "+ New playlist" button */}
-            <div className="px-3 py-1">
+            {/* New playlist button */}
+            <Box className="px-3 py-1">
               <Button
                 variant="secondary"
                 size="sm"
                 leftIcon={<Plus size={16} />}
                 className="w-full justify-start text-xs font-semibold text-text-primary hover:bg-surface-active rounded-full"
-                onClick={() => alert('New Playlist creation modal')}
+                onClick={() => handleSearchChange('Discover Weekly')}
               >
                 New playlist
               </Button>
-            </div>
+            </Box>
 
             {/* User Playlists Scrollable Rail */}
-            <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+            <Box className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
               {USER_PLAYLISTS.map((pl) => (
                 <Button
                   key={pl.id}
@@ -467,17 +332,24 @@ export default function HomePage() {
                       : 'text-text-secondary hover:text-text-primary'
                   }`}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-xs font-medium truncate flex-1">{pl.name}</span>
+                  <Flex justify="between" align="center" className="w-full">
+                    <Text size="xs" weight="medium" className="truncate flex-1">
+                      {pl.name}
+                    </Text>
                     {pl.pinned && (
-                      <Heart size={12} className="text-emerald-400 fill-emerald-400 shrink-0 ml-1.5" />
+                      <Heart
+                        size={12}
+                        className="text-emerald-400 fill-emerald-400 shrink-0 ml-1.5"
+                      />
                     )}
-                  </div>
-                  <span className="text-[11px] text-text-tertiary truncate">{pl.subtitle}</span>
+                  </Flex>
+                  <Text size="xs" className="text-text-tertiary truncate">
+                    {pl.subtitle}
+                  </Text>
                 </Button>
               ))}
-            </div>
-          </div>
+            </Box>
+          </Flex>
 
           <SidebarFooter>
             <SidebarNavItem
@@ -489,9 +361,13 @@ export default function HomePage() {
         </Sidebar>
       }
       header={
-        <div className="flex items-center justify-between h-16 px-4 md:px-8 gap-4 select-none">
+        <Flex
+          justify="between"
+          align="center"
+          className="h-16 px-4 md:px-8 gap-4 select-none"
+        >
           {/* Centered Large Search Pill */}
-          <div className="flex-1 max-w-2xl mx-auto">
+          <Box className="flex-1 max-w-2xl mx-auto">
             <Input
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
@@ -508,14 +384,14 @@ export default function HomePage() {
                     onClick={handleClearSearch}
                   />
                 ) : (
-                  <kbd className="hidden sm:inline-flex pointer-events-none rounded-full border border-border-subtle bg-white/5 px-2 py-0.5 text-[10px] font-mono text-text-tertiary">
+                  <Badge variant="glass" size="sm">
                     ⌘K
-                  </kbd>
+                  </Badge>
                 )
               }
               className="rounded-full bg-surface/80 border-border-subtle focus:bg-surface text-sm"
             />
-          </div>
+          </Box>
 
           {/* Right Action Icons: Cast, Theme, User Avatar */}
           <Flex gap="2" align="center" className="shrink-0">
@@ -544,27 +420,32 @@ export default function HomePage() {
                   )
                 }
                 onClick={() =>
-                  switchTheme(currentTheme === 'oled' ? 'dark' : currentTheme === 'dark' ? 'light' : 'oled')
+                  switchTheme(
+                    currentTheme === 'oled'
+                      ? 'dark'
+                      : currentTheme === 'dark'
+                      ? 'light'
+                      : 'oled'
+                  )
                 }
               />
             </Tooltip>
 
-            {/* User Profile Avatar Pill (Matches "A" ANSHUL KHAIRE in screenshot) */}
-            <Tooltip content="Account: Anshul Khaire">
+            <Tooltip content="Account: Anshul">
               <Avatar
                 fallback="A"
                 size="sm"
-                aria-label="User Account: Anshul Khaire"
+                aria-label="User Account: Anshul"
                 className="bg-emerald-600 text-white font-bold cursor-pointer hover:ring-2 hover:ring-emerald-400 transition-all"
               />
             </Tooltip>
           </Flex>
-        </div>
+        </Flex>
       }
       playerDock={
         <FloatingPlayerPill
           title={currentTrack?.title || 'Not Playing'}
-          artist={currentTrack?.artist || 'Select a track or search to begin listening'}
+          artist={currentTrack?.artist || 'Select a song or explore quick picks'}
           album={currentTrack?.album}
           artworkUrl={currentTrack?.thumbnail}
           isPlaying={isCurrentlyPlaying}
@@ -573,7 +454,7 @@ export default function HomePage() {
           buffered={bufferedPercent}
           volume={volume}
           isMuted={isMuted}
-          isLyricsOpen={isLyricsOpen}
+          isLyricsOpen={isFullPlayerOpen}
           isShuffle={isShuffle}
           repeatMode={repeatMode}
           onPlayPause={togglePlay}
@@ -582,68 +463,107 @@ export default function HomePage() {
           onSeek={seek}
           onVolumeChange={setVolume}
           onToggleMute={toggleMute}
-          onToggleLyrics={() => setIsLyricsOpen((prev) => !prev)}
+          onToggleLyrics={() => {
+            setFullPlayerTab('lyrics');
+            setIsFullPlayerOpen(true);
+          }}
+          onExpandNowPlaying={() => setIsFullPlayerOpen(true)}
           onToggleShuffle={toggleShuffle}
           onToggleRepeat={toggleRepeat}
         />
       }
       overlay={
-        isLyricsOpen ? (
-          <FullImmersionLyrics
+        isFullPlayerOpen ? (
+          <FullPlayerView
             track={currentTrack ? toTrackData(currentTrack) : null}
-            lyrics={DEFAULT_LYRICS}
-            currentTime={currentTime}
             isPlaying={isCurrentlyPlaying}
+            currentTime={currentTime}
+            duration={duration}
             onPlayPause={togglePlay}
-            onClose={() => setIsLyricsOpen(false)}
             onSeek={seek}
+            onClose={() => setIsFullPlayerOpen(false)}
+            activeTab={fullPlayerTab}
+            onTabChange={setFullPlayerTab}
+            queue={queue.map(toTrackData)}
+            onSelectTrack={(t) => {
+              const matched = queue.find((x) => (x.id || x.videoId) === t.id);
+              if (matched) {
+                handlePlayTrackWithRadio(matched);
+              }
+            }}
+            onRemoveFromQueue={(trackId) => {
+              const idx = queue.findIndex((x) => (x.id || x.videoId) === trackId);
+              if (idx !== -1) {
+                removeFromQueue(idx);
+              }
+            }}
+            onPrevious={previous}
+            onNext={next}
+            isShuffle={isShuffle}
+            onToggleShuffle={toggleShuffle}
+            repeatMode={repeatMode}
+            onToggleRepeat={toggleRepeat}
+            volume={volume}
+            onVolumeChange={setVolume}
+            related={relatedItems}
+            onSelectRelated={(item) => {
+              if (item.videoId) {
+                const trackItem: Track = {
+                  id: item.videoId,
+                  videoId: item.videoId,
+                  title: item.title,
+                  artist: item.subtitle || '',
+                  duration: 0,
+                  thumbnail: item.thumbnail || item.thumbnailUrl || '',
+                };
+                handlePlayTrackWithRadio(trackItem);
+              }
+            }}
           />
         ) : null
       }
     >
-      {/* 2. MOOD & ACTIVITY CHIPS RAIL (Horizontal Scrollable) */}
-      <section className="mb-8 select-none">
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none no-scrollbar">
-          {MOOD_CHIPS.map((mood) => {
-            const isSelected = activeMood === mood;
-            return (
-              <Button
-                key={mood}
-                variant={isSelected ? "primary" : "secondary"}
-                size="xs"
-                onClick={() => handleMoodSelect(mood)}
-                className={`shrink-0 rounded-lg text-xs font-medium ${
-                  isSelected ? 'font-semibold' : ''
-                }`}
-              >
-                {mood}
-              </Button>
-            );
-          })}
-        </div>
-      </section>
+      {/* 1. REAL LIVE INNER_TUBE MOOD & ACTIVITY CHIPS STRIP */}
+      {moodChips.length > 0 && (
+        <Box className="mb-8 select-none">
+          <MoodChipBar
+            chips={moodChips}
+            activeId={activeMoodChipId}
+            onSelectChip={handleSelectMoodChip}
+            showScrollButtons
+          />
+        </Box>
+      )}
 
-      {/* 3. DYNAMIC CONTENT: SEARCH RESULTS OR YOUTUBE MUSIC DASHBOARD */}
+      {/* 2. DYNAMIC CONTENT: SEARCH RESULTS OR YOUTUBE MUSIC LIVE HOME FEED */}
       {isSearchActive ? (
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <Text variant="kicker" size="xs">YouTube Music Engine</Text>
+        <Stack gap="6">
+          <Flex justify="between" align="center">
+            <Stack gap="1">
+              <Text variant="kicker" size="xs">
+                YouTube Music Engine
+              </Text>
               <Heading level={1} size="h1">
                 {searchQuery.trim() ? `Results for "${searchQuery}"` : 'Search'}
               </Heading>
-            </div>
+            </Stack>
             {isSearching && (
               <Badge variant="accent">Searching InnerTube...</Badge>
             )}
-          </div>
+          </Flex>
 
           <TrackTable
             tracks={searchResults.map(toTrackData)}
             currentTrackId={currentTrack?.id || currentTrack?.videoId}
             isPlaying={isCurrentlyPlaying}
-            onTrackSelect={handleTrackSelect}
-            onTrackPlay={handleTrackSelect}
+            onTrackSelect={(t) => {
+              const matched = searchResults.find((x) => (x.id || x.videoId) === t.id);
+              if (matched) handlePlayTrackWithRadio(matched);
+            }}
+            onTrackPlay={(t) => {
+              const matched = searchResults.find((x) => (x.id || x.videoId) === t.id);
+              if (matched) handlePlayTrackWithRadio(matched);
+            }}
             onTrackPause={pause}
             emptyMessage={
               isSearching
@@ -651,190 +571,123 @@ export default function HomePage() {
                 : 'No tracks found. Try searching for an artist, track title, or genre.'
             }
           />
-        </section>
+        </Stack>
       ) : (
-        <div className="space-y-12">
-          {/* SECTION 1: "Listen again" (16:9 Video Cards) */}
-          <section className="space-y-4">
-            <Flex justify="between" align="end">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white font-bold text-base shadow-md">
-                  A
-                </div>
-                <div className="flex flex-col">
-                  <Text variant="kicker" size="xs">ANSHUL KHAIRE</Text>
+        <Stack gap="12">
+          {/* Feed Loading Skeleton */}
+          {isLoadingFeed && quickPicks.length === 0 && shelves.length === 0 && (
+            <Stack gap="8">
+              <Stack gap="3">
+                <Skeleton className="h-6 w-48" />
+                <Grid cols={4} gap="4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                  ))}
+                </Grid>
+              </Stack>
+              <Stack gap="3">
+                <Skeleton className="h-6 w-36" />
+                <Flex gap="4" className="overflow-hidden">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-44 w-44 rounded-2xl shrink-0" />
+                  ))}
+                </Flex>
+              </Stack>
+            </Stack>
+          )}
+
+          {/* SECTION 1: REAL LIVE QUICK PICKS (4-Song Clusters) */}
+          {quickPicks.length > 0 && (
+            <Stack gap="4">
+              <Flex justify="between" align="end">
+                <Stack gap="1">
+                  <Text variant="kicker" size="xs">
+                    START RADIO FROM A SONG
+                  </Text>
                   <Heading level={2} size="h2" className="tracking-tight">
-                    Listen again
+                    Quick picks
                   </Heading>
-                </div>
-              </div>
+                </Stack>
 
-              <Flex gap="2" align="center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs font-semibold rounded-full"
-                  onClick={() => handleSearchChange('Listen again')}
-                >
-                  More
-                </Button>
-                <IconButton
-                  aria-label="Previous"
-                  variant="ghost"
-                  size="sm"
-                  shape="circle"
-                  icon={<ChevronLeft size={16} />}
-                />
-                <IconButton
-                  aria-label="Next"
-                  variant="ghost"
-                  size="sm"
-                  shape="circle"
-                  icon={<ChevronRight size={16} />}
-                />
+                <Flex gap="2" align="center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs font-semibold rounded-full"
+                    onClick={() => {
+                      if (quickPicks[0]) {
+                        handlePlayTrackWithRadio(quickPicks[0]);
+                      }
+                    }}
+                  >
+                    Play all
+                  </Button>
+                </Flex>
               </Flex>
-            </Flex>
 
-            {/* 16:9 Landscape Video Shelf */}
-            <div className="flex gap-4 overflow-x-auto pb-4 pt-1 scrollbar-none">
-              {LISTEN_AGAIN_TRACKS.map((t, idx) => (
-                <MediaCard
-                  key={t.id}
-                  title={t.title}
-                  subtitle={t.artist}
-                  imageUrl={t.thumbnail}
-                  aspect="video"
-                  overlayText={idx === 0 ? '340M+ VIEWS' : undefined}
-                  onPlay={() => playTrack(t)}
-                />
-              ))}
-            </div>
-          </section>
-
-          {/* SECTION 2: "Song mixes" (Dense 4-row Column Grid) */}
-          <section className="space-y-4">
-            <Flex justify="between" align="end">
-              <div>
-                <Heading level={2} size="h2" className="tracking-tight">
-                  Song mixes
-                </Heading>
-              </div>
-
-              <Flex gap="2" align="center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs font-semibold rounded-full"
-                  onClick={() => playTrack(SONG_MIXES_TRACKS[0])}
-                >
-                  Play all
-                </Button>
-                <IconButton
-                  aria-label="Previous mixes"
-                  variant="ghost"
-                  size="sm"
-                  shape="circle"
-                  icon={<ChevronLeft size={16} />}
-                />
-                <IconButton
-                  aria-label="Next mixes"
-                  variant="ghost"
-                  size="sm"
-                  shape="circle"
-                  icon={<ChevronRight size={16} />}
-                />
-              </Flex>
-            </Flex>
-
-            {/* 4-Item Stacked Columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {mixColumns.map((col, colIdx) => (
-                <div key={colIdx} className="flex flex-col gap-2">
-                  {col.map((track) => {
-                    const isTrackActive =
-                      (currentTrack?.id || currentTrack?.videoId) === (track.id || track.videoId);
-                    return (
-                      <div
-                        key={track.id}
-                        onClick={() => playTrack(track)}
-                        className={`group relative flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all duration-150 select-none ${
-                          isTrackActive
-                            ? 'bg-surface-active text-white'
-                            : 'hover:bg-surface-hover text-text-primary'
-                        }`}
-                      >
-                        {/* Square Thumbnail with Hover Play */}
-                        <div className="relative h-12 w-12 shrink-0 rounded-lg overflow-hidden bg-surface border border-border-subtle">
-                          <img
-                            src={track.thumbnail}
-                            alt={track.title}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                          <div
-                            className={`absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity ${
-                              isTrackActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                            }`}
-                          >
-                            {isTrackActive && isCurrentlyPlaying ? (
-                              <Pause size={18} className="fill-current text-white" />
-                            ) : (
-                              <Play size={18} className="fill-current text-white ml-0.5" />
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Title & Secondary Metadata */}
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span
-                            className={`truncate text-sm font-semibold tracking-tight ${
-                              isTrackActive ? 'text-emerald-400' : 'text-text-primary'
-                            }`}
-                          >
-                            {track.title}
-                          </span>
-                          <span className="truncate text-xs text-text-secondary mt-0.5">
-                            {track.artist} • {track.album}
-                          </span>
-                        </div>
-
-                        {/* Context Menu Action */}
-                        <IconButton
-                          aria-label="Track options"
-                          variant="ghost"
-                          size="sm"
-                          shape="circle"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-text-tertiary hover:text-white"
-                          icon={<MoreVertical size={14} />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            alert(`Options for ${track.title}`);
-                          }}
+              <QuickPicksGrid columns={4}>
+                {quickPickClusters.map((cluster, colIdx) => (
+                  <QuickPicksColumn key={colIdx}>
+                    {cluster.map((track) => {
+                      const trackKey = track.id || track.videoId;
+                      const isActive =
+                        (currentTrack?.id || currentTrack?.videoId) === trackKey;
+                      return (
+                        <QuickPickRow
+                          key={trackKey}
+                          track={toTrackData(track)}
+                          isActive={isActive}
+                          isPlaying={isActive && isCurrentlyPlaying}
+                          onPlay={() => handlePlayTrackWithRadio(track)}
+                          onPause={pause}
+                          onSelect={() => handlePlayTrackWithRadio(track)}
+                          onQueue={() => addToQueue(track)}
                         />
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </section>
+                      );
+                    })}
+                  </QuickPicksColumn>
+                ))}
+              </QuickPicksGrid>
+            </Stack>
+          )}
 
-          {/* SECTION 3: "Quick picks & Trending" */}
-          <section className="space-y-4">
-            <MediaShelf title="Trending Hits & Quick Picks">
-              {SONG_MIXES_TRACKS.slice(0, 6).map((track) => (
-                <MediaCard
-                  key={track.id}
-                  title={track.title}
-                  subtitle={track.artist}
-                  imageUrl={track.thumbnail}
-                  aspect="square"
-                  onPlay={() => playTrack(track)}
-                />
-              ))}
-            </MediaShelf>
-          </section>
-        </div>
+          {/* SECTION 2: DYNAMIC LIVE INNER_TUBE SHELVES */}
+          {shelves.map((shelf) => {
+            if (!shelf.items || shelf.items.length === 0) return null;
+            return (
+              <Box key={shelf.id} className="space-y-4">
+                <MediaShelf title={shelf.title}>
+                  {shelf.items.map((item) => (
+                    <MediaCard
+                      key={item.id}
+                      title={item.title}
+                      subtitle={item.subtitle}
+                      imageUrl={item.thumbnail}
+                      aspect={
+                        shelf.title.toLowerCase().includes('video') ||
+                        shelf.title.toLowerCase().includes('listen again')
+                          ? 'video'
+                          : 'square'
+                      }
+                      onPlay={() => {
+                        if (item.videoId) {
+                          handlePlayTrackWithRadio({
+                            id: item.videoId,
+                            videoId: item.videoId,
+                            title: item.title,
+                            artist: item.subtitle,
+                            duration: 0,
+                            thumbnail: item.thumbnail,
+                          });
+                        }
+                      }}
+                    />
+                  ))}
+                </MediaShelf>
+              </Box>
+            );
+          })}
+        </Stack>
       )}
     </AppShell>
   );

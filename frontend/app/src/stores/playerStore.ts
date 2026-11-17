@@ -12,6 +12,8 @@ import {
   WebExtensionAdapter,
   NativeHttpAdapter,
   NetworkAdapter,
+  HomeFeedData,
+  NextRadioData,
 } from '@mp/player-core';
 import { type TrackData } from '@mp/dying';
 
@@ -75,6 +77,8 @@ export interface PlayerStoreState {
   search: (query: string) => Promise<Track[]>;
   setNetworkAdapterType: (type: NetworkAdapterType) => void;
   getDiagnosticInfo: () => DiagnosticInfo;
+  getHomeFeed: (moodParam?: string) => Promise<HomeFeedData>;
+  getNextRadio: (videoId: string) => Promise<NextRadioData>;
 }
 
 // Convert core Track to dying TrackData
@@ -411,6 +415,38 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       engine.setNetworkAdapter(newAdapter);
     }
     set({ networkAdapterType: type });
+  },
+
+  getHomeFeed: async (moodParam?: string): Promise<HomeFeedData> => {
+    let engine = get().engine;
+    if (!engine) {
+      get().initialize();
+      engine = sharedEngine;
+    }
+    if (!engine) return { chips: [], quickPicks: [], shelves: [] };
+    return engine.getHomeFeed(moodParam);
+  },
+
+  getNextRadio: async (videoId: string): Promise<NextRadioData> => {
+    let engine = get().engine;
+    if (!engine) {
+      get().initialize();
+      engine = sharedEngine;
+    }
+    if (!engine) return { queue: [], related: [] };
+    const radioData = await engine.getNextRadio(videoId);
+    if (radioData.queue.length > 0) {
+      // Append new radio songs to the engine queue if not already present
+      const currentQueue = get().queue;
+      const existingIds = new Set(currentQueue.map((t) => t.id || t.videoId));
+      const newTracks = radioData.queue.filter((t) => !existingIds.has(t.id || t.videoId));
+      if (newTracks.length > 0) {
+        for (const t of newTracks) {
+          engine.addToQueue(t);
+        }
+      }
+    }
+    return radioData;
   },
 
   getDiagnosticInfo: (): DiagnosticInfo => {
