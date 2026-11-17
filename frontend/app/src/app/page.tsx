@@ -267,7 +267,6 @@ export default function HomePage() {
 
   return (
     <AppShell
-      stageClassName="p-6 md:p-8 lg:p-10 max-w-7xl mx-auto"
       sidebar={
         <Sidebar>
           <SidebarBrand

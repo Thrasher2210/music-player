@@ -120,13 +120,13 @@ export const FloatingPlayerPill = React.forwardRef<
         {/* Main upper row: Track Info | Controls | Utilities */}
         <div className="flex items-center justify-between gap-3">
           {/* Left: Artwork & Track Meta */}
-          <div className="flex items-center gap-3 min-w-[150px] max-w-[210px] shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 sm:flex-initial sm:min-w-[140px] sm:max-w-[210px] shrink-0">
             {leadingSlot ?? (
               <>
                 <div
                   onClick={onTrackClick}
                   className={cn(
-                    "relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#1e1e22] shadow-sm",
+                    "relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#1e1e22] shadow-sm",
                     onTrackClick && "cursor-pointer group"
                   )}
                 >
@@ -166,7 +166,7 @@ export const FloatingPlayerPill = React.forwardRef<
           </div>
 
           {/* Center: Transport Controls */}
-          <div className="flex items-center gap-1.5 sm:gap-2 justify-center">
+          <div className="flex items-center gap-1 sm:gap-2 justify-center shrink-0">
             {onToggleShuffle && (
               <SpringButton
                 variant="ghost"
@@ -174,7 +174,7 @@ export const FloatingPlayerPill = React.forwardRef<
                 onClick={onToggleShuffle}
                 aria-label="Shuffle"
                 className={cn(
-                  "hidden sm:inline-flex text-[#86868b] hover:text-white",
+                  "hidden md:inline-flex text-[#86868b] hover:text-white",
                   isShuffle && "text-white"
                 )}
               >
@@ -217,7 +217,7 @@ export const FloatingPlayerPill = React.forwardRef<
                 onClick={onToggleRepeat}
                 aria-label="Repeat mode"
                 className={cn(
-                  "hidden sm:inline-flex text-[#86868b] hover:text-white",
+                  "hidden md:inline-flex text-[#86868b] hover:text-white",
                   repeatMode !== "off" && "text-white"
                 )}
               >
@@ -227,7 +227,7 @@ export const FloatingPlayerPill = React.forwardRef<
           </div>
 
           {/* Right: Lyrics & Volume Utilities */}
-          <div className="flex items-center justify-end gap-2.5 min-w-[150px] max-w-[210px] shrink-0">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 sm:min-w-[120px] sm:max-w-[210px] shrink-0">
             {trailingSlot ?? (
               <>
                 {/* Lyrics toggle */}
@@ -244,8 +244,8 @@ export const FloatingPlayerPill = React.forwardRef<
                   <Mic2 className="h-4 w-4" />
                 </SpringButton>
 
-                {/* Volume slider & mute */}
-                <div className="flex items-center gap-1.5 w-24 sm:w-28">
+                {/* Volume slider & mute (hidden on smallest screens to preserve control layout) */}
+                <div className="hidden sm:flex items-center gap-1.5 w-20 sm:w-28">
                   <button
                     type="button"
                     onClick={onToggleMute}
