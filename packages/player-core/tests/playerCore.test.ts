@@ -208,4 +208,447 @@ describe('@mp/player-core unit tests', () => {
     const extAdapter = new WebExtensionAdapter(5000);
     assert.equal(extAdapter.name, 'web-extension');
   });
+
+  it('parses YouTube Music getHomeFeed response (chips, quickPicks, shelves)', () => {
+    const client = new InnerTubeClient();
+
+    const mockBrowseResponse = {
+      header: {
+        chipCloudRenderer: {
+          chips: [
+            {
+              chipCloudChipRenderer: {
+                text: { runs: [{ text: 'Energize' }] },
+                navigationEndpoint: {
+                  browseEndpoint: { browseId: 'FEmusic_home', params: 'ggMDCNgB' },
+                },
+                isSelected: true,
+                uniqueId: 'chip-energize',
+              },
+            },
+            {
+              chipCloudChipRenderer: {
+                text: { runs: [{ text: 'Relax' }] },
+                navigationEndpoint: {
+                  browseEndpoint: { browseId: 'FEmusic_home', params: 'ggMDCNgC' },
+                },
+                isSelected: false,
+                uniqueId: 'chip-relax',
+              },
+            },
+            {
+              chipCloudChipRenderer: {
+                text: { runs: [{ text: 'Workout' }] },
+                navigationEndpoint: {
+                  browseEndpoint: { browseId: 'FEmusic_home', params: 'ggMDCNgD' },
+                },
+                isSelected: false,
+              },
+            },
+          ],
+        },
+      },
+      contents: {
+        singleColumnBrowseResultsRenderer: {
+          tabs: [
+            {
+              tabRenderer: {
+                content: {
+                  sectionListRenderer: {
+                    contents: [
+                      {
+                        musicCarouselShelfRenderer: {
+                          header: {
+                            musicCarouselShelfBasicHeaderRenderer: {
+                              title: { runs: [{ text: 'Quick picks' }] },
+                              strapline: { runs: [{ text: 'START RADIO FROM A SONG' }] },
+                            },
+                          },
+                          contents: [
+                            {
+                              musicResponsiveListItemRenderer: {
+                                playlistItemData: { videoId: 'track1' },
+                                flexColumns: [
+                                  {
+                                    musicResponsiveListItemFlexColumnRenderer: {
+                                      text: { runs: [{ text: 'Midnight City' }] },
+                                    },
+                                  },
+                                  {
+                                    musicResponsiveListItemFlexColumnRenderer: {
+                                      text: {
+                                        runs: [{ text: 'M83' }, { text: ' • ' }, { text: '4:03' }],
+                                      },
+                                    },
+                                  },
+                                ],
+                                thumbnail: {
+                                  musicThumbnailRenderer: {
+                                    thumbnail: {
+                                      thumbnails: [
+                                        { url: 'https://example.com/thumb1.jpg', width: 300, height: 300 },
+                                      ],
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                            {
+                              musicResponsiveListItemRenderer: {
+                                playlistItemData: { videoId: 'track2' },
+                                flexColumns: [
+                                  {
+                                    musicResponsiveListItemFlexColumnRenderer: {
+                                      text: { runs: [{ text: 'Starboy' }] },
+                                    },
+                                  },
+                                  {
+                                    musicResponsiveListItemFlexColumnRenderer: {
+                                      text: {
+                                        runs: [{ text: 'The Weeknd' }, { text: ' • ' }, { text: '3:50' }],
+                                      },
+                                    },
+                                  },
+                                ],
+                                thumbnail: {
+                                  musicThumbnailRenderer: {
+                                    thumbnail: {
+                                      thumbnails: [
+                                        { url: 'https://example.com/thumb2.jpg', width: 300, height: 300 },
+                                      ],
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      },
+                      {
+                        musicCarouselShelfRenderer: {
+                          header: {
+                            musicCarouselShelfBasicHeaderRenderer: {
+                              title: { runs: [{ text: 'Trending Albums & Artists' }] },
+                            },
+                          },
+                          contents: [
+                            {
+                              musicTwoRowItemRenderer: {
+                                title: { runs: [{ text: "Hurry Up, We're Dreaming" }] },
+                                subtitle: { runs: [{ text: 'Album • M83' }] },
+                                navigationEndpoint: {
+                                  browseEndpoint: { browseId: 'MPREb_123' },
+                                },
+                                thumbnailRenderer: {
+                                  musicThumbnailRenderer: {
+                                    thumbnail: {
+                                      thumbnails: [{ url: 'https://example.com/album.jpg' }],
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                            {
+                              musicTwoRowItemRenderer: {
+                                title: { runs: [{ text: "Today's Hits" }] },
+                                subtitle: { runs: [{ text: 'Playlist • YouTube Music' }] },
+                                navigationEndpoint: {
+                                  browseEndpoint: { browseId: 'VLPL123' },
+                                },
+                                thumbnailRenderer: {
+                                  musicThumbnailRenderer: {
+                                    thumbnail: {
+                                      thumbnails: [{ url: 'https://example.com/playlist.jpg' }],
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                            {
+                              musicTwoRowItemRenderer: {
+                                title: { runs: [{ text: 'Daft Punk' }] },
+                                subtitle: { runs: [{ text: 'Artist • 10M subscribers' }] },
+                                navigationEndpoint: {
+                                  browseEndpoint: { browseId: 'UC123' },
+                                },
+                                thumbnailRenderer: {
+                                  musicThumbnailRenderer: {
+                                    thumbnail: {
+                                      thumbnails: [{ url: 'https://example.com/daft.jpg' }],
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                            {
+                              musicTwoRowItemRenderer: {
+                                title: { runs: [{ text: 'One More Time' }] },
+                                subtitle: { runs: [{ text: 'Song • Daft Punk' }] },
+                                navigationEndpoint: {
+                                  watchEndpoint: { videoId: 'song123' },
+                                },
+                                thumbnailRenderer: {
+                                  musicThumbnailRenderer: {
+                                    thumbnail: {
+                                      thumbnails: [{ url: 'https://example.com/song.jpg' }],
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    const feed = client.parseHomeFeed(mockBrowseResponse);
+
+    // Verify chips
+    assert.equal(feed.chips.length, 3);
+    assert.equal(feed.chips[0].id, 'chip-energize');
+    assert.equal(feed.chips[0].title, 'Energize');
+    assert.equal(feed.chips[0].params, 'ggMDCNgB');
+    assert.equal(feed.chips[0].isActive, true);
+    assert.equal(feed.chips[1].id, 'chip-relax');
+    assert.equal(feed.chips[1].title, 'Relax');
+    assert.equal(feed.chips[1].isActive, false);
+    assert.equal(feed.chips[2].title, 'Workout');
+    assert.equal(feed.chips[2].params, 'ggMDCNgD');
+
+    // Verify quickPicks
+    assert.equal(feed.quickPicks.length, 2);
+    assert.equal(feed.quickPicks[0].videoId, 'track1');
+    assert.equal(feed.quickPicks[0].title, 'Midnight City');
+    assert.equal(feed.quickPicks[0].artist, 'M83');
+    assert.equal(feed.quickPicks[0].duration, 243);
+    assert.equal(feed.quickPicks[0].thumbnail, 'https://example.com/thumb1.jpg');
+    assert.equal(feed.quickPicks[1].videoId, 'track2');
+    assert.equal(feed.quickPicks[1].title, 'Starboy');
+    assert.equal(feed.quickPicks[1].duration, 230);
+
+    // Verify shelves
+    assert.equal(feed.shelves.length, 2);
+    assert.equal(feed.shelves[0].title, 'Quick picks');
+    assert.equal(feed.shelves[0].subtitle, 'START RADIO FROM A SONG');
+    assert.equal(feed.shelves[0].items.length, 2);
+
+    assert.equal(feed.shelves[1].title, 'Trending Albums & Artists');
+    assert.equal(feed.shelves[1].items.length, 4);
+    assert.equal(feed.shelves[1].items[0].title, "Hurry Up, We're Dreaming");
+    assert.equal(feed.shelves[1].items[0].type, 'album');
+    assert.equal(feed.shelves[1].items[0].browseId, 'MPREb_123');
+
+    assert.equal(feed.shelves[1].items[1].title, "Today's Hits");
+    assert.equal(feed.shelves[1].items[1].type, 'playlist');
+    assert.equal(feed.shelves[1].items[1].browseId, 'VLPL123');
+
+    assert.equal(feed.shelves[1].items[2].title, 'Daft Punk');
+    assert.equal(feed.shelves[1].items[2].type, 'artist');
+    assert.equal(feed.shelves[1].items[2].browseId, 'UC123');
+
+    assert.equal(feed.shelves[1].items[3].title, 'One More Time');
+    assert.equal(feed.shelves[1].items[3].type, 'song');
+    assert.equal(feed.shelves[1].items[3].videoId, 'song123');
+  });
+
+  it('queries /youtubei/v1/browse with WEB_REMIX context and moodParam in getHomeFeed', async () => {
+    let capturedUrl = '';
+    let capturedBody: any = null;
+    let capturedHeaders: Record<string, string> = {};
+
+    const mockAdapter = {
+      name: 'mock',
+      fetch: async () => new Response('{}'),
+      postJson: async <T>(url: string, body: any, headers: Record<string, string> = {}): Promise<T> => {
+        capturedUrl = url;
+        capturedBody = body;
+        capturedHeaders = headers;
+        return {
+          contents: {},
+        } as T;
+      },
+    };
+
+    const client = new InnerTubeClient({ networkAdapter: mockAdapter });
+    await client.getHomeFeed('mood_test_123');
+
+    assert.ok(capturedUrl.includes('/youtubei/v1/browse'));
+    assert.equal(capturedBody.browseId, 'FEmusic_home');
+    assert.equal(capturedBody.params, 'mood_test_123');
+    assert.equal(capturedBody.context.client.clientName, 'WEB_REMIX');
+    assert.equal(capturedHeaders['X-YouTube-Client-Name'], 'WEB_REMIX');
+  });
+
+  it('parses YouTube Music getNextRadio response (queue, related)', () => {
+    const client = new InnerTubeClient();
+
+    const mockNextResponse = {
+      contents: {
+        singleColumnMusicWatchNextResultsRenderer: {
+          tabbedRenderer: {
+            watchNextTabbedResultsRenderer: {
+              tabs: [
+                {
+                  tabRenderer: {
+                    title: { runs: [{ text: 'Up next' }] },
+                    content: {
+                      musicQueueRenderer: {
+                        content: {
+                          playlistPanelRenderer: {
+                            contents: [
+                              {
+                                playlistPanelVideoRenderer: {
+                                  videoId: 'queue1',
+                                  title: { runs: [{ text: 'Get Lucky' }] },
+                                  shortBylineText: { runs: [{ text: 'Daft Punk' }] },
+                                  lengthText: { runs: [{ text: '4:08' }] },
+                                  thumbnail: {
+                                    thumbnails: [{ url: 'https://example.com/qlarge.jpg' }],
+                                  },
+                                },
+                              },
+                              {
+                                playlistPanelVideoRenderer: {
+                                  videoId: 'queue2',
+                                  title: { runs: [{ text: 'Instant Crush' }] },
+                                  shortBylineText: { runs: [{ text: 'Daft Punk ft. Julian Casablancas' }] },
+                                  lengthText: { runs: [{ text: '5:37' }] },
+                                  thumbnail: {
+                                    thumbnails: [{ url: 'https://example.com/q2.jpg' }],
+                                  },
+                                },
+                              },
+                            ],
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  tabRenderer: {
+                    title: { runs: [{ text: 'Lyrics' }] },
+                  },
+                },
+                {
+                  tabRenderer: {
+                    title: { runs: [{ text: 'Related' }] },
+                    content: {
+                      sectionListRenderer: {
+                        contents: [
+                          {
+                            musicCarouselShelfRenderer: {
+                              header: {
+                                musicCarouselShelfBasicHeaderRenderer: {
+                                  title: { runs: [{ text: 'Similar Artists' }] },
+                                },
+                              },
+                              contents: [
+                                {
+                                  musicTwoRowItemRenderer: {
+                                    title: { runs: [{ text: 'Justice' }] },
+                                    subtitle: { runs: [{ text: 'Artist • 2M subscribers' }] },
+                                    navigationEndpoint: {
+                                      browseEndpoint: { browseId: 'UC_justice' },
+                                    },
+                                    thumbnailRenderer: {
+                                      musicThumbnailRenderer: {
+                                        thumbnail: {
+                                          thumbnails: [{ url: 'https://example.com/justice.jpg' }],
+                                        },
+                                      },
+                                    },
+                                  },
+                                },
+                                {
+                                  musicTwoRowItemRenderer: {
+                                    title: { runs: [{ text: 'Discovery' }] },
+                                    subtitle: { runs: [{ text: 'Album • Daft Punk' }] },
+                                    navigationEndpoint: {
+                                      browseEndpoint: { browseId: 'MPREb_discovery' },
+                                    },
+                                    thumbnailRenderer: {
+                                      musicThumbnailRenderer: {
+                                        thumbnail: {
+                                          thumbnails: [{ url: 'https://example.com/discovery.jpg' }],
+                                        },
+                                      },
+                                    },
+                                  },
+                                },
+                              ],
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    };
+
+    const result = client.parseNextRadio(mockNextResponse);
+
+    // Verify queue
+    assert.equal(result.queue.length, 2);
+    assert.equal(result.queue[0].videoId, 'queue1');
+    assert.equal(result.queue[0].title, 'Get Lucky');
+    assert.equal(result.queue[0].artist, 'Daft Punk');
+    assert.equal(result.queue[0].duration, 248);
+    assert.equal(result.queue[0].thumbnail, 'https://example.com/qlarge.jpg');
+
+    assert.equal(result.queue[1].videoId, 'queue2');
+    assert.equal(result.queue[1].title, 'Instant Crush');
+    assert.equal(result.queue[1].artist, 'Daft Punk ft. Julian Casablancas');
+    assert.equal(result.queue[1].duration, 337);
+
+    // Verify related
+    assert.equal(result.related.length, 2);
+    assert.equal(result.related[0].title, 'Justice');
+    assert.equal(result.related[0].type, 'artist');
+    assert.equal(result.related[0].browseId, 'UC_justice');
+
+    assert.equal(result.related[1].title, 'Discovery');
+    assert.equal(result.related[1].type, 'album');
+    assert.equal(result.related[1].browseId, 'MPREb_discovery');
+  });
+
+  it('queries /youtubei/v1/next with WEB_REMIX context and videoId in getNextRadio', async () => {
+    let capturedUrl = '';
+    let capturedBody: any = null;
+    let capturedHeaders: Record<string, string> = {};
+
+    const mockAdapter = {
+      name: 'mock',
+      fetch: async () => new Response('{}'),
+      postJson: async <T>(url: string, body: any, headers: Record<string, string> = {}): Promise<T> => {
+        capturedUrl = url;
+        capturedBody = body;
+        capturedHeaders = headers;
+        return {
+          contents: {},
+        } as T;
+      },
+    };
+
+    const client = new InnerTubeClient({ networkAdapter: mockAdapter });
+    await client.getNextRadio('test_video_abc');
+
+    assert.ok(capturedUrl.includes('/youtubei/v1/next'));
+    assert.equal(capturedBody.videoId, 'test_video_abc');
+    assert.equal(capturedBody.context.client.clientName, 'WEB_REMIX');
+    assert.equal(capturedHeaders['X-YouTube-Client-Name'], 'WEB_REMIX');
+  });
 });
