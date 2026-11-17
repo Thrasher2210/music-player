@@ -1,5 +1,5 @@
 /**
- * Dying Design System — 3-Tier Semantic Tokens
+ * Dying Design System — Monochrome Graphite Tokens
  * W3C DTCG-compliant token specification
  */
 
@@ -9,17 +9,27 @@ export const dyingTokens = tokensJson;
 
 export const primitiveTokens = {
   colors: {
-    black: "#000000",
+    canvas: "#141416",
+    sidebar: "#121214",
+    surface: "#1e1e22",
+    surfaceHover: "#28282c",
+    surfaceActive: "#2c2c2e",
+    border: "rgba(255, 255, 255, 0.08)",
     white: "#ffffff",
-    zinc950: "#09090b",
-    zinc900: "#18181b",
-    zinc800: "#27272a",
-    emerald500: "#10b981",
+    textSecondary: "#98989d",
+    textTertiary: "#86868b",
+    glassFrosted: "rgba(30, 30, 34, 0.85)",
+    // Backward-compatibility aliases
+    black: "#141416",
+    zinc950: "#121214",
+    zinc900: "#1e1e22",
+    zinc800: "#28282c",
+    emerald500: "#ffffff",
     rose500: "#f43f5e",
   },
   opacities: {
-    glassBg: 0.03,
-    glassHover: 0.06,
+    glassBg: 0.85,
+    glassHover: 0.95,
     glassBorder: 0.08,
     textPrimary: 1.0,
     textSecondary: 0.72,
@@ -28,8 +38,9 @@ export const primitiveTokens = {
   },
   blurs: {
     panel: "24px",
-    card: "16px",
-    aura: "120px",
+    card: "24px",
+    pill: "24px",
+    aura: "60px",
   },
   springs: {
     snappy: "cubic-bezier(0.16, 1, 0.3, 1)",
@@ -40,24 +51,45 @@ export const primitiveTokens = {
 
 export const semanticTokens = {
   surfaces: {
-    canvas: primitiveTokens.colors.black,
-    glass: `rgba(255, 255, 255, ${primitiveTokens.opacities.glassBg})`,
-    glassHover: `rgba(255, 255, 255, ${primitiveTokens.opacities.glassHover})`,
-    glassBorder: `rgba(255, 255, 255, ${primitiveTokens.opacities.glassBorder})`,
+    canvas: primitiveTokens.colors.canvas,
+    sidebar: primitiveTokens.colors.sidebar,
+    card: primitiveTokens.colors.surface,
+    hover: primitiveTokens.colors.surfaceHover,
+    activePill: primitiveTokens.colors.surfaceActive,
+    border: primitiveTokens.colors.border,
+    glass: primitiveTokens.colors.glassFrosted,
+    glassHover: primitiveTokens.colors.surfaceHover,
+    glassBorder: primitiveTokens.colors.border,
   },
   text: {
-    primary: primitiveTokens.colors.white, // 21:1 on OLED
-    secondary: `rgba(255, 255, 255, ${primitiveTokens.opacities.textSecondary})`, // 9.8:1
-    muted: `rgba(255, 255, 255, ${primitiveTokens.opacities.textMuted})`, // 4.6:1 (WCAG AA pass)
-    accent: primitiveTokens.colors.emerald500,
+    primary: primitiveTokens.colors.white,
+    secondary: primitiveTokens.colors.textSecondary,
+    tertiary: primitiveTokens.colors.textTertiary,
+    kicker: primitiveTokens.colors.textTertiary,
+    muted: primitiveTokens.colors.textSecondary,
+    accent: primitiveTokens.colors.white,
+  },
+  feedback: {
+    playing: primitiveTokens.colors.white,
+    error: primitiveTokens.colors.rose500,
   },
 } as const;
 
 export const componentTokens = {
+  sidebar: {
+    width: "240px",
+    background: primitiveTokens.colors.sidebar,
+  },
+  playerPill: {
+    maxWidth: "720px",
+    background: primitiveTokens.colors.glassFrosted,
+    blur: "24px",
+    borderRadius: "16px",
+  },
   playerBar: {
     height: "88px",
-    background: "rgba(0, 0, 0, 0.8)",
-    blur: "32px",
+    background: primitiveTokens.colors.glassFrosted,
+    blur: "24px",
   },
   scrubber: {
     trackHeight: "4px",
@@ -66,7 +98,7 @@ export const componentTokens = {
   },
   lyrics: {
     activeScale: 1.05,
-    activeGlow: "0 0 30px rgba(255, 255, 255, 0.4)",
+    activeGlow: "0 0 24px rgba(255, 255, 255, 0.25)",
     inactiveOpacity: primitiveTokens.opacities.textDim,
   },
 } as const;

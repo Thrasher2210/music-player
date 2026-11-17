@@ -4,7 +4,7 @@ import { Play, Pause } from "lucide-react";
 import { cn } from "../utils/cn";
 
 export interface SpringButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
-  variant?: "primary" | "glass" | "ghost" | "playPause" | "outline";
+  variant?: "primary" | "glass" | "ghost" | "playPause" | "outline" | "pill";
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   isPlaying?: boolean;
   glow?: boolean;
@@ -43,15 +43,17 @@ export const SpringButton = React.forwardRef<HTMLButtonElement, SpringButtonProp
 
     const variantClasses = {
       primary:
-        "bg-white text-black font-semibold hover:bg-neutral-200 shadow-lg shadow-white/10 active:bg-neutral-300",
+        "bg-white text-black font-semibold hover:bg-neutral-200 shadow-lg shadow-black/40 active:bg-neutral-300",
       glass:
-        "border border-white/[0.08] bg-white/[0.04] text-white backdrop-blur-xl hover:bg-white/[0.08] hover:border-white/[0.16] shadow-md shadow-black/40 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.2] before:to-transparent",
+        "border border-white/[0.08] bg-[#1e1e22]/80 text-white backdrop-blur-xl hover:bg-[#28282c] hover:border-white/[0.16] shadow-md shadow-black/40 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.2] before:to-transparent",
       ghost:
-        "bg-transparent text-neutral-400 hover:text-white hover:bg-white/[0.05]",
+        "bg-transparent text-[#98989d] hover:text-white hover:bg-white/[0.06]",
       outline:
-        "border border-white/[0.14] bg-transparent text-white hover:bg-white/[0.04] hover:border-white/[0.25]",
+        "border border-white/[0.12] bg-transparent text-white hover:bg-white/[0.05] hover:border-white/[0.2]",
       playPause:
-        "bg-white text-black font-bold shadow-xl shadow-white/10 hover:scale-105 active:scale-95",
+        "bg-white text-black font-bold shadow-xl shadow-black/40 hover:scale-105 active:scale-95",
+      pill:
+        "bg-[#2c2c2e] text-white font-medium hover:bg-[#28282c] active:bg-[#1e1e22]",
     };
 
     const isIconOnly =

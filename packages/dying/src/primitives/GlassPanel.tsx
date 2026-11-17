@@ -20,10 +20,10 @@ export const GlassPanel = React.forwardRef<HTMLDivElement, GlassPanelProps>(
     ref
   ) => {
     const variantStyles = {
-      subtle: "bg-white/[0.02] backdrop-blur-xl",
-      default: "bg-white/[0.035] backdrop-blur-2xl",
-      elevated: "bg-white/[0.06] backdrop-blur-3xl shadow-2xl shadow-black/80",
-      heavy: "bg-black/40 bg-white/[0.08] backdrop-blur-3xl shadow-2xl shadow-black/90",
+      subtle: "bg-[#1e1e22]/50 backdrop-blur-xl",
+      default: "bg-[rgba(30,30,34,0.85)] backdrop-blur-2xl",
+      elevated: "bg-[#1e1e22] backdrop-blur-3xl shadow-2xl shadow-black/80",
+      heavy: "bg-[#141416]/95 backdrop-blur-3xl shadow-2xl shadow-black/90",
     };
 
     return (
@@ -34,7 +34,7 @@ export const GlassPanel = React.forwardRef<HTMLDivElement, GlassPanelProps>(
           variantStyles[variant],
           border && "border border-white/[0.08]",
           specular &&
-            "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.18] before:to-transparent",
+            "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.16] before:to-transparent",
           className
         )}
         {...props}

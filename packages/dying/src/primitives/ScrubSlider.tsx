@@ -85,7 +85,7 @@ export const ScrubSlider = React.forwardRef<
         {/* Tooltip on hover */}
         {tooltipFormatter && hoverPos !== null && hoverValue !== null && (
           <div
-            className="pointer-events-none absolute -top-8 z-30 -translate-x-1/2 rounded-md border border-white/10 bg-neutral-900/90 px-2 py-0.5 text-[10px] font-medium tracking-wider text-white shadow-xl backdrop-blur-md transition-opacity"
+            className="pointer-events-none absolute -top-8 z-30 -translate-x-1/2 rounded-md border border-white/10 bg-[#1e1e22]/95 px-2 py-0.5 text-[10px] font-medium tracking-wider text-white shadow-xl backdrop-blur-md transition-opacity"
             style={{ left: `${hoverPos}%` }}
           >
             {tooltipFormatter(hoverValue)}
