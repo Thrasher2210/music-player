@@ -3,6 +3,7 @@ import { AudioFormat } from '../types';
 export interface DashGeneratorOptions {
   durationMs?: number;
   minBufferTimeSeconds?: number;
+  urlTransformer?: (url: string) => string;
 }
 
 /**
@@ -110,7 +111,8 @@ export function generateDashMpd(
       const bandwidth = fmt.bitrate || fmt.averageBitrate || (fmt.itag === 251 ? 160000 : 128000);
       const sampleRate = fmt.audioSampleRate || (fmt.itag === 251 ? '48000' : '44100');
       const channels = fmt.audioChannels || 2;
-      const escapedUrl = escapeXml(fmt.url!);
+      const resolvedUrl = options.urlTransformer ? options.urlTransformer(fmt.url!) : fmt.url!;
+      const escapedUrl = escapeXml(resolvedUrl);
 
       let segmentXml = '';
       if (fmt.initRange && fmt.indexRange) {

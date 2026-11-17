@@ -287,6 +287,10 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       // 2. Generate synthetic DASH MPD XML manifest
       const mpdXml = generateDashMpd(walkResult.audioFormats, {
         durationMs: currentTrack.duration ? currentTrack.duration * 1000 : undefined,
+        urlTransformer: (url) =>
+          typeof this.networkAdapter.resolveStreamUrl === 'function'
+            ? this.networkAdapter.resolveStreamUrl(url)
+            : url,
       });
 
       // 3. Create blob URL for Shaka Player

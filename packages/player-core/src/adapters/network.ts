@@ -6,6 +6,7 @@ export interface NetworkAdapter {
   readonly name: string;
   fetch(url: string, init?: RequestInit): Promise<Response>;
   postJson<T = any>(url: string, body: any, headers?: Record<string, string>): Promise<T>;
+  resolveStreamUrl?(url: string): string;
 }
 
 /**
@@ -50,6 +51,10 @@ export class DevProxyAdapter implements NetworkAdapter {
 
   constructor(options: DevProxyOptions = {}) {
     this.proxyBaseUrl = options.proxyBaseUrl || '/api/yt';
+  }
+
+  resolveStreamUrl(url: string): string {
+    return `${this.proxyBaseUrl}/stream?url=${encodeURIComponent(url)}`;
   }
 
   private resolveUrl(targetUrl: string): string {
