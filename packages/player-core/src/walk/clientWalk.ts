@@ -1,0 +1,216 @@
+import {
+  AudioFormat,
+  ClientVerdict,
+  InnerTubeClientName,
+  PlayerResponse,
+} from '../types';
+import { InnerTubeClient } from '../innertube/client';
+
+export const CLIENT_WALK_PRIORITY: readonly InnerTubeClientName[] = [
+  'VISIONOS',
+  'WEB_REMIX',
+  'WEB',
+  'MWEB',
+] as const;
+
+export const BENCH_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+const LOCAL_STORAGE_KEY = 'mp_verdict_cache';
+
+export interface VerdictEntry {
+  benchedUntil: number;
+  reason: string;
+}
+
+/**
+ * VerdictCache manages in-memory and optional localStorage benching of clients
+ */
+export class VerdictCache {
+  private inMemoryCache: Map<InnerTubeClientName, VerdictEntry> = new Map();
+
+  constructor() {
+    this.hydrateFromStorage();
+  }
+
+  private hydrateFromStorage(): void {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, VerdictEntry>;
+        const now = Date.now();
+        for (const [key, entry] of Object.entries(parsed)) {
+          if (entry && entry.benchedUntil > now) {
+            this.inMemoryCache.set(key as InnerTubeClientName, entry);
+          }
+        }
+      }
+    } catch {
+      // Storage access may be blocked or restricted; in-memory fallback continues
+    }
+  }
+
+  private persistToStorage(): void {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+    try {
+      const obj: Record<string, VerdictEntry> = {};
+      const now = Date.now();
+      for (const [key, entry] of this.inMemoryCache.entries()) {
+        if (entry.benchedUntil > now) {
+          obj[key] = entry;
+        }
+      }
+      window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(obj));
+    } catch {
+      // Ignore storage persistence errors
+    }
+  }
+
+  /**
+   * Check if a given client is currently benched
+   */
+  isBenched(client: InnerTubeClientName): boolean {
+    const entry = this.inMemoryCache.get(client);
+    if (!entry) return false;
+
+    if (Date.now() < entry.benchedUntil) {
+      return true;
+    }
+
+    // Expired bench
+    this.inMemoryCache.delete(client);
+    this.persistToStorage();
+    return false;
+  }
+
+  /**
+   * Bench a client for 10 minutes with a failure reason
+   */
+  bench(client: InnerTubeClientName, reason: string): void {
+    const benchedUntil = Date.now() + BENCH_DURATION_MS;
+    this.inMemoryCache.set(client, { benchedUntil, reason });
+    this.persistToStorage();
+  }
+
+  /**
+   * Remove bench for a single client
+   */
+  unbench(client: InnerTubeClientName): void {
+    this.inMemoryCache.delete(client);
+    this.persistToStorage();
+  }
+
+  /**
+   * Clear all benched verdicts
+   */
+  clear(): void {
+    this.inMemoryCache.clear();
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        window.localStorage.removeItem(LOCAL_STORAGE_KEY);
+      } catch {
+        // Ignore
+      }
+    }
+  }
+
+  /**
+   * Get active (non-benched) clients in priority order
+   */
+  getActiveClients(): InnerTubeClientName[] {
+    return CLIENT_WALK_PRIORITY.filter((client) => !this.isBenched(client));
+  }
+
+  /**
+   * Retrieve snapshot of all verdicts
+   */
+  getAllVerdicts(): Record<InnerTubeClientName, VerdictEntry | null> {
+    const result = {} as Record<InnerTubeClientName, VerdictEntry | null>;
+    for (const client of CLIENT_WALK_PRIORITY) {
+      result[client] = this.isBenched(client) ? this.inMemoryCache.get(client)! : null;
+    }
+    return result;
+  }
+}
+
+export interface ClientWalkResult {
+  client: InnerTubeClientName;
+  playerResponse: PlayerResponse;
+  audioFormats: AudioFormat[];
+  verdicts: ClientVerdict[];
+}
+
+/**
+ * Execute client walk (VISIONOS -> WEB_REMIX -> WEB -> MWEB)
+ * Resolves valid direct audio streams or benches failing clients.
+ */
+export async function executeClientWalk(
+  videoId: string,
+  innerTubeClient: InnerTubeClient,
+  cache: VerdictCache = new VerdictCache()
+): Promise<ClientWalkResult> {
+  let candidates = cache.getActiveClients();
+
+  // If every client was benched, clear cache and try top priority again
+  if (candidates.length === 0) {
+    cache.clear();
+    candidates = [...CLIENT_WALK_PRIORITY];
+  }
+
+  const verdicts: ClientVerdict[] = [];
+
+  for (const client of candidates) {
+    try {
+      const response = await innerTubeClient.getPlayer(videoId, client);
+      const status = response.playabilityStatus?.status;
+
+      if (status !== 'OK') {
+        const reason = response.playabilityStatus?.reason || `PlayabilityStatus: ${status}`;
+        cache.bench(client, reason);
+        verdicts.push({ client, playable: false, reason, benchedUntil: Date.now() + BENCH_DURATION_MS });
+        continue;
+      }
+
+      // Extract and validate audio formats
+      const allFormats = [
+        ...(response.streamingData?.formats || []),
+        ...(response.streamingData?.adaptiveFormats || []),
+      ];
+
+      const audioFormats = allFormats.filter((fmt) => {
+        const isAudioMime = fmt.mimeType && fmt.mimeType.toLowerCase().startsWith('audio/');
+        const isAudioItag = [251, 250, 249, 140, 139, 171].includes(fmt.itag);
+        return (isAudioMime || isAudioItag) && Boolean(fmt.url);
+      });
+
+      if (audioFormats.length === 0) {
+        const reason = 'No direct playable audio streams with direct URLs';
+        cache.bench(client, reason);
+        verdicts.push({ client, playable: false, reason, benchedUntil: Date.now() + BENCH_DURATION_MS });
+        continue;
+      }
+
+      // Success
+      verdicts.push({ client, playable: true });
+      return {
+        client,
+        playerResponse: response,
+        audioFormats,
+        verdicts,
+      };
+    } catch (err: any) {
+      const reason = err?.message || 'InnerTube request failed';
+      cache.bench(client, reason);
+      verdicts.push({ client, playable: false, reason, benchedUntil: Date.now() + BENCH_DURATION_MS });
+    }
+  }
+
+  // All attempted clients failed
+  const errorSummary = verdicts
+    .map((v) => `${v.client}: ${v.reason || 'unplayable'}`)
+    .join('; ');
+  throw new Error(`[ClientWalk] All clients refused or failed for videoId "${videoId}": ${errorSummary}`);
+}
