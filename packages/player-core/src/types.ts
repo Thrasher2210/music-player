@@ -106,3 +106,39 @@ export type PlaybackState =
   | 'error';
 
 export type RepeatMode = 'off' | 'all' | 'one';
+
+export interface MoodChipData {
+  id: string;
+  title: string;
+  params?: string;
+  isActive?: boolean;
+}
+
+export interface ShelfItemData {
+  id: string;
+  type: 'song' | 'album' | 'playlist' | 'artist';
+  title: string;
+  subtitle: string;
+  thumbnail: string;
+  videoId?: string;
+  browseId?: string;
+}
+
+export interface MediaShelfData {
+  id: string;
+  title: string;
+  subtitle?: string;
+  items: ShelfItemData[];
+}
+
+export interface HomeFeedData {
+  chips: MoodChipData[];
+  quickPicks: Track[];
+  shelves: MediaShelfData[];
+}
+
+export interface NextRadioData {
+  queue: Track[];
+  related: ShelfItemData[];
+}
+

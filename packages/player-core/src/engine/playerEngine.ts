@@ -1,8 +1,11 @@
 import {
   ClientVerdict,
+  HomeFeedData,
   InnerTubeClientName,
+  NextRadioData,
   PlaybackState,
   RepeatMode,
+  ShelfItemData,
   Track,
 } from '../types';
 import { NetworkAdapter, NativeHttpAdapter } from '../adapters/network';
@@ -421,6 +424,20 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
    */
   async search(query: string, clientName?: InnerTubeClientName): Promise<Track[]> {
     return this.innerTube.search(query, clientName);
+  }
+
+  /**
+   * Fetch YouTube Music Home feed (mood chips, quick picks, shelves)
+   */
+  async getHomeFeed(moodParam?: string): Promise<HomeFeedData> {
+    return this.innerTube.getHomeFeed(moodParam);
+  }
+
+  /**
+   * Fetch Up Next radio queue and related content for videoId
+   */
+  async getNextRadio(videoId: string): Promise<NextRadioData> {
+    return this.innerTube.getNextRadio(videoId);
   }
 
   async destroy(): Promise<void> {

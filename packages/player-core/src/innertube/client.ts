@@ -1,8 +1,13 @@
 import {
   AudioFormat,
+  HomeFeedData,
   InnerTubeClientName,
   InnerTubeContext,
+  MediaShelfData,
+  MoodChipData,
+  NextRadioData,
   PlayerResponse,
+  ShelfItemData,
   Track,
 } from '../types';
 import { NativeHttpAdapter, NetworkAdapter } from '../adapters/network';
@@ -71,6 +76,332 @@ export interface InnerTubeClientOptions {
   networkAdapter?: NetworkAdapter;
   baseUrl?: string;
 }
+
+export function parseDuration(timeStr?: string): number {
+  if (!timeStr) return 0;
+  const parts = timeStr.trim().split(':').map((p) => parseInt(p, 10));
+  if (parts.some((n) => isNaN(n))) return 0;
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+  return 0;
+}
+
+export function parseTrackFromRenderer(item: any): Track | null {
+  if (!item || typeof item !== 'object') return null;
+
+  // 1. playlistPanelVideoRenderer
+  if (item.playlistPanelVideoRenderer) {
+    const v = item.playlistPanelVideoRenderer;
+    const videoId = v.videoId || v.navigationEndpoint?.watchEndpoint?.videoId;
+    const title = v.title?.runs?.[0]?.text || v.title?.simpleText || '';
+    const artist =
+      v.shortBylineText?.runs?.[0]?.text ||
+      v.longBylineText?.runs?.[0]?.text ||
+      'Unknown Artist';
+    const duration = parseDuration(v.lengthText?.runs?.[0]?.text || v.lengthText?.simpleText);
+    const thumbs = v.thumbnail?.thumbnails || [];
+    const thumbnail = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : '';
+    if (videoId && title) {
+      return {
+        id: videoId,
+        videoId,
+        title,
+        artist,
+        duration,
+        thumbnail,
+        thumbnails: thumbs,
+      };
+    }
+  }
+
+  // 2. musicResponsiveListItemRenderer
+  if (item.musicResponsiveListItemRenderer) {
+    const renderer = item.musicResponsiveListItemRenderer;
+    const flexColumns = renderer.flexColumns || [];
+
+    let videoId: string | undefined =
+      renderer.playlistItemData?.videoId ||
+      renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId;
+
+    let title = '';
+    const titleRuns = flexColumns[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
+    if (titleRuns && titleRuns.length > 0) {
+      title = titleRuns[0].text;
+      if (!videoId && titleRuns[0].navigationEndpoint?.watchEndpoint?.videoId) {
+        videoId = titleRuns[0].navigationEndpoint.watchEndpoint.videoId;
+      }
+    }
+
+    let artist = 'Unknown Artist';
+    let duration = 0;
+    const subRuns = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
+    if (subRuns && subRuns.length > 0) {
+      const runTexts: string[] = subRuns
+        .map((r: any) => r.text)
+        .filter((t: string) => t && t !== ' • ' && t !== '•');
+
+      if (runTexts.length > 0) {
+        artist = runTexts[0];
+      }
+
+      for (const text of runTexts) {
+        if (/^\d+:\d+(:\d+)?$/.test(text.trim())) {
+          duration = parseDuration(text);
+          break;
+        }
+      }
+    }
+
+    if (duration === 0 && flexColumns.length > 2) {
+      const extraRuns =
+        flexColumns[flexColumns.length - 1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
+      if (extraRuns && extraRuns.length > 0) {
+        const lastText = extraRuns[0].text;
+        if (/^\d+:\d+(:\d+)?$/.test(lastText.trim())) {
+          duration = parseDuration(lastText);
+        }
+      }
+    }
+
+    const rawThumbs = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+    const thumbnail = rawThumbs.length > 0 ? rawThumbs[rawThumbs.length - 1].url : '';
+
+    if (videoId && title) {
+      return {
+        id: videoId,
+        videoId,
+        title,
+        artist,
+        duration,
+        thumbnail,
+        thumbnails: rawThumbs,
+      };
+    }
+  }
+
+  // 3. musicTwoRowItemRenderer (when it has a videoId)
+  if (item.musicTwoRowItemRenderer) {
+    const twoRow = item.musicTwoRowItemRenderer;
+    const nav = twoRow.navigationEndpoint || twoRow.title?.runs?.[0]?.navigationEndpoint;
+    const videoId = nav?.watchEndpoint?.videoId;
+    const title = twoRow.title?.runs?.[0]?.text || twoRow.title?.simpleText || '';
+    if (videoId && title) {
+      const subRuns = twoRow.subtitle?.runs;
+      const artist = subRuns?.[0]?.text || twoRow.subtitle?.simpleText || 'Unknown Artist';
+      const thumbs =
+        twoRow.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
+        twoRow.thumbnail?.thumbnails ||
+        [];
+      const thumbnail = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : '';
+      return {
+        id: videoId,
+        videoId,
+        title,
+        artist,
+        duration: 0,
+        thumbnail,
+        thumbnails: thumbs,
+      };
+    }
+  }
+
+  // 4. videoRenderer
+  if (item.videoRenderer) {
+    const v = item.videoRenderer;
+    const videoId = v.videoId;
+    const title = v.title?.runs?.[0]?.text || v.title?.simpleText || '';
+    const artist =
+      v.ownerText?.runs?.[0]?.text ||
+      v.shortBylineText?.runs?.[0]?.text ||
+      'Unknown Artist';
+    const duration = parseDuration(v.lengthText?.simpleText);
+    const thumbs = v.thumbnail?.thumbnails || [];
+    const thumbnail = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : '';
+    if (videoId && title) {
+      return {
+        id: videoId,
+        videoId,
+        title,
+        artist,
+        duration,
+        thumbnail,
+        thumbnails: thumbs,
+      };
+    }
+  }
+
+  // 5. compactVideoRenderer
+  if (item.compactVideoRenderer) {
+    const cv = item.compactVideoRenderer;
+    const videoId = cv.videoId;
+    const title = cv.title?.runs?.[0]?.text || cv.title?.simpleText || '';
+    const artist = cv.shortBylineText?.runs?.[0]?.text || 'Unknown Artist';
+    const duration = parseDuration(cv.lengthText?.simpleText);
+    const thumbs = cv.thumbnail?.thumbnails || [];
+    const thumbnail = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : '';
+    if (videoId && title) {
+      return {
+        id: videoId,
+        videoId,
+        title,
+        artist,
+        duration,
+        thumbnail,
+        thumbnails: thumbs,
+      };
+    }
+  }
+
+  return null;
+}
+
+export function parseShelfItem(item: any): ShelfItemData | null {
+  if (!item || typeof item !== 'object') return null;
+
+  // 1. musicTwoRowItemRenderer
+  if (item.musicTwoRowItemRenderer) {
+    const r = item.musicTwoRowItemRenderer;
+    const title = r.title?.runs?.[0]?.text || r.title?.simpleText || '';
+    const subRuns = r.subtitle?.runs;
+    const subtitle = subRuns ? subRuns.map((s: any) => s.text).join('') : r.subtitle?.simpleText || '';
+
+    const thumbs =
+      r.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
+      r.thumbnail?.thumbnails ||
+      [];
+    const thumbnail = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : '';
+
+    const nav = r.navigationEndpoint || r.title?.runs?.[0]?.navigationEndpoint;
+    const videoId = nav?.watchEndpoint?.videoId;
+    const browseId = nav?.browseEndpoint?.browseId;
+
+    let type: 'song' | 'album' | 'playlist' | 'artist' = 'song';
+    if (browseId) {
+      if (browseId.startsWith('MPREb_') || browseId.startsWith('FEmusic_library_corpus_track')) {
+        type = 'album';
+      } else if (browseId.startsWith('VL') || browseId.startsWith('RDCLAK') || browseId.startsWith('PL')) {
+        type = 'playlist';
+      } else if (browseId.startsWith('UC') || browseId.startsWith('FEmusic_library_corpus_artists')) {
+        type = 'artist';
+      } else if (/\balbum\b/i.test(subtitle) || /\bsingle\b/i.test(subtitle) || /\bep\b/i.test(subtitle)) {
+        type = 'album';
+      } else if (/\bplaylist\b/i.test(subtitle)) {
+        type = 'playlist';
+      } else if (/\bartist\b/i.test(subtitle)) {
+        type = 'artist';
+      } else {
+        type = videoId ? 'song' : 'album';
+      }
+    } else if (videoId) {
+      type = 'song';
+    } else if (/\bartist\b/i.test(subtitle)) {
+      type = 'artist';
+    } else if (/\bplaylist\b/i.test(subtitle)) {
+      type = 'playlist';
+    } else if (/\balbum\b/i.test(subtitle)) {
+      type = 'album';
+    }
+
+    const id = videoId || browseId || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-') : `item_${Math.random().toString(36).substring(2, 7)}`);
+
+    if (title) {
+      return {
+        id,
+        type,
+        title,
+        subtitle,
+        thumbnail,
+        videoId,
+        browseId,
+      };
+    }
+  }
+
+  // 2. musicResponsiveListItemRenderer
+  if (item.musicResponsiveListItemRenderer) {
+    const r = item.musicResponsiveListItemRenderer;
+    const flexColumns = r.flexColumns || [];
+
+    let videoId: string | undefined =
+      r.playlistItemData?.videoId ||
+      r.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId;
+
+    let title = '';
+    const titleRuns = flexColumns[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
+    if (titleRuns && titleRuns.length > 0) {
+      title = titleRuns[0].text;
+      if (!videoId && titleRuns[0].navigationEndpoint?.watchEndpoint?.videoId) {
+        videoId = titleRuns[0].navigationEndpoint.watchEndpoint.videoId;
+      }
+    }
+
+    let subtitle = '';
+    const subRuns = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
+    if (subRuns && subRuns.length > 0) {
+      subtitle = subRuns.map((s: any) => s.text).join('');
+    }
+
+    const browseId =
+      titleRuns?.[0]?.navigationEndpoint?.browseEndpoint?.browseId ||
+      subRuns?.[0]?.navigationEndpoint?.browseEndpoint?.browseId;
+
+    const rawThumbs = r.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+    const thumbnail = rawThumbs.length > 0 ? rawThumbs[rawThumbs.length - 1].url : '';
+
+    let type: 'song' | 'album' | 'playlist' | 'artist' = 'song';
+    if (videoId) {
+      type = 'song';
+    } else if (browseId?.startsWith('UC') || /\bartist\b/i.test(subtitle)) {
+      type = 'artist';
+    } else if (browseId?.startsWith('MPREb_') || /\balbum\b/i.test(subtitle) || /\bsingle\b/i.test(subtitle)) {
+      type = 'album';
+    } else if (browseId?.startsWith('VL') || browseId?.startsWith('PL') || /\bplaylist\b/i.test(subtitle)) {
+      type = 'playlist';
+    }
+
+    const id = videoId || browseId || (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-') : `item_${Math.random().toString(36).substring(2, 7)}`);
+
+    if (title) {
+      return {
+        id,
+        type,
+        title,
+        subtitle,
+        thumbnail,
+        videoId,
+        browseId,
+      };
+    }
+  }
+
+  // 3. compactVideoRenderer / videoRenderer
+  const vr = item.videoRenderer || item.compactVideoRenderer;
+  if (vr) {
+    const videoId = vr.videoId;
+    const title = vr.title?.runs?.[0]?.text || vr.title?.simpleText || '';
+    const subtitle = vr.ownerText?.runs?.[0]?.text || vr.shortBylineText?.runs?.[0]?.text || '';
+    const thumbs = vr.thumbnail?.thumbnails || [];
+    const thumbnail = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : '';
+    const id = videoId || title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    if (title) {
+      return {
+        id,
+        type: 'song',
+        title,
+        subtitle,
+        thumbnail,
+        videoId,
+      };
+    }
+  }
+
+  return null;
+}
+
 
 export class InnerTubeClient {
   private network: NetworkAdapter;
@@ -146,6 +477,320 @@ export class InnerTubeClient {
     });
 
     return this.parseSearchResults(rawResponse);
+  }
+
+  /**
+   * Fetch YouTube Music Home feed with optional mood filter (e.g. Energize, Workout, Relax)
+   */
+  async getHomeFeed(moodParam?: string): Promise<HomeFeedData> {
+    const context = INNERTUBE_CONTEXTS['WEB_REMIX'];
+    const endpoint = `${this.baseUrl}/youtubei/v1/browse?key=${INNERTUBE_PUBLIC_KEY}&prettyPrint=false`;
+
+    const payload: Record<string, any> = {
+      context,
+      browseId: 'FEmusic_home',
+    };
+    if (moodParam) {
+      payload.params = moodParam;
+    }
+
+    const rawResponse = await this.network.postJson<any>(endpoint, payload, {
+      'Content-Type': 'text/plain',
+      'X-YouTube-Client-Name': context.client.clientName,
+      'X-YouTube-Client-Version': context.client.clientVersion,
+    });
+
+    return this.parseHomeFeed(rawResponse);
+  }
+
+  /**
+   * Fetch Up Next radio queue and related content for a given videoId
+   */
+  async getNextRadio(
+    videoId: string
+  ): Promise<{ queue: Track[]; related: ShelfItemData[] }> {
+    const context = INNERTUBE_CONTEXTS['WEB_REMIX'];
+    const endpoint = `${this.baseUrl}/youtubei/v1/next?key=${INNERTUBE_PUBLIC_KEY}&prettyPrint=false`;
+
+    const payload: Record<string, any> = {
+      context,
+      videoId,
+      isAudioOnly: true,
+    };
+
+    const rawResponse = await this.network.postJson<any>(endpoint, payload, {
+      'Content-Type': 'text/plain',
+      'X-YouTube-Client-Name': context.client.clientName,
+      'X-YouTube-Client-Version': context.client.clientVersion,
+    });
+
+    return this.parseNextRadio(rawResponse);
+  }
+
+  /**
+   * Parse YouTube Music Home feed browse response into chips, quick picks, and shelves
+   */
+  parseHomeFeed(data: any): HomeFeedData {
+    if (!data || typeof data !== 'object') {
+      return { chips: [], quickPicks: [], shelves: [] };
+    }
+
+    // 1. Parse mood chips
+    const chips: MoodChipData[] = [];
+    const seenChipIds = new Set<string>();
+
+    const extractChips = (node: any) => {
+      if (!node || typeof node !== 'object') return;
+      if (node.chipCloudChipRenderer) {
+        const c = node.chipCloudChipRenderer;
+        const title = c.text?.runs?.[0]?.text || c.text?.simpleText || '';
+        const params = c.navigationEndpoint?.browseEndpoint?.params || undefined;
+        const isActive = Boolean(c.isSelected);
+        const id = c.uniqueId || params || title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        if (title && !seenChipIds.has(id)) {
+          seenChipIds.add(id);
+          chips.push({ id, title, params, isActive });
+        }
+        return;
+      }
+      if (Array.isArray(node)) {
+        for (const item of node) extractChips(item);
+        return;
+      }
+      for (const key of Object.keys(node)) {
+        extractChips(node[key]);
+      }
+    };
+    extractChips(data);
+
+    // 2. Parse shelves and quick picks
+    const shelves: MediaShelfData[] = [];
+    let quickPicks: Track[] = [];
+
+    const processShelf = (shelfNode: any) => {
+      const header = shelfNode.header?.musicCarouselShelfBasicHeaderRenderer || shelfNode.header;
+      const title =
+        header?.title?.runs?.[0]?.text ||
+        header?.title?.simpleText ||
+        shelfNode.title?.runs?.[0]?.text ||
+        shelfNode.title?.simpleText ||
+        '';
+
+      const subtitle =
+        header?.strapline?.runs?.[0]?.text ||
+        header?.strapline?.simpleText ||
+        shelfNode.strapline?.runs?.[0]?.text ||
+        shelfNode.subtitle?.runs?.[0]?.text ||
+        undefined;
+
+      const rawItems = shelfNode.contents || [];
+      const shelfItems: ShelfItemData[] = [];
+      const shelfTracks: Track[] = [];
+
+      for (const item of rawItems) {
+        const shelfItem = parseShelfItem(item);
+        if (shelfItem) {
+          shelfItems.push(shelfItem);
+        }
+        const track = parseTrackFromRenderer(item);
+        if (track) {
+          shelfTracks.push(track);
+        }
+      }
+
+      if (shelfItems.length > 0 || title) {
+        const id =
+          shelfNode.id ||
+          (title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-') : `shelf_${shelves.length + 1}`);
+
+        shelves.push({
+          id,
+          title,
+          subtitle,
+          items: shelfItems,
+        });
+
+        const isQuickPickShelf =
+          /quick\s*pick/i.test(title) ||
+          /listen\s*again/i.test(title) ||
+          /mixed\s*for\s*you/i.test(title) ||
+          /start\s*radio/i.test(title);
+
+        if (isQuickPickShelf && quickPicks.length === 0 && shelfTracks.length > 0) {
+          quickPicks = shelfTracks;
+        }
+      }
+    };
+
+    const findShelves = (node: any) => {
+      if (!node || typeof node !== 'object') return;
+
+      if (node.musicCarouselShelfRenderer) {
+        processShelf(node.musicCarouselShelfRenderer);
+        return;
+      }
+      if (node.musicShelfRenderer) {
+        processShelf(node.musicShelfRenderer);
+        return;
+      }
+
+      if (Array.isArray(node)) {
+        for (const child of node) findShelves(child);
+        return;
+      }
+
+      for (const key of Object.keys(node)) {
+        if (key === 'chipCloudRenderer') continue;
+        findShelves(node[key]);
+      }
+    };
+    findShelves(data);
+
+    // Fallback: if no explicitly titled quick pick shelf was matched, take first shelf with song tracks
+    if (quickPicks.length === 0) {
+      for (const shelf of shelves) {
+        const songItems = shelf.items.filter((item) => item.type === 'song' && item.videoId);
+        if (songItems.length > 0) {
+          quickPicks = songItems.map((item) => ({
+            id: item.videoId!,
+            videoId: item.videoId!,
+            title: item.title,
+            artist: item.subtitle.split('•')[0].trim() || 'Unknown Artist',
+            duration: 0,
+            thumbnail: item.thumbnail,
+          }));
+          break;
+        }
+      }
+    }
+
+    // Secondary fallback: parse all tracks from response if still empty
+    if (quickPicks.length === 0) {
+      quickPicks = this.parseSearchResults(data);
+    }
+
+    return {
+      chips,
+      quickPicks,
+      shelves,
+    };
+  }
+
+  /**
+   * Parse YouTube Music Next response into Up Next queue and Related shelves
+   */
+  parseNextRadio(data: any): { queue: Track[]; related: ShelfItemData[] } {
+    if (!data || typeof data !== 'object') {
+      return { queue: [], related: [] };
+    }
+
+    const queue: Track[] = [];
+    const seenQueueIds = new Set<string>();
+
+    const related: ShelfItemData[] = [];
+    const seenRelatedIds = new Set<string>();
+
+    // 1. Extract queue items from playlistPanelVideoRenderer
+    const findQueue = (node: any) => {
+      if (!node || typeof node !== 'object') return;
+
+      if (node.playlistPanelVideoRenderer) {
+        const track = parseTrackFromRenderer(node);
+        if (track && !seenQueueIds.has(track.videoId)) {
+          seenQueueIds.add(track.videoId);
+          queue.push(track);
+        }
+        return;
+      }
+
+      if (node.playlistPanelVideoWrapperRenderer) {
+        const primary = node.playlistPanelVideoWrapperRenderer.primaryRenderer;
+        if (primary) findQueue(primary);
+        return;
+      }
+
+      if (Array.isArray(node)) {
+        for (const child of node) findQueue(child);
+        return;
+      }
+
+      for (const key of Object.keys(node)) {
+        findQueue(node[key]);
+      }
+    };
+
+    const tabs =
+      data.contents?.singleColumnMusicWatchNextResultsRenderer?.tabbedRenderer
+        ?.watchNextTabbedResultsRenderer?.tabs;
+
+    if (Array.isArray(tabs) && tabs.length > 0) {
+      // Tab 0 is typically UP NEXT
+      findQueue(tabs[0]);
+    } else {
+      findQueue(data);
+    }
+
+    // 2. Extract related items from Related tab or shelves in response
+    const processRelatedItem = (itemNode: any) => {
+      const item = parseShelfItem(itemNode);
+      if (item && !seenRelatedIds.has(item.id)) {
+        seenRelatedIds.add(item.id);
+        related.push(item);
+      }
+    };
+
+    const findRelated = (node: any) => {
+      if (!node || typeof node !== 'object') return;
+
+      if (node.musicTwoRowItemRenderer || node.musicResponsiveListItemRenderer) {
+        processRelatedItem(node);
+        return;
+      }
+
+      if (Array.isArray(node)) {
+        for (const child of node) findRelated(child);
+        return;
+      }
+
+      for (const key of Object.keys(node)) {
+        if (key === 'playlistPanelRenderer' || key === 'musicQueueRenderer') {
+          continue;
+        }
+        findRelated(node[key]);
+      }
+    };
+
+    if (Array.isArray(tabs)) {
+      const relatedTab =
+        tabs.find((t: any) => {
+          const title =
+            t.tabRenderer?.title?.runs?.[0]?.text ||
+            t.tabRenderer?.title?.simpleText ||
+            t.tabRenderer?.title;
+          return typeof title === 'string' && /related/i.test(title);
+        }) || tabs[2];
+
+      if (relatedTab) {
+        findRelated(relatedTab);
+      } else {
+        findRelated(data);
+      }
+    } else {
+      findRelated(data);
+    }
+
+    // Fallback: if queue is empty, try parseSearchResults
+    if (queue.length === 0) {
+      const fallbackTracks = this.parseSearchResults(data);
+      for (const t of fallbackTracks) {
+        if (!seenQueueIds.has(t.videoId)) {
+          seenQueueIds.add(t.videoId);
+          queue.push(t);
+        }
+      }
+    }
+
+    return { queue, related };
   }
 
   /**
