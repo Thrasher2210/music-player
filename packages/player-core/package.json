@@ -1,0 +1,23 @@
+{
+  "name": "@mp/player-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit",
+    "test": "tsx --test tests/playerCore.test.ts"
+  },
+  "dependencies": {
+    "shaka-player": "^5.3.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.2"
+  }
+}
