@@ -10,3 +10,9 @@ export {
   type LyricLine,
 } from "./SyncedLyricsView";
 export { PlayerBar, type PlayerBarProps } from "./PlayerBar";
+export {
+  FullPlayerView,
+  type FullPlayerViewProps,
+  type FullPlayerTab,
+  type RelatedItem,
+} from "./FullPlayerView";

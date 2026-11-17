@@ -141,6 +141,19 @@ export {
 export { HeroCarousel, type HeroCarouselProps } from "./media/HeroCarousel";
 export { MediaShelf, type MediaShelfProps } from "./media/MediaShelf";
 export { MediaCard, type MediaCardProps } from "./media/MediaCard";
+export { MoodChip, type MoodChipProps } from "./media/MoodChip";
+export {
+  MoodChipBar,
+  type MoodChipBarProps,
+  type MoodChipData,
+} from "./media/MoodChipBar";
+export {
+  QuickPicksGrid,
+  type QuickPicksGridProps,
+  QuickPicksColumn,
+  type QuickPicksColumnProps,
+} from "./media/QuickPicksGrid";
+export { QuickPickRow, type QuickPickRowProps } from "./media/QuickPickRow";
 
 // Music Components
 export { TrackRow, type TrackRowProps, type TrackData } from "./music/TrackRow";
@@ -155,6 +168,12 @@ export {
   type LyricLine,
 } from "./music/SyncedLyricsView";
 export { PlayerBar, type PlayerBarProps } from "./music/PlayerBar";
+export {
+  FullPlayerView,
+  type FullPlayerViewProps,
+  type FullPlayerTab,
+  type RelatedItem,
+} from "./music/FullPlayerView";
 
 // Utilities
 export { cn } from "./utils/cn";

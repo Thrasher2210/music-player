@@ -353,3 +353,59 @@ import { FullImmersionLyrics } from '@mp/dying';
   onSeek={seek}
 />
 ```
+
+### `MoodChip` & `MoodChipBar`
+Horizontal scrollable pill strip with obsidian glass buttons for mood and genre filtering.
+```tsx
+import { MoodChipBar, MoodChip, type MoodChipData } from '@mp/dying';
+
+<MoodChipBar
+  chips={chips}
+  activeId={selectedId}
+  onSelectChip={(chip) => setSelectedId(chip.id)}
+/>
+```
+- **Active state:** Crisp high-contrast white `#ffffff` with black text.
+- **Inactive state:** Sleek obsidian glass button in `#1e1e22` with specular border `rgba(255,255,255,0.08)`.
+
+### `QuickPicksGrid` & `QuickPickRow`
+4-item vertical stacked song row with 44px thumbnail, title, artist, hover play button, and queue / more options.
+```tsx
+import { QuickPicksGrid, QuickPickRow, type TrackData } from '@mp/dying';
+
+<QuickPicksGrid columns={4}>
+  {tracks.map((track) => (
+    <QuickPickRow
+      key={track.id}
+      track={track}
+      isPlaying={track.id === currentTrackId && isPlaying}
+      onPlay={() => playTrack(track)}
+      onQueue={() => addToQueue(track)}
+    />
+  ))}
+</QuickPicksGrid>
+```
+
+### `FullPlayerView`
+YouTube Music desktop full-screen player view with large album artwork, soft 10% dynamic ambient aura glow, scrub slider, and 3-tab right panel (`UP NEXT`, `LYRICS`, `RELATED`).
+```tsx
+import { FullPlayerView, type FullPlayerTab, type TrackData } from '@mp/dying';
+
+<FullPlayerView
+  track={currentTrack}
+  isPlaying={isPlaying}
+  currentTime={currentTime}
+  duration={duration}
+  onPlayPause={togglePlay}
+  onSeek={seek}
+  onClose={() => setFullPlayerOpen(false)}
+  activeTab={activeTab}
+  onTabChange={(tab) => setActiveTab(tab)}
+  queue={queue}
+  lyrics={syncedLyrics}
+  related={relatedItems}
+  onSelectTrack={(track) => playTrack(track)}
+  infiniteRadio={true}
+  onToggleInfiniteRadio={setInfiniteRadio}
+/>
+```
