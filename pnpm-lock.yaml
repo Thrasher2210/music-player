@@ -24,7 +24,7 @@ importers:
         version: link:../db
       better-auth:
         specifier: ^1.3.0
-        version: 1.7.25(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(kysely@0.29.9)(pg@8.23.1))(next@15.5.29(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 1.7.25(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(kysely@0.29.9)(pg@8.23.1))(next@15.5.29(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       bullmq:
         specifier: ^5.58.5
         version: 5.81.5
@@ -58,7 +58,7 @@ importers:
         version: 0.3.16
       better-auth:
         specifier: ^1.3.0
-        version: 1.7.25(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(kysely@0.29.9)(pg@8.23.1))(next@15.5.29(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 1.7.25(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(kysely@0.29.9)(pg@8.23.1))(next@15.5.29(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(kysely@0.29.9)(pg@8.23.1)
@@ -119,12 +119,24 @@ importers:
       '@mp/api-contract':
         specifier: workspace:*
         version: link:../../backend/shared
+      '@mp/dying':
+        specifier: workspace:*
+        version: link:../../packages/dying
+      '@mp/player-core':
+        specifier: workspace:*
+        version: link:../../packages/player-core
       '@tanstack/react-query':
         specifier: ^5.90.2
         version: 5.107.1(@types/react@19.3.0)(react@19.3.1)
       better-auth:
         specifier: ^1.3.0
-        version: 1.7.25(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(kysely@0.29.9)(pg@8.23.1))(next@15.5.29(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        version: 1.7.25(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(kysely@0.29.9)(pg@8.23.1))(next@15.5.29(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      framer-motion:
+        specifier: ^12.4.7
+        version: 12.43.0(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      lucide-react:
+        specifier: ^0.475.0
+        version: 0.475.0(react@19.3.1)
       next:
         specifier: ^15.5.4
         version: 15.5.29(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -5953,7 +5965,7 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
-  better-auth@1.7.25(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(kysely@0.29.9)(pg@8.23.1))(next@15.5.29(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  better-auth@1.7.25(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(kysely@0.29.9)(pg@8.23.1))(next@15.5.29(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@better-auth/core': 1.7.25(@better-auth/utils@0.5.1)(@better-fetch/fetch@1.3.3)(better-call@1.4.5(zod@4.6.7))(jose@6.2.17)(kysely@0.29.9)(nanostores@1.5.5)
       '@better-auth/drizzle-adapter': 1.7.25(@better-auth/core@1.7.25(@better-auth/utils@0.5.1)(@better-fetch/fetch@1.3.3)(better-call@1.4.5(zod@4.6.7))(jose@6.2.17)(kysely@0.29.9)(nanostores@1.5.5))(@better-auth/utils@0.5.1)(drizzle-orm@0.45.4(@electric-sql/pglite@0.3.16)(@types/pg@8.23.1)(kysely@0.29.9)(pg@8.23.1))
