@@ -54,7 +54,11 @@ export class DevProxyAdapter implements NetworkAdapter {
   }
 
   resolveStreamUrl(url: string): string {
-    return `${this.proxyBaseUrl}/stream?url=${encodeURIComponent(url)}`;
+    const origin =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : 'http://localhost:3000';
+    return `${origin}${this.proxyBaseUrl}/stream?url=${encodeURIComponent(url)}`;
   }
 
   private resolveUrl(targetUrl: string): string {
