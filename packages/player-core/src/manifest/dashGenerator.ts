@@ -87,7 +87,8 @@ export function generateDashMpd(
       return getPriority(a.itag) - getPriority(b.itag);
     });
 
-  const finalFormats = selectedFormats.length > 0 ? selectedFormats : candidateFormats;
+  // Keep top 2 optimal representations (Opus 251 and AAC 140) to minimize MPD parse overhead
+  const finalFormats = (selectedFormats.length > 0 ? selectedFormats : candidateFormats).slice(0, 2);
 
   // Determine media duration
   let durationMs = options.durationMs;

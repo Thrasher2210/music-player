@@ -98,18 +98,18 @@ export class ShakaMseAudioDriver implements AudioDriver {
     this.player = new shaka.Player();
     await (this.player as any).attach(this.mediaElement);
 
-    // Configure Shaka for optimal audio streaming & byte-range chunks
+    // Configure Shaka for ultra-fast instant audio start & byte-range chunks
     (this.player as any).configure({
       streaming: {
-        bufferingGoal: 30, // 30s lookahead prevents googlevideo aggressive bandwidth drop-off
-        rebufferingGoal: 2,
-        bufferBehind: 30,
+        bufferingGoal: 12,
+        rebufferingGoal: 0.3, // starts playing as soon as 300ms chunk lands in MSE
+        bufferBehind: 15,
         retryParameters: {
-          maxAttempts: 3,
-          baseDelay: 1000,
-          backoffFactor: 2,
-          fuzzFactor: 0.5,
-          timeout: 20000,
+          maxAttempts: 2,
+          baseDelay: 400,
+          backoffFactor: 1.5,
+          fuzzFactor: 0.3,
+          timeout: 8000,
         },
       },
       manifest: {

@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     responseHeaders.set('Access-Control-Allow-Headers', '*');
     responseHeaders.set('Accept-Ranges', 'bytes');
+    responseHeaders.set('Cache-Control', 'public, max-age=86400, immutable');
 
     const contentType = upstreamRes.headers.get('content-type');
     if (contentType) responseHeaders.set('Content-Type', contentType);

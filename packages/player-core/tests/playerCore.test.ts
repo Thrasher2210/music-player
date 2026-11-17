@@ -104,15 +104,15 @@ describe('@mp/player-core unit tests', () => {
     const cache = new VerdictCache();
     cache.clear();
 
-    assert.equal(cache.isBenched('VISIONOS'), false);
-    assert.deepEqual(cache.getActiveClients(), ['VISIONOS', 'IOS', 'WEB_REMIX', 'WEB', 'MWEB']);
+    assert.equal(cache.isBenched('IOS'), false);
+    assert.deepEqual(cache.getActiveClients(), ['IOS', 'VISIONOS', 'WEB_REMIX', 'WEB', 'MWEB']);
 
-    cache.bench('VISIONOS', 'Playback restricted');
-    assert.equal(cache.isBenched('VISIONOS'), true);
-    assert.deepEqual(cache.getActiveClients(), ['IOS', 'WEB_REMIX', 'WEB', 'MWEB']);
+    cache.bench('IOS', 'Playback restricted');
+    assert.equal(cache.isBenched('IOS'), true);
+    assert.deepEqual(cache.getActiveClients(), ['VISIONOS', 'WEB_REMIX', 'WEB', 'MWEB']);
 
-    cache.unbench('VISIONOS');
-    assert.equal(cache.isBenched('VISIONOS'), false);
+    cache.unbench('IOS');
+    assert.equal(cache.isBenched('IOS'), false);
   });
 
   it('generates synthetic DASH MPD XML with Opus (251) and AAC (140)', () => {

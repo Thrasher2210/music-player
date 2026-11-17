@@ -160,20 +160,21 @@ export default function HomePage() {
     }
   };
 
-  // Play track and automatically seed infinite Up Next queue with live radio
+  // Play track immediately and concurrently seed infinite Up Next queue with live radio
   const handlePlayTrackWithRadio = useCallback(
-    async (track: Track) => {
-      await playTrack(track);
+    (track: Track) => {
+      playTrack(track);
       const vid = track.videoId || track.id;
       if (vid) {
-        try {
-          const radio = await getNextRadio(vid);
-          if (radio.related && radio.related.length > 0) {
-            setRelatedItems(radio.related);
-          }
-        } catch (err) {
-          console.error('Failed to seed next radio:', err);
-        }
+        getNextRadio(vid)
+          .then((radio) => {
+            if (radio.related && radio.related.length > 0) {
+              setRelatedItems(radio.related);
+            }
+          })
+          .catch((err) => {
+            console.error('Failed to seed next radio:', err);
+          });
       }
     },
     [playTrack, getNextRadio]

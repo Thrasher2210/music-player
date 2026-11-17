@@ -10,7 +10,7 @@ import {
 } from '../types';
 import { NetworkAdapter, NativeHttpAdapter } from '../adapters/network';
 import { InnerTubeClient } from '../innertube/client';
-import { executeClientWalk, VerdictCache } from '../walk/clientWalk';
+import { executeClientWalk, prefetchStream, VerdictCache } from '../walk/clientWalk';
 import { createDashBlobUrl, generateDashMpd } from '../manifest/dashGenerator';
 import { AudioDriver, ShakaMseAudioDriver } from '../drivers/audio';
 
@@ -262,6 +262,17 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     if (typeof index === 'number') {
       if (index < 0 || index >= this.queue.length) return;
       this.currentIndex = index;
+    } else {
+      // Fast-path: if audio driver is paused on the current track, resume instantly without re-loading
+      if (
+        (this.playbackState === 'paused' || this.audioDriver.getState() === 'paused') &&
+        this.getCurrentTrack()
+      ) {
+        this.playbackState = 'playing';
+        this.emit('stateChange', 'playing');
+        await this.audioDriver.play();
+        return;
+      }
     }
 
     const currentTrack = this.getCurrentTrack();
@@ -306,6 +317,12 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
 
       // 5. Start playback
       await this.audioDriver.play();
+
+      // 6. Prefetch stream for the next track in queue for instant 0ms track skipping
+      const nextTrack = this.queue[this.currentIndex + 1];
+      if (nextTrack?.videoId) {
+        prefetchStream(nextTrack.videoId, this.innerTube, this.verdictCache);
+      }
     } catch (err: any) {
       if (currentRequestId !== this.playRequestId) return;
       this.playbackState = 'error';

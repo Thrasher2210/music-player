@@ -7,8 +7,8 @@ import {
 import { InnerTubeClient } from '../innertube/client';
 
 export const CLIENT_WALK_PRIORITY: readonly InnerTubeClientName[] = [
-  'VISIONOS',
   'IOS',
+  'VISIONOS',
   'WEB_REMIX',
   'WEB',
   'MWEB',
@@ -144,15 +144,83 @@ export interface ClientWalkResult {
   verdicts: ClientVerdict[];
 }
 
+// 10-minute in-memory cache for resolved stream URLs
+const STREAM_CACHE_TTL_MS = 10 * 60 * 1000;
+interface CachedStreamEntry {
+  expiresAt: number;
+  result: ClientWalkResult;
+}
+const streamResultCache = new Map<string, CachedStreamEntry>();
+
+async function attemptClient(
+  client: InnerTubeClientName,
+  videoId: string,
+  innerTubeClient: InnerTubeClient,
+  cache: VerdictCache
+): Promise<ClientWalkResult> {
+  const response = await innerTubeClient.getPlayer(videoId, client);
+  const status = response.playabilityStatus?.status;
+
+  if (status !== 'OK') {
+    const reason = response.playabilityStatus?.reason || `PlayabilityStatus: ${status}`;
+    cache.bench(client, reason);
+    throw new Error(reason);
+  }
+
+  const allFormats = [
+    ...(response.streamingData?.formats || []),
+    ...(response.streamingData?.adaptiveFormats || []),
+  ];
+
+  const audioFormats = allFormats.filter((fmt) => {
+    const isAudioMime = fmt.mimeType && fmt.mimeType.toLowerCase().startsWith('audio/');
+    const isAudioItag = [251, 250, 249, 140, 139, 171].includes(fmt.itag);
+    return (isAudioMime || isAudioItag) && Boolean(fmt.url);
+  });
+
+  if (audioFormats.length === 0) {
+    const reason = 'No direct playable audio streams with direct URLs';
+    cache.bench(client, reason);
+    throw new Error(reason);
+  }
+
+  return {
+    client,
+    playerResponse: response,
+    audioFormats,
+    verdicts: [{ client, playable: true }],
+  };
+}
+
 /**
- * Execute client walk (VISIONOS -> WEB_REMIX -> WEB -> MWEB)
- * Resolves valid direct audio streams or benches failing clients.
+ * Prefetch stream for an upcoming track in queue to ensure 0ms latency transition.
+ */
+export function prefetchStream(
+  videoId: string,
+  innerTubeClient: InnerTubeClient,
+  cache: VerdictCache = new VerdictCache()
+): void {
+  const cached = streamResultCache.get(videoId);
+  if (cached && cached.expiresAt > Date.now()) return;
+  executeClientWalk(videoId, innerTubeClient, cache).catch(() => {});
+}
+
+/**
+ * Execute client walk with 10-minute stream caching and priority walking.
+ * Resolves valid direct audio streams in sub-second latency.
  */
 export async function executeClientWalk(
   videoId: string,
   innerTubeClient: InnerTubeClient,
   cache: VerdictCache = new VerdictCache()
 ): Promise<ClientWalkResult> {
+  // 1. Check in-memory stream cache for instant 0ms playback
+  const now = Date.now();
+  const cached = streamResultCache.get(videoId);
+  if (cached && cached.expiresAt > now) {
+    return cached.result;
+  }
+
   let candidates = cache.getActiveClients();
 
   // If every client was benched, clear cache and try top priority again
@@ -161,51 +229,21 @@ export async function executeClientWalk(
     candidates = [...CLIENT_WALK_PRIORITY];
   }
 
+  // 2. Iterate candidates in priority order (IOS -> VISIONOS -> etc.)
   const verdicts: ClientVerdict[] = [];
 
   for (const client of candidates) {
     try {
-      const response = await innerTubeClient.getPlayer(videoId, client);
-      const status = response.playabilityStatus?.status;
-
-      if (status !== 'OK') {
-        const reason = response.playabilityStatus?.reason || `PlayabilityStatus: ${status}`;
-        cache.bench(client, reason);
-        verdicts.push({ client, playable: false, reason, benchedUntil: Date.now() + BENCH_DURATION_MS });
-        continue;
-      }
-
-      // Extract and validate audio formats
-      const allFormats = [
-        ...(response.streamingData?.formats || []),
-        ...(response.streamingData?.adaptiveFormats || []),
-      ];
-
-      const audioFormats = allFormats.filter((fmt) => {
-        const isAudioMime = fmt.mimeType && fmt.mimeType.toLowerCase().startsWith('audio/');
-        const isAudioItag = [251, 250, 249, 140, 139, 171].includes(fmt.itag);
-        return (isAudioMime || isAudioItag) && Boolean(fmt.url);
-      });
-
-      if (audioFormats.length === 0) {
-        const reason = 'No direct playable audio streams with direct URLs';
-        cache.bench(client, reason);
-        verdicts.push({ client, playable: false, reason, benchedUntil: Date.now() + BENCH_DURATION_MS });
-        continue;
-      }
-
-      // Success
-      verdicts.push({ client, playable: true });
-      return {
-        client,
-        playerResponse: response,
-        audioFormats,
-        verdicts,
-      };
+      const result = await attemptClient(client, videoId, innerTubeClient, cache);
+      streamResultCache.set(videoId, { expiresAt: now + STREAM_CACHE_TTL_MS, result });
+      return result;
     } catch (err: any) {
-      const reason = err?.message || 'InnerTube request failed';
-      cache.bench(client, reason);
-      verdicts.push({ client, playable: false, reason, benchedUntil: Date.now() + BENCH_DURATION_MS });
+      verdicts.push({
+        client,
+        playable: false,
+        reason: err?.message || 'Failed',
+        benchedUntil: Date.now() + BENCH_DURATION_MS,
+      });
     }
   }
 
@@ -215,3 +253,4 @@ export async function executeClientWalk(
     .join('; ');
   throw new Error(`[ClientWalk] All clients refused or failed for videoId "${videoId}": ${errorSummary}`);
 }
+

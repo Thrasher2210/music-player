@@ -249,11 +249,20 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     }
     if (!engine) return;
 
-    set({ error: null });
+    // Optimistic instant state flip
+    set({
+      currentTrack: track,
+      playbackState: 'playing',
+      error: null,
+    });
+
     try {
       await engine.playTrack(track);
     } catch (err: any) {
-      set({ error: err?.message || 'Failed to play track' });
+      set({
+        playbackState: 'idle',
+        error: err?.message || 'Failed to play track',
+      });
     }
   },
 
@@ -265,18 +274,29 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     }
     if (!engine) return;
 
-    set({ error: null });
+    // Optimistic instant state flip
+    set({ playbackState: 'playing', error: null });
+
     try {
       await engine.play(index);
     } catch (err: any) {
-      set({ error: err?.message || 'Playback failed' });
+      set({
+        playbackState: 'paused',
+        error: err?.message || 'Playback failed',
+      });
     }
   },
 
   pause: async () => {
+    // Optimistic instant state flip
+    set({ playbackState: 'paused' });
     const engine = get().engine;
     if (engine) {
-      await engine.pause();
+      try {
+        await engine.pause();
+      } catch (err: any) {
+        // Ignored
+      }
     }
   },
 
@@ -289,12 +309,27 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     if (!currentEng) return;
 
     if (playbackState === 'playing') {
-      await currentEng.pause();
+      // Optimistic instant toggle to paused (0ms UI latency)
+      set({ playbackState: 'paused' });
+      try {
+        await currentEng.pause();
+      } catch {
+        set({ playbackState: 'playing' });
+      }
     } else {
-      if (currentEng.getCurrentTrack()) {
-        await currentEng.play();
-      } else if (queue.length > 0) {
-        await currentEng.play(0);
+      // Optimistic instant toggle to playing (0ms UI latency)
+      set({ playbackState: 'playing', error: null });
+      try {
+        if (currentEng.getCurrentTrack()) {
+          await currentEng.play();
+        } else if (queue.length > 0) {
+          await currentEng.play(0);
+        }
+      } catch (err: any) {
+        set({
+          playbackState: 'paused',
+          error: err?.message || 'Playback failed',
+        });
       }
     }
   },
