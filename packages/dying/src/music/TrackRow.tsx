@@ -10,6 +10,8 @@ export interface TrackData {
   album?: string;
   duration?: number; // in seconds
   thumbnailUrl?: string;
+  thumbnail?: string; // for compatibility with @mp/player-core Track
+  videoId?: string;
   isLiked?: boolean;
 }
 
@@ -151,9 +153,9 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
         {/* Artwork Thumbnail */}
         {showThumbnail && (
           <div className="relative mr-3 h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-surface border border-border-subtle">
-            {track.thumbnailUrl ? (
+            {track.thumbnailUrl || track.thumbnail ? (
               <img
-                src={track.thumbnailUrl}
+                src={track.thumbnailUrl || track.thumbnail}
                 alt={track.title}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 loading="lazy"
