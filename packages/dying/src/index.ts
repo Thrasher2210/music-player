@@ -37,8 +37,23 @@ export {
 export { AmbientAura, type AmbientAuraProps } from "./effects/AmbientAura";
 export { SoundWave, type SoundWaveProps } from "./effects/SoundWave";
 
+// Media Components
+export { PageHeader, type PageHeaderProps } from "./media/PageHeader";
+export {
+  HeroBannerCard,
+  type HeroBannerCardProps,
+} from "./media/HeroBannerCard";
+export { HeroCarousel, type HeroCarouselProps } from "./media/HeroCarousel";
+export { MediaShelf, type MediaShelfProps } from "./media/MediaShelf";
+export { MediaCard, type MediaCardProps } from "./media/MediaCard";
+
 // Music Components
 export { TrackRow, type TrackRowProps, type TrackData } from "./music/TrackRow";
+export { TrackTable, type TrackTableProps } from "./music/TrackTable";
+export {
+  FullImmersionLyrics,
+  type FullImmersionLyricsProps,
+} from "./music/FullImmersionLyrics";
 export {
   SyncedLyricsView,
   type SyncedLyricsViewProps,
