@@ -31,7 +31,6 @@ import {
   QuickPicksGrid,
   QuickPicksColumn,
   QuickPickRow,
-  PlayerBar,
   FullPlayerView,
   FullPlayerTab,
   RelatedItem,
@@ -51,6 +50,8 @@ import {
   Skeleton,
 } from '@mp/dying';
 import { usePlayerStore, toTrackData } from '../stores/playerStore';
+import { useAuthStore } from '../stores/authStore';
+import { AccountModal } from '../components/AccountModal';
 import {
   type Track,
   type MediaShelfData,
@@ -118,6 +119,8 @@ export default function HomePage() {
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
   const [fullPlayerTab, setFullPlayerTab] = useState<FullPlayerTab>('upNext');
   const [relatedItems, setRelatedItems] = useState<RelatedItem[]>([]);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const { user, isAuthenticated } = useAuthStore();
 
   const [, startTransition] = useTransition();
 
@@ -438,12 +441,13 @@ export default function HomePage() {
               />
             </Tooltip>
 
-            <Tooltip content="Account: Anshul">
+            <Tooltip content={isAuthenticated ? `Account: ${user?.name}` : 'Account Settings'}>
               <Avatar
-                fallback="A"
+                fallback={(user?.name || 'G')[0].toUpperCase()}
                 size="sm"
-                aria-label="User Account: Anshul"
-                className="bg-emerald-600 text-white font-bold cursor-pointer hover:ring-2 hover:ring-emerald-400 transition-all"
+                aria-label={`User Account: ${user?.name || 'Guest'}`}
+                onClick={() => setIsAccountModalOpen(true)}
+                className="bg-emerald-600 text-white font-bold cursor-pointer hover:ring-2 hover:ring-emerald-400 transition-all select-none"
               />
             </Tooltip>
           </Flex>
@@ -700,6 +704,12 @@ export default function HomePage() {
       )}
         </>
       )}
+
+      {/* Dynamic Account & Profile Management Modal */}
+      <AccountModal
+        open={isAccountModalOpen}
+        onOpenChange={setIsAccountModalOpen}
+      />
     </AppShell>
   );
 }
