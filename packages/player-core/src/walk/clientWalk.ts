@@ -7,9 +7,9 @@ import {
 import { InnerTubeClient } from '../innertube/client';
 
 export const CLIENT_WALK_PRIORITY: readonly InnerTubeClientName[] = [
-  'WEB_REMIX',
   'VISIONOS',
   'IOS',
+  'WEB_REMIX',
   'WEB',
   'MWEB',
 ] as const;
@@ -186,10 +186,12 @@ async function attemptClient(
     ...(response.streamingData?.adaptiveFormats || []),
   ];
 
-  // Prioritize WEB_REMIX with SABR streaming, and other clients with direct URLs (e.g. VISIONOS)
-  const isSabrClient =
-    client === 'WEB_REMIX' ||
-    Boolean(response.streamingData?.serverAbrStreamingUrl);
+  const serverAbrStreamingUrl =
+    response.streamingData?.serverAbrStreamingUrl ||
+    (response.streamingData as any)?.server_abr_streaming_url;
+
+  // SABR is ONLY valid if an actual serverAbrStreamingUrl was returned by InnerTube
+  const isSabrClient = Boolean(serverAbrStreamingUrl);
 
   const audioFormats = allFormats
     .filter((fmt) => {
@@ -226,7 +228,7 @@ async function attemptClient(
     verdicts: [{ client, playable: true }],
     is_sabr: isSabrClient,
     isSabr: isSabrClient,
-    serverAbrStreamingUrl: response.streamingData?.serverAbrStreamingUrl,
+    serverAbrStreamingUrl,
   };
 }
 

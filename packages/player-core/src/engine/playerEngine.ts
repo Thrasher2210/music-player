@@ -326,7 +326,12 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       this.activeClient = walkResult.client;
       this.emit('walkVerdict', walkResult.verdicts, walkResult.client);
 
-      const isSabr = Boolean(walkResult.is_sabr || walkResult.isSabr || walkResult.client === 'WEB_REMIX');
+      const serverAbrStreamingUrl =
+        walkResult.serverAbrStreamingUrl ||
+        walkResult.playerResponse.streamingData?.serverAbrStreamingUrl ||
+        (walkResult.playerResponse.streamingData as any)?.server_abr_streaming_url;
+
+      const isSabr = Boolean((walkResult.is_sabr || walkResult.isSabr) && serverAbrStreamingUrl);
 
       // Configure SABR on audioDriver if active
       if (typeof (this.audioDriver as any).configureSabr === 'function' && isSabr) {
@@ -336,9 +341,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
           'CAE=';
 
         (this.audioDriver as any).configureSabr({
-          serverAbrStreamingUrl:
-            walkResult.serverAbrStreamingUrl ||
-            walkResult.playerResponse.streamingData?.serverAbrStreamingUrl,
+          serverAbrStreamingUrl,
           ustreamerConfig,
           formats: walkResult.audioFormats,
         });

@@ -76,10 +76,15 @@ export class ShakaPlayerAdapter implements SabrPlayerAdapter {
   private requestInterceptor: RequestFilter | null = null;
   private responseInterceptor: ResponseFilter | null = null;
   private filtersRegistered = false;
+  public sabrAdapter: any = null;
 
   constructor(player: ShakaPlayerInstance | null, mediaElementGetter: () => HTMLMediaElement | null) {
     this.player = player;
     this.mediaElementGetter = mediaElementGetter;
+  }
+
+  setSabrAdapter(adapter: any): void {
+    this.sabrAdapter = adapter;
   }
 
   setPlayer(player: ShakaPlayerInstance | null): void {
@@ -185,6 +190,11 @@ export class ShakaPlayerAdapter implements SabrPlayerAdapter {
           isInit: () => isInit,
         },
       };
+
+      if (!(this.sabrAdapter as any)?.streamingURL) {
+        console.warn('[ShakaPlayerAdapter] Server ABR URL not set, skipping SABR request interceptor');
+        return;
+      }
 
       try {
         const modified = await this.requestInterceptor(playerReq);
@@ -338,6 +348,7 @@ export class ShakaMseAudioDriver implements AudioDriver {
       maxCacheSizeMB: 10,
       maxCacheAgeSeconds: 600,
     });
+    this.sabrPlayerAdapter.setSabrAdapter(this.sabrAdapter);
     this.sabrAdapter.attach(player);
     this.sabrPlayerAdapter.attachFiltersToPlayer(player);
 
