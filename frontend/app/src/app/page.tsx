@@ -25,6 +25,7 @@ import {
   MediaShelf,
   MediaCard,
   TrackTable,
+  FloatingPlayerPill,
   MoodChipBar,
   MoodChipData,
   QuickPicksGrid,
@@ -448,31 +449,30 @@ export default function HomePage() {
           </Flex>
         </Flex>
       }
-      playerDockVariant="docked"
+      playerDockVariant="floating"
       isFullBleed={isFullPlayerOpen}
       playerDock={
-        <PlayerBar
-          currentTrack={currentTrack ? toTrackData(currentTrack) : null}
+        <FloatingPlayerPill
+          title={currentTrack?.title || 'Not Playing'}
+          artist={currentTrack?.artist || 'Select a song or explore quick picks'}
+          album={currentTrack?.album}
+          artworkUrl={currentTrack?.thumbnail}
           isPlaying={isCurrentlyPlaying}
           currentTime={currentTime}
           duration={duration}
           buffered={bufferedPercent}
           volume={volume}
           isMuted={isMuted}
+          isLyricsOpen={isFullPlayerOpen && fullPlayerTab === 'lyrics'}
           isShuffle={isShuffle}
           repeatMode={repeatMode}
-          showLyrics={isFullPlayerOpen && fullPlayerTab === 'lyrics'}
-          showQueue={isFullPlayerOpen && fullPlayerTab === 'upNext'}
-          isExpanded={isFullPlayerOpen}
           onPlayPause={togglePlay}
           onPrevious={previous}
           onNext={next}
           onSeek={seek}
           onVolumeChange={setVolume}
-          onMuteToggle={toggleMute}
-          onShuffleToggle={toggleShuffle}
-          onRepeatToggle={toggleRepeat}
-          onLyricsToggle={() => {
+          onToggleMute={toggleMute}
+          onToggleLyrics={() => {
             if (isFullPlayerOpen && fullPlayerTab === 'lyrics') {
               setIsFullPlayerOpen(false);
             } else {
@@ -480,16 +480,9 @@ export default function HomePage() {
               setIsFullPlayerOpen(true);
             }
           }}
-          onQueueToggle={() => {
-            if (isFullPlayerOpen && fullPlayerTab === 'upNext') {
-              setIsFullPlayerOpen(false);
-            } else {
-              setFullPlayerTab('upNext');
-              setIsFullPlayerOpen(true);
-            }
-          }}
-          onToggleExpand={() => setIsFullPlayerOpen(!isFullPlayerOpen)}
           onExpandNowPlaying={() => setIsFullPlayerOpen(!isFullPlayerOpen)}
+          onToggleShuffle={toggleShuffle}
+          onToggleRepeat={toggleRepeat}
         />
       }
       overlay={null}
