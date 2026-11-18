@@ -139,7 +139,7 @@ export const BrandLogo = React.forwardRef<HTMLDivElement, BrandLogoProps>(
 
     const numericIconSize = typeof size === "number" ? size : sizeConfig.iconSize;
     const numericAppIconSize =
-      typeof size === "number" ? Math.round(size * 1.5) : sizeConfig.appIconSize;
+      typeof size === "number" ? size : sizeConfig.appIconSize;
 
     // Resolve color styling
     const getAccentColorClass = () => {

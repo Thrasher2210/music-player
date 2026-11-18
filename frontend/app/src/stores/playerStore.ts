@@ -23,6 +23,13 @@ import { type LyricsResponse } from '@mp/api-contract';
 
 export type { Track };
 export type NetworkAdapterType = 'dev-proxy' | 'web-extension' | 'native-http';
+export type StreamingStatus = 'Direct CDN via Extension' | 'Edge Fallback Proxy';
+
+declare global {
+  interface Window {
+    __MP_EXTENSION_ACTIVE__?: boolean;
+  }
+}
 
 export interface DiagnosticInfo {
   activeClient: InnerTubeClientName | null;
@@ -33,6 +40,7 @@ export interface DiagnosticInfo {
   playbackState: PlaybackState;
   networkAdapter: NetworkAdapterType;
   verdicts: ClientVerdict[];
+  streamingStatus: StreamingStatus;
 }
 
 export interface PlayerStoreState {
@@ -57,6 +65,7 @@ export interface PlayerStoreState {
   bufferedAheadSeconds: number;
   bufferedPercent: number;
   networkAdapterType: NetworkAdapterType;
+  streamingStatus: StreamingStatus;
   verdicts: ClientVerdict[];
   error: string | null;
 
@@ -196,6 +205,10 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   bufferedAheadSeconds: 0,
   bufferedPercent: 0,
   networkAdapterType: 'dev-proxy',
+  streamingStatus:
+    typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__)
+      ? 'Direct CDN via Extension'
+      : 'Edge Fallback Proxy',
   verdicts: [],
   error: null,
 
@@ -205,13 +218,24 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
   initialize: (mediaElement?: HTMLMediaElement) => {
     if (typeof window === 'undefined') return;
-    if (get().isInitialized && sharedEngine) return;
+
+    const isExtensionActive = Boolean(window.__MP_EXTENSION_ACTIVE__);
+
+    if (get().isInitialized && sharedEngine) {
+      if (isExtensionActive && get().networkAdapterType !== 'web-extension') {
+        get().setNetworkAdapterType('web-extension');
+      }
+      return;
+    }
 
     if (mediaElement) {
       sharedMediaElement = mediaElement;
     }
 
-    const adapterType = get().networkAdapterType;
+    // Auto-configure direct streaming / web extension adapter if extension is active
+    const adapterType: NetworkAdapterType = isExtensionActive
+      ? 'web-extension'
+      : get().networkAdapterType;
     const adapter = createNetworkAdapter(adapterType);
 
     const engine = new PlayerEngine({
@@ -219,6 +243,18 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       mediaElement: sharedMediaElement || undefined,
     });
     sharedEngine = engine;
+
+    // Listen for late extension activation if extension content script activates after store init
+    window.addEventListener('message', (event) => {
+      if (
+        event.data?.type === 'MP_EXTENSION_READY' ||
+        (typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__))
+      ) {
+        if (get().networkAdapterType !== 'web-extension') {
+          get().setNetworkAdapterType('web-extension');
+        }
+      }
+    });
 
     // Bind engine event listeners
     engine.on('stateChange', (state) => {
@@ -291,6 +327,11 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     set({
       engine,
       isInitialized: true,
+      networkAdapterType: adapterType,
+      streamingStatus:
+        isExtensionActive || adapterType === 'web-extension'
+          ? 'Direct CDN via Extension'
+          : 'Edge Fallback Proxy',
       activeClient: engine.getActiveClient(),
       queue: engine.getQueue(),
     });
@@ -565,7 +606,13 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       const newAdapter = createNetworkAdapter(type);
       engine.setNetworkAdapter(newAdapter);
     }
-    set({ networkAdapterType: type });
+    const isDirect =
+      type === 'web-extension' ||
+      (typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__));
+    set({
+      networkAdapterType: type,
+      streamingStatus: isDirect ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
+    });
   },
 
   getHomeFeed: async (moodParam?: string): Promise<HomeFeedData> => {
@@ -626,9 +673,15 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   getArtist: async (browseId: string): Promise<ArtistDetails> => {
     let engine = get().engine || sharedEngine;
     if (!engine) {
-      const adapter = createNetworkAdapter(get().networkAdapterType);
+      const isExt = typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__);
+      const adapterType: NetworkAdapterType = isExt ? 'web-extension' : get().networkAdapterType;
+      const adapter = createNetworkAdapter(adapterType);
       sharedEngine = new PlayerEngine({ networkAdapter: adapter });
-      set({ engine: sharedEngine });
+      set({
+        engine: sharedEngine,
+        networkAdapterType: adapterType,
+        streamingStatus: isExt || adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
+      });
       engine = sharedEngine;
     }
     return engine.getArtist(browseId);
@@ -637,9 +690,15 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   getAlbum: async (browseId: string): Promise<AlbumDetails> => {
     let engine = get().engine || sharedEngine;
     if (!engine) {
-      const adapter = createNetworkAdapter(get().networkAdapterType);
+      const isExt = typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__);
+      const adapterType: NetworkAdapterType = isExt ? 'web-extension' : get().networkAdapterType;
+      const adapter = createNetworkAdapter(adapterType);
       sharedEngine = new PlayerEngine({ networkAdapter: adapter });
-      set({ engine: sharedEngine });
+      set({
+        engine: sharedEngine,
+        networkAdapterType: adapterType,
+        streamingStatus: isExt || adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
+      });
       engine = sharedEngine;
     }
     return engine.getAlbum(browseId);
@@ -648,9 +707,15 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   getPlaylist: async (playlistId: string): Promise<RemotePlaylistDetails> => {
     let engine = get().engine || sharedEngine;
     if (!engine) {
-      const adapter = createNetworkAdapter(get().networkAdapterType);
+      const isExt = typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__);
+      const adapterType: NetworkAdapterType = isExt ? 'web-extension' : get().networkAdapterType;
+      const adapter = createNetworkAdapter(adapterType);
       sharedEngine = new PlayerEngine({ networkAdapter: adapter });
-      set({ engine: sharedEngine });
+      set({
+        engine: sharedEngine,
+        networkAdapterType: adapterType,
+        streamingStatus: isExt || adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
+      });
       engine = sharedEngine;
     }
     return engine.getPlaylist(playlistId);
@@ -658,6 +723,13 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
   getDiagnosticInfo: (): DiagnosticInfo => {
     const s = get();
+    const isExtensionActive =
+      typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__);
+    const isDirect = isExtensionActive || s.networkAdapterType === 'web-extension';
+    const streamingStatus: StreamingStatus = isDirect
+      ? 'Direct CDN via Extension'
+      : 'Edge Fallback Proxy';
+
     return {
       activeClient: s.activeClient,
       activeItag: s.activeItag,
@@ -665,8 +737,9 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       bufferedAheadSeconds: s.bufferedAheadSeconds,
       bufferedPercent: s.bufferedPercent,
       playbackState: s.playbackState,
-      networkAdapter: s.networkAdapterType,
+      networkAdapter: isDirect ? 'web-extension' : s.networkAdapterType,
       verdicts: s.verdicts,
+      streamingStatus,
     };
   },
 

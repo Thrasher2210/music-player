@@ -13,7 +13,13 @@ import {
 } from '../types';
 import { NetworkAdapter, NativeHttpAdapter } from '../adapters/network';
 import { InnerTubeClient } from '../innertube/client';
-import { executeClientWalk, invalidateStreamCache, prefetchStream, VerdictCache } from '../walk/clientWalk';
+import {
+  executeClientWalk,
+  invalidateStreamCache,
+  prefetchAudioWarmup,
+  prefetchStream,
+  VerdictCache,
+} from '../walk/clientWalk';
 import { createDashBlobUrl, generateDashMpd } from '../manifest/dashGenerator';
 import { AudioDriver, ShakaMseAudioDriver } from '../drivers/audio';
 
@@ -134,26 +140,44 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
 
     this.audioDriver.on('error', (err) => {
       const currentTrack = this.getCurrentTrack();
+      const resumeTime = Math.max(0, this.currentTime);
+
+      // If error occurred mid-stream (chunk stall / 403 / media error),
+      // transparently bench failing persona so walk falls back to the next client
+      if (this.activeClient) {
+        this.verdictCache.bench(
+          this.activeClient,
+          `mid-stream chunk stall/403: ${err.message}`
+        );
+      }
+
+      // Refresh stream cache for current track
       if (currentTrack?.videoId) {
         invalidateStreamCache(currentTrack.videoId);
       }
-      // If error occurred mid-stream, bench active client immediately so walk falls back to the next client
-      if (this.activeClient) {
-        this.verdictCache.bench(this.activeClient, `mid-stream chunk stall: ${err.message}`);
-      }
-      this.playbackState = 'error';
-      this.emit('error', err);
 
-      // Attempt bounded auto-recovery at the current timestamp so playback never loops infinitely
+      // Attempt transparent mid-stream recovery at currentTime
       if (currentTrack?.videoId && this.errorRecoveryAttempts < this.MAX_ERROR_RECOVERY_ATTEMPTS) {
         this.errorRecoveryAttempts++;
-        const resumeTime = Math.max(0, this.currentTime);
-        this.play(undefined, resumeTime).catch(() => {});
-      } else if (this.errorRecoveryAttempts >= this.MAX_ERROR_RECOVERY_ATTEMPTS) {
+        this.playbackState = 'buffering';
+        this.emit('stateChange', 'buffering');
+        this.play(undefined, resumeTime).catch((recoveryErr) => {
+          this.playbackState = 'error';
+          this.emit('stateChange', 'error');
+          this.emit('error', recoveryErr || err);
+        });
+        return;
+      }
+
+      if (this.errorRecoveryAttempts >= this.MAX_ERROR_RECOVERY_ATTEMPTS) {
         console.error(
           `[PlayerEngine] Max auto-recovery attempts (${this.MAX_ERROR_RECOVERY_ATTEMPTS}) reached for videoId "${currentTrack?.videoId}".`
         );
       }
+
+      this.playbackState = 'error';
+      this.emit('stateChange', 'error');
+      this.emit('error', err);
     });
   }
 
@@ -287,7 +311,8 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     if (typeof index === 'number') {
       if (index < 0 || index >= this.queue.length) return;
       this.currentIndex = index;
-    } else {
+      this.errorRecoveryAttempts = 0;
+    } else if (startTime === undefined) {
       // Fast-path: ONLY if a stream has ALREADY been loaded into the driver and is currently paused
       const isLoaded =
         typeof (this.audioDriver as any).hasLoadedStream === 'function'
@@ -405,7 +430,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
         durationMs: currentTrack.duration ? currentTrack.duration * 1000 : undefined,
         urlTransformer: (url) =>
           typeof this.networkAdapter.resolveStreamUrl === 'function'
-            ? this.networkAdapter.resolveStreamUrl(url)
+            ? this.networkAdapter.resolveStreamUrl(url, currentTrack.videoId)
             : url,
       });
 
@@ -421,10 +446,10 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       await this.audioDriver.play();
       this.errorRecoveryAttempts = 0;
 
-      // 6. Prefetch stream for the next track in queue for instant 0ms track skipping
+      // 6. Prefetch stream and warmup audio for the next track in queue for instant <50ms track transitions
       const nextTrack = this.queue[this.currentIndex + 1];
       if (nextTrack?.videoId) {
-        prefetchStream(nextTrack.videoId, this.innerTube, this.verdictCache);
+        prefetchAudioWarmup(nextTrack, this.networkAdapter, this.verdictCache).catch(() => {});
       }
     } catch (err: any) {
       if (currentRequestId !== this.playRequestId) return;

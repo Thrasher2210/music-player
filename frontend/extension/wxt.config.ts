@@ -10,6 +10,7 @@ export default defineConfig({
       "https://music.youtube.com/*",
       "https://www.youtube.com/*",
       "https://youtube.com/*",
+      "https://*.googlevideo.com/*",
     ],
     // Origins allowed to message the extension (page bridge target)
     externally_connectable: {

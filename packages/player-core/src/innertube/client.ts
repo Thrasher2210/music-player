@@ -40,6 +40,17 @@ export const INNERTUBE_CONTEXTS: Record<InnerTubeClientName, InnerTubeContext> =
       platform: 'MOBILE',
     },
   },
+  ANDROID_MUSIC: {
+    client: {
+      clientName: 'ANDROID_MUSIC',
+      clientVersion: '6.40.52',
+      hl: 'en',
+      gl: 'US',
+      osName: 'Android',
+      osVersion: '14',
+      platform: 'MOBILE',
+    },
+  },
   WEB_REMIX: {
     client: {
       clientName: 'WEB_REMIX',

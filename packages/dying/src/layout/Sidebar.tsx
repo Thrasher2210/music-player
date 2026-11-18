@@ -17,9 +17,9 @@ export interface SidebarBrandProps
 
 export const SidebarBrand: React.FC<SidebarBrandProps> = ({
   className,
-  logo = <BrandLogo variant="mark" size="sm" />,
+  logo = <BrandLogo variant="app-icon" size={28} />,
   title = <BrandLogo variant="wordmark" size="sm" />,
-  subtitle,
+  subtitle = "Streaming",
   badge,
   ...props
 }) => {
@@ -32,7 +32,7 @@ export const SidebarBrand: React.FC<SidebarBrandProps> = ({
       {...props}
     >
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface border border-border-subtle shadow-specular-inset">
+        <div className="shrink-0 flex items-center justify-center">
           {logo}
         </div>
         <div className="flex flex-col min-w-0">

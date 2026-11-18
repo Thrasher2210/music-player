@@ -6,6 +6,7 @@ import {
   AppShell,
   Sidebar,
   SidebarBrand,
+  BrandLogo,
   SidebarNav,
   SidebarNavItem,
   SidebarFooter,
@@ -206,12 +207,8 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
           <Sidebar>
             <div className="cursor-pointer" onClick={() => router.push('/')}>
               <SidebarBrand
-                logo={
-                  <div className="h-full w-full rounded-md bg-gradient-to-tr from-rose-500 via-pink-500 to-amber-400 flex items-center justify-center text-white text-xs font-bold">
-                    G
-                  </div>
-                }
-                title="GaneGan"
+                logo={<BrandLogo variant="app-icon" size={28} />}
+                title={<BrandLogo variant="wordmark" size="sm" />}
                 subtitle="Streaming"
               />
             </div>

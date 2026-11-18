@@ -6,7 +6,7 @@ export interface NetworkAdapter {
   readonly name: string;
   fetch(url: string, init?: RequestInit): Promise<Response>;
   postJson<T = any>(url: string, body: any, headers?: Record<string, string>): Promise<T>;
-  resolveStreamUrl?(url: string): string;
+  resolveStreamUrl?(url: string, videoId?: string): string;
 }
 
 /**
@@ -37,6 +37,12 @@ export class NativeHttpAdapter implements NetworkAdapter {
   }
 }
 
+declare global {
+  interface Window {
+    __MP_EXTENSION_ACTIVE__?: boolean;
+  }
+}
+
 /**
  * DevProxyAdapter: Routes metadata requests through a local proxy endpoint (e.g. Next.js /api/yt/*)
  * Enables zero-install instant web streaming without CORS restrictions.
@@ -53,21 +59,37 @@ export class DevProxyAdapter implements NetworkAdapter {
     this.proxyBaseUrl = options.proxyBaseUrl || '/api/yt';
   }
 
-  resolveStreamUrl(url: string): string {
+  resolveStreamUrl(url: string, videoId?: string): string {
+    if (typeof window !== 'undefined' && window.__MP_EXTENSION_ACTIVE__) {
+      return url;
+    }
+    if (url.includes('/stream?url=')) {
+      if (videoId && !url.includes('&v=')) {
+        return `${url}&v=${encodeURIComponent(videoId)}`;
+      }
+      return url;
+    }
     const origin =
       typeof window !== 'undefined' && window.location?.origin
         ? window.location.origin
         : 'http://localhost:3000';
-    return `${origin}${this.proxyBaseUrl}/stream?url=${encodeURIComponent(url)}`;
+    const vParam = videoId ? `&v=${encodeURIComponent(videoId)}` : '';
+    return `${origin}${this.proxyBaseUrl}/stream?url=${encodeURIComponent(url)}${vParam}`;
   }
 
   private resolveUrl(targetUrl: string): string {
     try {
       const parsed = new URL(targetUrl);
+      if (parsed.pathname.startsWith(this.proxyBaseUrl)) {
+        return targetUrl;
+      }
       const cleanPath = parsed.pathname.replace(/^\/youtubei\/v1/, '');
       const search = parsed.search;
       return `${this.proxyBaseUrl}${cleanPath}${search}`;
     } catch {
+      if (targetUrl.startsWith(this.proxyBaseUrl)) {
+        return targetUrl;
+      }
       return targetUrl;
     }
   }

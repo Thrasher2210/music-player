@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-// Maximum byte range per upstream request (128KB) to strictly prevent YouTube CDN 403 chunk throttling
-const MAX_CHUNK_SIZE = 128 * 1024; // 131,072 bytes
-
 function getBaseHeaders(clientParam: string, range?: string): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: '*/*',
@@ -16,11 +13,14 @@ function getBaseHeaders(clientParam: string, range?: string): Record<string, str
     headers['User-Agent'] =
       'com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X; US)';
     // Omit Origin and Referer for iOS app streams to avoid YouTube CDN 403 chunk drops
+  } else if (clientParam === 'ANDROID_MUSIC' || clientParam === 'ANDROID') {
+    headers['User-Agent'] =
+      'com.google.android.apps.youtube.music/6.40.52 (Linux; U; Android 14; US) gzip';
+    // Omit Origin and Referer for mobile app clients
   } else if (clientParam === 'VISIONOS') {
     headers['User-Agent'] =
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15';
-    headers['Referer'] = 'https://www.youtube.com/';
-    headers['Origin'] = 'https://www.youtube.com';
+    // Omit Origin and Referer for VISIONOS direct URLs
   } else if (clientParam === 'WEB_REMIX') {
     headers['User-Agent'] =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
@@ -103,6 +103,81 @@ async function fetchWithFallback(
   return res;
 }
 
+// In-memory cache for sliding window URLs: videoId -> Map<windowSlot, { url: string, expiresAt: number }>
+// Each slot represents a 45-second window
+const rollingUrlCache = new Map<string, Map<number, { url: string; expiresAt: number }>>();
+
+async function getFreshRollingUrl(
+  videoId: string,
+  itag: number,
+  startByte: number
+): Promise<string | null> {
+  const bytesPerSec = itag === 140 ? 16000 : 6000;
+  const estimatedSec = Math.max(0, Math.floor(startByte / bytesPerSec));
+  const slot = Math.floor(estimatedSec / 45);
+
+  const videoCache = rollingUrlCache.get(videoId);
+  const now = Date.now();
+  if (videoCache) {
+    const cached = videoCache.get(slot);
+    if (cached && cached.expiresAt > now) {
+      return cached.url;
+    }
+  }
+
+  try {
+    const endpoint = `https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8&prettyPrint=false`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+        'User-Agent': 'com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X; US)',
+      },
+      body: JSON.stringify({
+        context: {
+          client: {
+            clientName: 'iOS',
+            clientVersion: '20.11.6',
+            hl: 'en',
+            gl: 'US',
+            deviceMake: 'Apple',
+            osName: 'iOS',
+            platform: 'MOBILE',
+          },
+        },
+        videoId,
+        contentCheckOk: true,
+        racyCheckOk: true,
+        startTimeSecs: estimatedSec,
+      }),
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const formats = [
+      ...(data.streamingData?.formats || []),
+      ...(data.streamingData?.adaptiveFormats || []),
+    ];
+    const matching =
+      formats.find((f: any) => f.itag === itag && Boolean(f.url)) ||
+      formats.find((f: any) => Boolean(f.url));
+
+    if (matching?.url) {
+      if (!rollingUrlCache.has(videoId)) {
+        rollingUrlCache.set(videoId, new Map());
+      }
+      rollingUrlCache.get(videoId)!.set(slot, {
+        url: matching.url,
+        expiresAt: now + 5 * 60 * 1000,
+      });
+      return matching.url;
+    }
+  } catch {
+    // Fail silently to normal flow
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const targetUrl = req.nextUrl.searchParams.get('url');
@@ -119,177 +194,91 @@ export async function GET(req: NextRequest) {
       return new NextResponse('Forbidden target host', { status: 403 });
     }
 
+    const videoId =
+      req.nextUrl.searchParams.get('v') ||
+      req.nextUrl.searchParams.get('videoId') ||
+      '';
+
     const clientParam = parsed.searchParams.get('c') || '';
+    const itagParam = parseInt(parsed.searchParams.get('itag') || '140', 10);
     const rangeHeader = req.headers.get('range');
+    const headers = getBaseHeaders(clientParam, rangeHeader || undefined);
 
-    let reqStart = 0;
-    let reqEnd: number | undefined;
-    let hasRange = false;
+    // Initial upstream fetch with signal propagation
+    let upstreamRes = await fetchWithFallback(targetUrl, headers, req.signal);
 
-    if (rangeHeader) {
-      const match = rangeHeader.match(/bytes=(\d+)-(\d+)?/);
-      if (match) {
-        hasRange = true;
-        reqStart = parseInt(match[1], 10);
-        if (match[2] !== undefined && match[2] !== '') {
-          reqEnd = parseInt(match[2], 10);
+    // If 403 on a range request, perform seamless sliding-window refresh
+    if (upstreamRes.status === 403 && rangeHeader && videoId) {
+      const match = rangeHeader.match(/bytes=(\d+)-/);
+      const reqStart = match ? parseInt(match[1], 10) : 0;
+      const freshUrl = await getFreshRollingUrl(videoId, itagParam, reqStart);
+      if (freshUrl) {
+        const freshHeaders = getBaseHeaders(clientParam, rangeHeader);
+        const retryRes = await fetch(freshUrl, {
+          method: 'GET',
+          headers: freshHeaders,
+          signal: req.signal,
+        });
+        if (retryRes.ok || retryRes.status === 206) {
+          upstreamRes = retryRes;
         }
       }
     }
 
-    // Case 1: Client requested a bounded range that is already <= 128KB
-    if (hasRange && reqEnd !== undefined && reqEnd - reqStart + 1 <= MAX_CHUNK_SIZE) {
-      const headers = getBaseHeaders(clientParam, `bytes=${reqStart}-${reqEnd}`);
-      const upstreamRes = await fetchWithFallback(targetUrl, headers, req.signal);
-
-      const buf = await upstreamRes.arrayBuffer();
-
-      const responseHeaders = new Headers();
-      responseHeaders.set('Access-Control-Allow-Origin', '*');
-      responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-      responseHeaders.set('Access-Control-Allow-Headers', '*');
-      responseHeaders.set('Accept-Ranges', 'bytes');
-      responseHeaders.set('Cache-Control', 'public, max-age=86400, immutable');
-
-      const contentType = upstreamRes.headers.get('content-type') || 'audio/mp4';
-      responseHeaders.set('Content-Type', contentType);
-      responseHeaders.set('Content-Length', buf.byteLength.toString());
-
-      const contentRange = upstreamRes.headers.get('content-range') || `bytes ${reqStart}-${reqEnd}/*`;
-      responseHeaders.set('Content-Range', contentRange);
-
-      return new NextResponse(buf, {
-        status: upstreamRes.status === 200 ? 206 : upstreamRes.status,
-        headers: responseHeaders,
+    if (!upstreamRes.ok && upstreamRes.status !== 206) {
+      return new NextResponse(`Upstream streaming error: HTTP ${upstreamRes.status}`, {
+        status: upstreamRes.status,
       });
     }
 
-    // Case 2: Range > 128KB, open-ended range (e.g. bytes=0-), or full stream without Range
-    // Fetch the first sub-chunk of at most MAX_CHUNK_SIZE (128KB)
-    const firstEnd =
-      reqEnd !== undefined
-        ? Math.min(reqEnd, reqStart + MAX_CHUNK_SIZE - 1)
-        : reqStart + MAX_CHUNK_SIZE - 1;
-
-    const firstHeaders = getBaseHeaders(clientParam, `bytes=${reqStart}-${firstEnd}`);
-    const firstRes = await fetchWithFallback(targetUrl, firstHeaders, req.signal);
-
-    if (!firstRes.ok && firstRes.status !== 206) {
-      return new NextResponse(`Upstream streaming error: HTTP ${firstRes.status}`, {
-        status: firstRes.status,
-      });
-    }
-
-    const contentRangeHeader = firstRes.headers.get('content-range');
-    let totalLength: number | undefined;
-    if (contentRangeHeader) {
-      const crMatch = contentRangeHeader.match(/bytes\s+(\d+)-(\d+)\/(\d+|\*)/);
-      if (crMatch && crMatch[3] !== '*') {
-        totalLength = parseInt(crMatch[3], 10);
-      }
-    }
-
-    const finalEnd =
-      reqEnd !== undefined
-        ? reqEnd
-        : totalLength !== undefined && totalLength > 0
-          ? totalLength - 1
-          : firstEnd;
-
-    // If the stream or requested range completed in this single first chunk
-    if (finalEnd <= firstEnd) {
-      const responseHeaders = new Headers();
-      responseHeaders.set('Access-Control-Allow-Origin', '*');
-      responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-      responseHeaders.set('Access-Control-Allow-Headers', '*');
-      responseHeaders.set('Accept-Ranges', 'bytes');
-      responseHeaders.set('Cache-Control', 'public, max-age=86400, immutable');
-
-      const contentType = firstRes.headers.get('content-type');
-      if (contentType) responseHeaders.set('Content-Type', contentType);
-
-      const contentLength = firstRes.headers.get('content-length');
-      if (contentLength) responseHeaders.set('Content-Length', contentLength);
-
-      if (contentRangeHeader) responseHeaders.set('Content-Range', contentRangeHeader);
-
-      return new NextResponse(firstRes.body, {
-        status: hasRange ? 206 : firstRes.status,
-        headers: responseHeaders,
-      });
-    }
-
-    // Multiple sub-chunks needed: Stream sub-chunks in <= 128KB slices
-    const totalContentLength = finalEnd - reqStart + 1;
     const responseHeaders = new Headers();
     responseHeaders.set('Access-Control-Allow-Origin', '*');
     responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     responseHeaders.set('Access-Control-Allow-Headers', '*');
-    responseHeaders.set('Accept-Ranges', 'bytes');
+    responseHeaders.set('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+    responseHeaders.set('Accept-Ranges', upstreamRes.headers.get('accept-ranges') || 'bytes');
     responseHeaders.set('Cache-Control', 'public, max-age=86400, immutable');
 
-    const contentType = firstRes.headers.get('content-type') || 'audio/webm';
-    responseHeaders.set('Content-Type', contentType);
-    responseHeaders.set('Content-Length', totalContentLength.toString());
-
-    if (hasRange) {
-      responseHeaders.set(
-        'Content-Range',
-        `bytes ${reqStart}-${finalEnd}/${totalLength !== undefined ? totalLength : '*'}`
-      );
+    const contentType = upstreamRes.headers.get('content-type');
+    if (contentType) {
+      responseHeaders.set('Content-Type', contentType);
     }
 
-    const stream = new ReadableStream<Uint8Array>({
-      async start(controller) {
-        try {
-          // 1. Enqueue the already-fetched first sub-chunk
-          const firstBuf = await firstRes.arrayBuffer();
-          controller.enqueue(new Uint8Array(firstBuf));
+    const contentLength = upstreamRes.headers.get('content-length');
+    if (contentLength) {
+      responseHeaders.set('Content-Length', contentLength);
+    }
 
-          // 2. Stream subsequent sub-chunks strictly <= 128KB each
-          let currentStart = firstEnd + 1;
-          while (currentStart <= finalEnd) {
-            if (req.signal.aborted) {
-              break;
-            }
+    const contentRange = upstreamRes.headers.get('content-range');
+    if (contentRange) {
+      responseHeaders.set('Content-Range', contentRange);
+    }
 
-            const currentEnd = Math.min(finalEnd, currentStart + MAX_CHUNK_SIZE - 1);
-            const chunkHeaders = getBaseHeaders(
-              clientParam,
-              `bytes=${currentStart}-${currentEnd}`
-            );
+    const status = rangeHeader && upstreamRes.status === 200 ? 206 : upstreamRes.status;
 
-            const chunkRes = await fetchWithFallback(targetUrl, chunkHeaders, req.signal);
-            if (!chunkRes.ok && chunkRes.status !== 206) {
-              controller.error(new Error(`Upstream sub-chunk error HTTP ${chunkRes.status}`));
-              return;
-            }
+    // For Range requests (or 206 partial content): MUST send ArrayBuffer so Next.js sets Content-Length
+    // and omits Transfer-Encoding: chunked (which breaks MSE and HTML5 audio initialization)
+    if (rangeHeader || upstreamRes.status === 206) {
+      const buf = await upstreamRes.arrayBuffer();
+      responseHeaders.set('Content-Length', buf.byteLength.toString());
+      return new NextResponse(buf, {
+        status,
+        headers: responseHeaders,
+      });
+    }
 
-            const chunkBuf = await chunkRes.arrayBuffer();
-            if (chunkBuf.byteLength === 0) {
-              break;
-            }
-
-            controller.enqueue(new Uint8Array(chunkBuf));
-            currentStart = currentEnd + 1;
-          }
-          controller.close();
-        } catch (err) {
-          controller.error(err);
-        }
-      },
-      cancel() {
-        // Stream aborted by client
-      },
-    });
-
-    return new NextResponse(stream, {
-      status: hasRange ? 206 : 200,
+    // For full open-ended stream requests: stream directly
+    return new NextResponse(upstreamRes.body, {
+      status,
       headers: responseHeaders,
     });
   } catch (error: any) {
     return new NextResponse(`Streaming error: ${error?.message || error}`, { status: 500 });
   }
+}
+
+export async function HEAD(req: NextRequest) {
+  return GET(req);
 }
 
 export async function OPTIONS() {

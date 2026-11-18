@@ -18,6 +18,8 @@ import {
   ShakaMseAudioDriver,
   buildSabrFormat,
   executeClientWalk,
+  prefetchAudioWarmup,
+  NetworkAdapter,
 } from '../src/index';
 
 describe('@mp/player-core unit tests', () => {
@@ -25,6 +27,11 @@ describe('@mp/player-core unit tests', () => {
     assert.equal(INNERTUBE_CONTEXTS.VISIONOS.client.clientName, 'VISIONOS');
     assert.equal(INNERTUBE_CONTEXTS.VISIONOS.client.clientVersion, '1.02');
     assert.equal(INNERTUBE_CONTEXTS.IOS.client.clientName, 'iOS');
+    assert.equal(INNERTUBE_CONTEXTS.ANDROID_MUSIC.client.clientName, 'ANDROID_MUSIC');
+    assert.equal(INNERTUBE_CONTEXTS.ANDROID_MUSIC.client.clientVersion, '6.40.52');
+    assert.equal(INNERTUBE_CONTEXTS.ANDROID_MUSIC.client.osName, 'Android');
+    assert.equal(INNERTUBE_CONTEXTS.ANDROID_MUSIC.client.osVersion, '14');
+    assert.equal(INNERTUBE_CONTEXTS.ANDROID_MUSIC.client.platform, 'MOBILE');
     assert.equal(INNERTUBE_CONTEXTS.WEB_REMIX.client.clientName, 'WEB_REMIX');
     assert.equal(INNERTUBE_CONTEXTS.WEB.client.clientName, 'WEB');
     assert.equal(INNERTUBE_CONTEXTS.MWEB.client.clientName, 'MWEB');
@@ -107,15 +114,15 @@ describe('@mp/player-core unit tests', () => {
     const cache = new VerdictCache();
     cache.clear();
 
-    assert.equal(cache.isBenched('IOS'), false);
+    assert.equal(cache.isBenched('ANDROID_MUSIC'), false);
+    assert.deepEqual(cache.getActiveClients(), ['IOS', 'VISIONOS', 'ANDROID_MUSIC', 'WEB_REMIX', 'WEB', 'MWEB']);
+
+    cache.bench('ANDROID_MUSIC', 'Playback restricted');
+    assert.equal(cache.isBenched('ANDROID_MUSIC'), true);
     assert.deepEqual(cache.getActiveClients(), ['IOS', 'VISIONOS', 'WEB_REMIX', 'WEB', 'MWEB']);
 
-    cache.bench('IOS', 'Playback restricted');
-    assert.equal(cache.isBenched('IOS'), true);
-    assert.deepEqual(cache.getActiveClients(), ['VISIONOS', 'WEB_REMIX', 'WEB', 'MWEB']);
-
-    cache.unbench('IOS');
-    assert.equal(cache.isBenched('IOS'), false);
+    cache.unbench('ANDROID_MUSIC');
+    assert.equal(cache.isBenched('ANDROID_MUSIC'), false);
   });
 
   it('generates synthetic DASH MPD XML with Opus (251) and AAC (140)', () => {
@@ -790,5 +797,260 @@ describe('@mp/player-core unit tests', () => {
     await driver.initialize();
     assert.equal(driver.getState(), 'idle');
     await driver.destroy();
+  });
+
+  it('supports ANDROID_MUSIC client context in executeClientWalk when earlier clients fail', async () => {
+    const cache = new VerdictCache();
+    cache.bench('VISIONOS', 'Benched for test');
+    cache.bench('IOS', 'Benched for test');
+
+    let usedClientName = '';
+    const mockAdapter: NetworkAdapter = {
+      name: 'mock',
+      fetch: async () => new Response('{}'),
+      postJson: async <T>(_url: string, body: any): Promise<T> => {
+        const clientName = body.context?.client?.clientName;
+        usedClientName = clientName;
+        if (clientName === 'ANDROID_MUSIC') {
+          return {
+            playabilityStatus: { status: 'OK' },
+            streamingData: {
+              adaptiveFormats: [
+                {
+                  itag: 140,
+                  mimeType: 'audio/mp4; codecs="mp4a.40.2"',
+                  bitrate: 128000,
+                  url: 'https://googlevideo.com/videoplayback?itag=140&client=android_music',
+                  initRange: { start: '0', end: '632' },
+                  indexRange: { start: '633', end: '896' },
+                },
+              ],
+            },
+          } as T;
+        }
+        return { playabilityStatus: { status: 'ERROR' } } as T;
+      },
+    };
+
+    const client = new InnerTubeClient({ networkAdapter: mockAdapter });
+    const result = await executeClientWalk('sample_android_vid', client, cache);
+
+    assert.equal(result.client, 'ANDROID_MUSIC');
+    assert.equal(usedClientName, 'ANDROID_MUSIC');
+    assert.equal(result.audioFormats.length, 1);
+    assert.ok(result.audioFormats[0].url?.includes('android_music'));
+  });
+
+  it('prefetches audio warmup by requesting bytes=0-262143 range for the next track', async () => {
+    let fetchCalledWithUrl = '';
+    let fetchHeaders: Record<string, string> = {};
+
+    const mockAdapter: NetworkAdapter = {
+      name: 'mock',
+      fetch: async (url: string, init?: RequestInit) => {
+        fetchCalledWithUrl = url;
+        if (init?.headers) {
+          const headers = new Headers(init.headers);
+          headers.forEach((val, key) => {
+            fetchHeaders[key.toLowerCase()] = val;
+          });
+        }
+        return new Response(new Uint8Array(262144), { status: 206 });
+      },
+      postJson: async <T>(_url: string, body: any): Promise<T> => {
+        const clientName = body.context?.client?.clientName;
+        if (clientName === 'VISIONOS') {
+          return {
+            playabilityStatus: { status: 'OK' },
+            streamingData: {
+              adaptiveFormats: [
+                {
+                  itag: 251,
+                  mimeType: 'audio/webm; codecs="opus"',
+                  bitrate: 160000,
+                  url: 'https://googlevideo.com/videoplayback?itag=251&sparams=warmup',
+                  initRange: { start: '0', end: '740' },
+                  indexRange: { start: '741', end: '1024' },
+                },
+              ],
+            },
+          } as T;
+        }
+        return { playabilityStatus: { status: 'ERROR' } } as T;
+      },
+    };
+
+    const nextTrack: Track = {
+      id: 'warmup_vid_123',
+      videoId: 'warmup_vid_123',
+      title: 'Warmup Track',
+      artist: 'Warmup Artist',
+      duration: 210,
+      thumbnail: 'https://example.com/thumb.jpg',
+    };
+
+    const cache = new VerdictCache();
+    await prefetchAudioWarmup(nextTrack, mockAdapter, cache);
+
+    assert.ok(fetchCalledWithUrl.includes('sparams=warmup'));
+    assert.equal(fetchHeaders['range'], 'bytes=0-262143');
+  });
+
+  it('resolves direct stream URLs when extension is active in DevProxyAdapter', () => {
+    const devProxy = new DevProxyAdapter({ proxyBaseUrl: '/api/yt' });
+    const rawStreamUrl = 'https://rr1---sn-example.googlevideo.com/videoplayback?itag=251';
+
+    // In non-browser / normal environment, returns proxied URL
+    const proxiedUrl = devProxy.resolveStreamUrl(rawStreamUrl);
+    assert.ok(proxiedUrl.includes('/api/yt/stream?url='));
+    assert.ok(proxiedUrl.includes(encodeURIComponent(rawStreamUrl)));
+
+    // When window.__MP_EXTENSION_ACTIVE__ is active, returns direct stream URL
+    const originalWindow = (globalThis as any).window;
+    try {
+      (globalThis as any).window = {
+        location: { origin: 'http://localhost:3000' },
+        __MP_EXTENSION_ACTIVE__: true,
+      };
+
+      const directUrl = devProxy.resolveStreamUrl(rawStreamUrl);
+      assert.equal(directUrl, rawStreamUrl);
+
+      // When __MP_EXTENSION_ACTIVE__ is false, returns proxied URL
+      (globalThis as any).window.__MP_EXTENSION_ACTIVE__ = false;
+      const fallbackUrl = devProxy.resolveStreamUrl(rawStreamUrl);
+      assert.ok(fallbackUrl.includes('/api/yt/stream?url='));
+    } finally {
+      if (originalWindow !== undefined) {
+        (globalThis as any).window = originalWindow;
+      } else {
+        delete (globalThis as any).window;
+      }
+    }
+  });
+
+  it('transparently benches failing client and recovers at currentTime on chunk stall/403', async () => {
+    const requestedClients: string[] = [];
+
+    const mockAdapter: NetworkAdapter = {
+      name: 'mock',
+      fetch: async () => new Response('{}'),
+      postJson: async <T>(_url: string, body: any): Promise<T> => {
+        const clientName = body.context?.client?.clientName;
+        requestedClients.push(clientName);
+
+        // First call (VISIONOS) succeeds with initial stream
+        if (clientName === 'VISIONOS') {
+          return {
+            playabilityStatus: { status: 'OK' },
+            streamingData: {
+              adaptiveFormats: [
+                {
+                  itag: 251,
+                  mimeType: 'audio/webm; codecs="opus"',
+                  bitrate: 160000,
+                  url: 'https://googlevideo.com/videoplayback?itag=251&sparams=visionos_initial',
+                  initRange: { start: '0', end: '740' },
+                  indexRange: { start: '741', end: '1024' },
+                },
+              ],
+            },
+          } as T;
+        }
+
+        // On mid-stream failure, VISIONOS is benched so ANDROID_MUSIC is called for recovery
+        if (clientName === 'ANDROID_MUSIC') {
+          return {
+            playabilityStatus: { status: 'OK' },
+            streamingData: {
+              adaptiveFormats: [
+                {
+                  itag: 140,
+                  mimeType: 'audio/mp4; codecs="mp4a.40.2"',
+                  bitrate: 128000,
+                  url: 'https://googlevideo.com/videoplayback?itag=140&sparams=android_music_recovered',
+                  initRange: { start: '0', end: '632' },
+                  indexRange: { start: '633', end: '896' },
+                },
+              ],
+            },
+          } as T;
+        }
+
+        return { playabilityStatus: { status: 'ERROR' } } as T;
+      },
+    };
+
+    let driverState = 'idle';
+    let loadedSrc = '';
+    let loadedStartTime = -1;
+    const listeners: Record<string, Function[]> = {};
+
+    const mockDriver: any = {
+      name: 'mock-driver',
+      initialize: async () => {},
+      destroy: async () => {},
+      load: async (src: string, startTime = 0) => {
+        loadedSrc = src;
+        loadedStartTime = startTime;
+        driverState = 'paused';
+      },
+      play: async () => {
+        driverState = 'playing';
+      },
+      pause: async () => {
+        driverState = 'paused';
+      },
+      seek: async () => {},
+      setVolume: () => {},
+      getVolume: () => 1,
+      getCurrentTime: () => 45,
+      getDuration: () => 200,
+      isPaused: () => driverState === 'paused',
+      getState: () => driverState,
+      hasLoadedStream: () => Boolean(loadedSrc),
+      on: (event: string, fn: Function) => {
+        if (!listeners[event]) listeners[event] = [];
+        listeners[event].push(fn);
+        return () => {};
+      },
+      off: () => {},
+      emit: (event: string, ...args: any[]) => {
+        listeners[event]?.forEach((fn) => fn(...args));
+      },
+    };
+
+    const engine = new PlayerEngine({
+      networkAdapter: mockAdapter,
+      audioDriver: mockDriver,
+    });
+
+    const testTrack: Track = {
+      id: 'recover_test',
+      videoId: 'recover_test',
+      title: 'Recovery Song',
+      artist: 'Recovery Artist',
+      duration: 200,
+      thumbnail: 'https://example.com/test.jpg',
+    };
+
+    await engine.playTrack(testTrack);
+    assert.equal(engine.getActiveClient(), 'VISIONOS');
+    assert.equal(loadedStartTime, 0);
+
+    // Simulate playback reaching 45 seconds
+    mockDriver.emit('timeUpdate', 45);
+    assert.equal(engine.getCurrentTime(), 45);
+
+    // Simulate a mid-stream 403 chunk stall error from audio driver
+    mockDriver.emit('error', new Error('HTTP 403 Forbidden: chunk stall'));
+
+    // Wait for the async recovery play() to resolve
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Verify VISIONOS was benched and transparent recovery switched to ANDROID_MUSIC at currentTime (45s)
+    assert.equal(engine.getVerdictCache().isBenched('VISIONOS'), true);
+    assert.equal(engine.getActiveClient(), 'ANDROID_MUSIC');
+    assert.equal(loadedStartTime, 45);
   });
 });

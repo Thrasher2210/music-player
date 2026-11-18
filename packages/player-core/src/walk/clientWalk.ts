@@ -3,12 +3,15 @@ import {
   ClientVerdict,
   InnerTubeClientName,
   PlayerResponse,
+  Track,
 } from '../types';
 import { InnerTubeClient } from '../innertube/client';
+import { NetworkAdapter } from '../adapters/network';
 
 export const CLIENT_WALK_PRIORITY: readonly InnerTubeClientName[] = [
   'IOS',
   'VISIONOS',
+  'ANDROID_MUSIC',
   'WEB_REMIX',
   'WEB',
   'MWEB',
@@ -228,6 +231,38 @@ export function prefetchStream(
   const cached = streamResultCache.get(videoId);
   if (cached && cached.expiresAt > Date.now()) return;
   executeClientWalk(videoId, innerTubeClient, cache).catch(() => {});
+}
+
+/**
+ * Resolves stream URLs and fetches the first 256KB range (bytes=0-262143)
+ * to warm the cache for instant <50ms track transitions.
+ */
+export async function prefetchAudioWarmup(
+  track: Track,
+  networkAdapter: NetworkAdapter,
+  cache?: VerdictCache
+): Promise<void> {
+  if (!track || !track.videoId) return;
+
+  const innerTubeClient = new InnerTubeClient({ networkAdapter });
+  const verdictCache = cache || new VerdictCache();
+  const walkResult = await executeClientWalk(track.videoId, innerTubeClient, verdictCache);
+
+  const targetFormat =
+    walkResult.audioFormats.find((f) => Boolean(f.url)) || walkResult.audioFormats[0];
+
+  if (targetFormat?.url) {
+    const streamUrl =
+      typeof networkAdapter.resolveStreamUrl === 'function'
+        ? networkAdapter.resolveStreamUrl(targetFormat.url)
+        : targetFormat.url;
+
+    await networkAdapter.fetch(streamUrl, {
+      headers: {
+        Range: 'bytes=0-262143',
+      },
+    });
+  }
 }
 
 /**

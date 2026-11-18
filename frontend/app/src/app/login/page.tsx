@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import {
   AmbientAura,
+  BrandLogo,
   Card,
   CardHeader,
   CardTitle,
@@ -174,11 +175,9 @@ function LoginForm() {
       >
         <CardHeader className="text-center items-center pb-3">
           <Flex align="center" gap="2" justify="center" className="mb-1">
-            <Box className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-active border border-border-subtle text-text-primary shadow-inner">
-              <Music2 size={20} />
-            </Box>
+            <BrandLogo variant="app-icon" size={36} />
             <CardTitle className="text-2xl font-extrabold tracking-tight">
-              GaneGan
+              <BrandLogo variant="wordmark" size="lg" />
             </CardTitle>
           </Flex>
 

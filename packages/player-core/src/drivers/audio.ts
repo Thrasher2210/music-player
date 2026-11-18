@@ -359,11 +359,11 @@ export class ShakaMseAudioDriver implements AudioDriver {
     // Configure Shaka for ultra-fast instant audio start & byte-range chunks
     (this.player as any).configure({
       streaming: {
-        bufferingGoal: 12,
+        bufferingGoal: 60,
         rebufferingGoal: 0.3, // starts playing as soon as 300ms chunk lands in MSE
-        bufferBehind: 15,
+        bufferBehind: 30,
         retryParameters: {
-          maxAttempts: 3,
+          maxAttempts: 1, // On chunk refusal, fail immediately to PlayerEngine auto-recovery instead of replaying stale body
           baseDelay: 300,
           backoffFactor: 1.5,
           fuzzFactor: 0.2,
