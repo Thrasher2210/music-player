@@ -294,7 +294,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     if (engine) {
       try {
         await engine.pause();
-      } catch (err: any) {
+      } catch {
         // Ignored
       }
     }

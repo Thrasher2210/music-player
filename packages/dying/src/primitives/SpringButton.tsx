@@ -94,37 +94,39 @@ export const SpringButton = React.forwardRef<HTMLButtonElement, SpringButtonProp
         {...props}
       >
         {variant === "playPause" ? (
-          <AnimatePresence mode="wait" initial={false}>
-            {isPlaying ? (
-              <motion.span
-                key="pause"
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.85 }}
-                transition={{ type: "spring", stiffness: 450, damping: 28 }}
-                className="flex items-center justify-center"
-              >
-                <Pause
-                  size={playPauseIconSizes[size]}
-                  className="fill-current"
-                />
-              </motion.span>
-            ) : (
-              <motion.span
-                key="play"
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.85 }}
-                transition={{ type: "spring", stiffness: 450, damping: 28 }}
-                className="flex items-center justify-center"
-              >
-                <Play
-                  size={playPauseIconSizes[size]}
-                  className="fill-current"
-                />
-              </motion.span>
-            )}
-          </AnimatePresence>
+          <div className="relative flex items-center justify-center w-full h-full pointer-events-none">
+            <AnimatePresence initial={false}>
+              {isPlaying ? (
+                <motion.span
+                  key="pause"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.1, ease: "easeOut" }}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  <Pause
+                    size={playPauseIconSizes[size]}
+                    className="fill-current"
+                  />
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="play"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.1, ease: "easeOut" }}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  <Play
+                    size={playPauseIconSizes[size]}
+                    className="fill-current"
+                  />
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </div>
         ) : (
           children
         )}

@@ -56,6 +56,38 @@ export const verification = pgTable("verification", {
 
 // ---- Our tables ----
 
+export const tracks = pgTable(
+  "tracks",
+  {
+    videoId: text("video_id").primaryKey(),
+    title: text("title").notNull(),
+    artist: text("artist").notNull(),
+    album: text("album"),
+    albumArt: text("album_art"),
+    durationSec: integer("duration_sec").notNull().default(0),
+    preferredItag: integer("preferred_itag").default(251),
+    playCount: integer("play_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("tracks_artist_idx").on(t.artist),
+    index("tracks_play_count_idx").on(t.playCount),
+  ],
+);
+
+export const lyrics = pgTable(
+  "lyrics",
+  {
+    videoId: text("video_id").primaryKey(),
+    plainLyrics: text("plain_lyrics"),
+    syncedLyrics: jsonb("synced_lyrics"), // [{ time: number, text: string }]
+    source: text("source").notNull(), // 'lrclib' | 'innertube'
+    synced: boolean("synced").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
 export const spotifyTokens = pgTable(
   "spotify_tokens",
   {
@@ -78,6 +110,10 @@ export const playlists = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    description: text("description"),
+    coverArt: text("cover_art"),
+    isPublic: boolean("is_public").notNull().default(false),
+    isPinned: boolean("is_pinned").notNull().default(false),
     source: text("source", { enum: ["local", "spotify", "youtube"] })
       .notNull()
       .default("local"),
@@ -85,7 +121,10 @@ export const playlists = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("playlists_user_idx").on(t.userId)],
+  (t) => [
+    index("playlists_user_idx").on(t.userId),
+    index("playlists_pinned_idx").on(t.userId, t.isPinned),
+  ],
 );
 
 export const playlistTracks = pgTable(
@@ -163,3 +202,35 @@ export const importJobs = pgTable("import_jobs", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const userPlayerState = pgTable("user_player_state", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  currentVideoId: text("current_video_id"),
+  currentIndex: integer("current_index").notNull().default(0),
+  currentTimeSec: integer("current_time_sec").notNull().default(0),
+  queue: jsonb("queue").notNull().default([]),
+  repeatMode: text("repeat_mode", { enum: ["off", "all", "one"] })
+    .notNull()
+    .default("off"),
+  isShuffle: boolean("is_shuffle").notNull().default(false),
+  volume: integer("volume").notNull().default(85), // 0 to 100 percentage
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const userEqualizerPresets = pgTable(
+  "user_equalizer_presets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    bands: jsonb("bands").notNull().default([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+    isDefault: boolean("is_default").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("user_eq_user_idx").on(t.userId)],
+);
