@@ -25,12 +25,12 @@ import {
   MediaShelf,
   MediaCard,
   TrackTable,
-  FloatingPlayerPill,
   MoodChipBar,
   MoodChipData,
   QuickPicksGrid,
   QuickPicksColumn,
   QuickPickRow,
+  PlayerBar,
   FullPlayerView,
   FullPlayerTab,
   RelatedItem,
@@ -276,9 +276,10 @@ export default function HomePage() {
               <SidebarNavItem
                 icon={<HomeIcon className="h-4 w-4" />}
                 label="Home"
-                active={activeNav === 'home' && !isSearchActive}
+                active={activeNav === 'home' && !isSearchActive && !isFullPlayerOpen}
                 onClick={() => {
                   setActiveNav('home');
+                  setIsFullPlayerOpen(false);
                   handleClearSearch();
                 }}
               />
@@ -288,6 +289,7 @@ export default function HomePage() {
                 active={activeNav === 'explore'}
                 onClick={() => {
                   setActiveNav('explore');
+                  setIsFullPlayerOpen(false);
                   handleSearchChange('Trending Top Hits');
                 }}
               />
@@ -295,7 +297,10 @@ export default function HomePage() {
                 icon={<Library className="h-4 w-4" />}
                 label="Library"
                 active={activeNav === 'library'}
-                onClick={() => setActiveNav('library')}
+                onClick={() => {
+                  setActiveNav('library');
+                  setIsFullPlayerOpen(false);
+                }}
               />
             </SidebarNav>
 
@@ -443,98 +448,106 @@ export default function HomePage() {
           </Flex>
         </Flex>
       }
+      playerDockVariant="docked"
+      isFullBleed={isFullPlayerOpen}
       playerDock={
-        <FloatingPlayerPill
-          title={currentTrack?.title || 'Not Playing'}
-          artist={currentTrack?.artist || 'Select a song or explore quick picks'}
-          album={currentTrack?.album}
-          artworkUrl={currentTrack?.thumbnail}
+        <PlayerBar
+          currentTrack={currentTrack ? toTrackData(currentTrack) : null}
           isPlaying={isCurrentlyPlaying}
           currentTime={currentTime}
           duration={duration}
           buffered={bufferedPercent}
           volume={volume}
           isMuted={isMuted}
-          isLyricsOpen={isFullPlayerOpen}
           isShuffle={isShuffle}
           repeatMode={repeatMode}
+          showLyrics={isFullPlayerOpen && fullPlayerTab === 'lyrics'}
+          showQueue={isFullPlayerOpen && fullPlayerTab === 'upNext'}
+          isExpanded={isFullPlayerOpen}
           onPlayPause={togglePlay}
           onPrevious={previous}
           onNext={next}
           onSeek={seek}
           onVolumeChange={setVolume}
-          onToggleMute={toggleMute}
-          onToggleLyrics={() => {
-            setFullPlayerTab('lyrics');
-            setIsFullPlayerOpen(true);
+          onMuteToggle={toggleMute}
+          onShuffleToggle={toggleShuffle}
+          onRepeatToggle={toggleRepeat}
+          onLyricsToggle={() => {
+            if (isFullPlayerOpen && fullPlayerTab === 'lyrics') {
+              setIsFullPlayerOpen(false);
+            } else {
+              setFullPlayerTab('lyrics');
+              setIsFullPlayerOpen(true);
+            }
           }}
-          onExpandNowPlaying={() => setIsFullPlayerOpen(true)}
-          onToggleShuffle={toggleShuffle}
-          onToggleRepeat={toggleRepeat}
+          onQueueToggle={() => {
+            if (isFullPlayerOpen && fullPlayerTab === 'upNext') {
+              setIsFullPlayerOpen(false);
+            } else {
+              setFullPlayerTab('upNext');
+              setIsFullPlayerOpen(true);
+            }
+          }}
+          onToggleExpand={() => setIsFullPlayerOpen(!isFullPlayerOpen)}
+          onExpandNowPlaying={() => setIsFullPlayerOpen(!isFullPlayerOpen)}
         />
       }
-      overlay={
-        isFullPlayerOpen ? (
-          <FullPlayerView
-            track={currentTrack ? toTrackData(currentTrack) : null}
-            isPlaying={isCurrentlyPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            onPlayPause={togglePlay}
-            onSeek={seek}
-            onClose={() => setIsFullPlayerOpen(false)}
-            activeTab={fullPlayerTab}
-            onTabChange={setFullPlayerTab}
-            queue={queue.map(toTrackData)}
-            onSelectTrack={(t) => {
-              const matched = queue.find((x) => (x.id || x.videoId) === t.id);
-              if (matched) {
-                handlePlayTrackWithRadio(matched);
-              }
-            }}
-            onRemoveFromQueue={(trackId) => {
-              const idx = queue.findIndex((x) => (x.id || x.videoId) === trackId);
-              if (idx !== -1) {
-                removeFromQueue(idx);
-              }
-            }}
-            onPrevious={previous}
-            onNext={next}
-            isShuffle={isShuffle}
-            onToggleShuffle={toggleShuffle}
-            repeatMode={repeatMode}
-            onToggleRepeat={toggleRepeat}
-            volume={volume}
-            onVolumeChange={setVolume}
-            related={relatedItems}
-            onSelectRelated={(item) => {
-              if (item.videoId) {
-                const trackItem: Track = {
-                  id: item.videoId,
-                  videoId: item.videoId,
-                  title: item.title,
-                  artist: item.subtitle || '',
-                  duration: 0,
-                  thumbnail: item.thumbnail || item.thumbnailUrl || '',
-                };
-                handlePlayTrackWithRadio(trackItem);
-              }
-            }}
-          />
-        ) : null
-      }
+      overlay={null}
     >
-      {/* 1. REAL LIVE INNER_TUBE MOOD & ACTIVITY CHIPS STRIP */}
-      {moodChips.length > 0 && (
-        <Box className="mb-8 select-none">
-          <MoodChipBar
-            chips={moodChips}
-            activeId={activeMoodChipId}
-            onSelectChip={handleSelectMoodChip}
-            showScrollButtons
-          />
-        </Box>
-      )}
+      {isFullPlayerOpen ? (
+        <FullPlayerView
+          track={currentTrack ? toTrackData(currentTrack) : null}
+          isPlaying={isCurrentlyPlaying}
+          currentTime={currentTime}
+          duration={duration}
+          onPlayPause={togglePlay}
+          onSeek={seek}
+          onClose={() => setIsFullPlayerOpen(false)}
+          activeTab={fullPlayerTab}
+          onTabChange={setFullPlayerTab}
+          queue={queue.map(toTrackData)}
+          onSelectTrack={(t) => {
+            const matched = queue.find((x) => (x.id || x.videoId) === t.id);
+            if (matched) {
+              handlePlayTrackWithRadio(matched);
+            }
+          }}
+          onRemoveFromQueue={(trackId) => {
+            const idx = queue.findIndex((x) => (x.id || x.videoId) === trackId);
+            if (idx !== -1) {
+              removeFromQueue(idx);
+            }
+          }}
+          related={relatedItems}
+          onSelectRelated={(item) => {
+            if (item.videoId) {
+              const trackItem: Track = {
+                id: item.videoId,
+                videoId: item.videoId,
+                title: item.title,
+                artist: item.subtitle || '',
+                duration: 0,
+                thumbnail: item.thumbnail || item.thumbnailUrl || '',
+              };
+              handlePlayTrackWithRadio(trackItem);
+            }
+          }}
+          radioTitle={currentTrack ? `${currentTrack.title} radio` : undefined}
+          asModal={false}
+        />
+      ) : (
+        <>
+          {/* 1. REAL LIVE INNER_TUBE MOOD & ACTIVITY CHIPS STRIP */}
+          {moodChips.length > 0 && (
+            <Box className="mb-8 select-none">
+              <MoodChipBar
+                chips={moodChips}
+                activeId={activeMoodChipId}
+                onSelectChip={handleSelectMoodChip}
+                showScrollButtons
+              />
+            </Box>
+          )}
 
       {/* 2. DYNAMIC CONTENT: SEARCH RESULTS OR YOUTUBE MUSIC LIVE HOME FEED */}
       {isSearchActive ? (
@@ -689,6 +702,8 @@ export default function HomePage() {
             );
           })}
         </Stack>
+      )}
+        </>
       )}
     </AppShell>
   );

@@ -10,6 +10,8 @@ import {
   Maximize2,
   ListMusic,
   Mic2,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { GlassPanel } from "../primitives/GlassPanel";
 import { ScrubSlider } from "../primitives/ScrubSlider";
@@ -30,6 +32,8 @@ export interface PlayerBarProps
   repeatMode?: "off" | "all" | "one";
   showLyrics?: boolean;
   showQueue?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 
   onPlayPause?: () => void;
   onPrevious?: () => void;
@@ -63,6 +67,8 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   repeatMode = "off",
   showLyrics = false,
   showQueue = false,
+  isExpanded = false,
+  onToggleExpand,
 
   onPlayPause,
   onPrevious,
@@ -251,6 +257,16 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
             />
           </div>
         </div>
+
+        <SpringButton
+          variant="ghost"
+          size="sm"
+          onClick={onToggleExpand || onExpandNowPlaying}
+          aria-label={isExpanded ? "Collapse now playing" : "Expand now playing"}
+          className="text-text-secondary hover:text-white"
+        >
+          {isExpanded ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+        </SpringButton>
       </div>
     </GlassPanel>
   );

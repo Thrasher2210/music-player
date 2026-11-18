@@ -20,6 +20,16 @@ export interface AppShellProps extends React.HTMLAttributes<HTMLDivElement> {
   playerDock?: React.ReactNode;
 
   /**
+   * Bottom player dock variant: 'floating' (default) or 'docked' (full-width bottom bar).
+   */
+  playerDockVariant?: 'floating' | 'docked';
+
+  /**
+   * Whether children stage content should be full-bleed (no max-w or padding, e.g. Watch view).
+   */
+  isFullBleed?: boolean;
+
+  /**
    * Full immersion overlay slot (e.g. SyncedLyrics immersion view or modals).
    */
   overlay?: React.ReactNode;
@@ -51,6 +61,8 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
       sidebar,
       header,
       playerDock,
+      playerDockVariant = 'floating',
+      isFullBleed = false,
       overlay,
       children,
       stageClassName,
@@ -151,21 +163,38 @@ export const AppShell = React.forwardRef<HTMLDivElement, AppShellProps>(
             {/* Responsive centered content container */}
             <div
               className={cn(
-                "w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-6 md:py-8",
+                isFullBleed
+                  ? "w-full h-full p-0"
+                  : "w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 py-6 md:py-8",
                 stageClassName
               )}
             >
               {children}
             </div>
 
-            {/* Bottom spacer ensuring scrollable content clears the floating player dock */}
-            {playerDock && <div className="h-28 sm:h-32 w-full shrink-0" aria-hidden="true" />}
+            {/* Bottom spacer ensuring scrollable content clears the player dock */}
+            {playerDock && (
+              <div
+                className={cn(
+                  "w-full shrink-0",
+                  playerDockVariant === "docked" ? "h-24" : "h-28 sm:h-32"
+                )}
+                aria-hidden="true"
+              />
+            )}
           </main>
         </div>
 
-        {/* Floating Bottom Player Dock Slot */}
+        {/* Bottom Player Dock Slot */}
         {playerDock && (
-          <div className="pointer-events-none fixed bottom-3 sm:bottom-6 inset-x-0 z-40 flex justify-center px-2 sm:px-4">
+          <div
+            className={cn(
+              "z-40 flex",
+              playerDockVariant === "docked"
+                ? "fixed bottom-0 inset-x-0 w-full"
+                : "pointer-events-none fixed bottom-3 sm:bottom-6 inset-x-0 justify-center px-2 sm:px-4"
+            )}
+          >
             {playerDock}
           </div>
         )}
