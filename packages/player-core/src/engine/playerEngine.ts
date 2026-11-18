@@ -526,8 +526,8 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   /**
    * Fetch Up Next radio queue and related content for videoId
    */
-  async getNextRadio(videoId: string): Promise<NextRadioData> {
-    return this.innerTube.getNextRadio(videoId);
+  async getNextRadio(videoId: string, playlistId?: string): Promise<NextRadioData> {
+    return this.innerTube.getNextRadio(videoId, playlistId);
   }
 
   /**

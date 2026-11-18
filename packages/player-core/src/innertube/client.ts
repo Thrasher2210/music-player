@@ -531,7 +531,8 @@ export class InnerTubeClient {
    * Fetch Up Next radio queue and related content for a given videoId
    */
   async getNextRadio(
-    videoId: string
+    videoId: string,
+    playlistId?: string
   ): Promise<{ queue: Track[]; related: ShelfItemData[] }> {
     const context = INNERTUBE_CONTEXTS['WEB_REMIX'];
     const endpoint = `${this.baseUrl}/youtubei/v1/next?key=${INNERTUBE_PUBLIC_KEY}&prettyPrint=false`;
@@ -539,6 +540,7 @@ export class InnerTubeClient {
     const payload: Record<string, any> = {
       context,
       videoId,
+      playlistId: playlistId || `RDAMVM${videoId}`,
       isAudioOnly: true,
     };
 

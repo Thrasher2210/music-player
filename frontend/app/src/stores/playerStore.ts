@@ -88,7 +88,7 @@ export interface PlayerStoreState {
   setNetworkAdapterType: (type: NetworkAdapterType) => void;
   getDiagnosticInfo: () => DiagnosticInfo;
   getHomeFeed: (moodParam?: string) => Promise<HomeFeedData>;
-  getNextRadio: (videoId: string) => Promise<NextRadioData>;
+  getNextRadio: (videoId: string, playlistId?: string) => Promise<NextRadioData>;
   getArtist: (browseId: string) => Promise<ArtistDetails>;
   getAlbum: (browseId: string) => Promise<AlbumDetails>;
   getPlaylist: (playlistId: string) => Promise<RemotePlaylistDetails>;
@@ -315,6 +315,11 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
     try {
       await engine.playTrack(track);
+
+      // Auto-fetch Up Next 50-track radio mix in background if queue is single track
+      if (track.videoId && get().queue.length <= 1) {
+        get().getNextRadio(track.videoId).catch(() => {});
+      }
     } catch (err: any) {
       set({
         playbackState: 'idle',
@@ -544,14 +549,14 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     return engine.getHomeFeed(moodParam);
   },
 
-  getNextRadio: async (videoId: string): Promise<NextRadioData> => {
+  getNextRadio: async (videoId: string, playlistId?: string): Promise<NextRadioData> => {
     let engine = get().engine;
     if (!engine) {
       get().initialize();
       engine = sharedEngine;
     }
     if (!engine) return { queue: [], related: [] };
-    const radioData = await engine.getNextRadio(videoId);
+    const radioData = await engine.getNextRadio(videoId, playlistId);
     if (radioData.queue.length > 0) {
       // Append new radio songs to the engine queue if not already present
       const currentQueue = get().queue;
