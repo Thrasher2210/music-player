@@ -90,9 +90,9 @@ function LoginForm() {
     <Box className="relative min-h-screen w-full flex items-center justify-center p-4 overflow-hidden bg-canvas select-none">
       {/* Background Ambient Aura using Dying Obsidian Tone Variables */}
       <AmbientAura
-        primaryColor="var(--dying-color-accent, #10b981)"
-        secondaryColor="var(--dying-color-surface, #1e1e24)"
-        tertiaryColor="var(--dying-color-canvas, #0a0a0c)"
+        primaryColor="#10b981"
+        secondaryColor="#1e1e24"
+        tertiaryColor="#0a0a0c"
         blur={120}
         intensity={0.5}
         className="fixed inset-0 pointer-events-none"

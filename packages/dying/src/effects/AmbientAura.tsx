@@ -22,6 +22,25 @@ interface Orb {
   alpha: number;
 }
 
+function resolveCanvasColor(colorStr: string, element?: HTMLElement | null): string {
+  if (!colorStr) return "rgba(0, 0, 0, 0)";
+  if (colorStr.startsWith("var(")) {
+    if (typeof window !== "undefined" && element) {
+      const match = colorStr.match(/var\((--[^,\s)]+)(?:,\s*([^)]+))?\)/);
+      if (match) {
+        const varName = match[1];
+        const fallback = match[2];
+        const computed = getComputedStyle(element).getPropertyValue(varName).trim();
+        if (computed) return computed;
+        if (fallback) return resolveCanvasColor(fallback.trim(), element);
+      }
+    }
+    const fallbackMatch = colorStr.match(/,\s*([^)]+)\)/);
+    if (fallbackMatch) return fallbackMatch[1].trim();
+  }
+  return colorStr;
+}
+
 export const AmbientAura: React.FC<AmbientAuraProps> = ({
   className,
   children,
@@ -100,9 +119,13 @@ export const AmbientAura: React.FC<AmbientAuraProps> = ({
       ctx.clearRect(0, 0, width, height);
 
       // Draw each aura orb with radial falloff
-      orbs[0].color = primaryColor;
-      orbs[1].color = secondaryColor;
-      orbs[2].color = tertiaryColor;
+      const resolvedPrimary = resolveCanvasColor(primaryColor, containerRef.current);
+      const resolvedSecondary = resolveCanvasColor(secondaryColor, containerRef.current);
+      const resolvedTertiary = resolveCanvasColor(tertiaryColor, containerRef.current);
+
+      orbs[0].color = resolvedPrimary;
+      orbs[1].color = resolvedSecondary;
+      orbs[2].color = resolvedTertiary;
 
       orbs.forEach((orb, i) => {
         if (animated) {
