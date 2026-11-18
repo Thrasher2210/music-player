@@ -170,6 +170,7 @@ export default function HomePage() {
   useMediaSession();
   useKeyboardShortcuts({
     toggleLyrics: handleToggleLyrics,
+    toggleFullPlayer: () => setIsFullPlayerOpen((prev) => !prev),
     closeModals: handleCloseModals,
   });
 

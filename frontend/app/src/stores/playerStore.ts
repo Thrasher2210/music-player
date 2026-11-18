@@ -356,7 +356,9 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     const currentEng = sharedEngine;
     if (!currentEng) return;
 
-    if (playbackState === 'playing') {
+    const isCurrentlyPlaying = playbackState === 'playing' || !currentEng.getAudioDriver()?.isPaused();
+
+    if (isCurrentlyPlaying) {
       // Optimistic instant toggle to paused (0ms UI latency)
       set({ playbackState: 'paused' });
       try {

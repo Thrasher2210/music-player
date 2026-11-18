@@ -285,11 +285,10 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       if (index < 0 || index >= this.queue.length) return;
       this.currentIndex = index;
     } else {
-      // Fast-path: ONLY if healthy and paused (never if driver or state is in error)
+      // Fast-path: resume if a current track is loaded and the driver is paused
       if (
-        this.playbackState === 'paused' &&
-        this.audioDriver.getState() === 'paused' &&
-        this.getCurrentTrack()
+        this.getCurrentTrack() &&
+        (this.audioDriver.isPaused() || this.playbackState === 'paused')
       ) {
         this.playbackState = 'playing';
         this.emit('stateChange', 'playing');
@@ -401,7 +400,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   }
 
   async togglePlay(): Promise<void> {
-    if (this.playbackState === 'playing') {
+    if (this.playbackState === 'playing' || !this.audioDriver.isPaused()) {
       await this.pause();
     } else {
       await this.play();
