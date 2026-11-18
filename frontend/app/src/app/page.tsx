@@ -464,6 +464,7 @@ export default function HomePage() {
           volume={volume}
           isMuted={isMuted}
           isLyricsOpen={isFullPlayerOpen && fullPlayerTab === 'lyrics'}
+          isExpanded={isFullPlayerOpen}
           isShuffle={isShuffle}
           repeatMode={repeatMode}
           onPlayPause={togglePlay}
@@ -480,6 +481,7 @@ export default function HomePage() {
               setIsFullPlayerOpen(true);
             }
           }}
+          onToggleExpand={() => setIsFullPlayerOpen(!isFullPlayerOpen)}
           onExpandNowPlaying={() => setIsFullPlayerOpen(!isFullPlayerOpen)}
           onToggleShuffle={toggleShuffle}
           onToggleRepeat={toggleRepeat}

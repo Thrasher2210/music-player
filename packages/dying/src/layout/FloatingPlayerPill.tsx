@@ -10,6 +10,8 @@ import {
   Maximize2,
   Mic2,
   Music2,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { ScrubSlider } from "../primitives/ScrubSlider";
 import { SpringButton } from "../primitives/SpringButton";
@@ -30,6 +32,8 @@ export interface FloatingPlayerPillProps
   isShuffle?: boolean;
   repeatMode?: "off" | "all" | "one";
   isLyricsOpen?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 
   onPlayPause?: () => void;
   onPrevious?: () => void;
@@ -72,6 +76,8 @@ export const FloatingPlayerPill = React.forwardRef<
       isShuffle = false,
       repeatMode = "off",
       isLyricsOpen = false,
+      isExpanded = false,
+      onToggleExpand,
       onPlayPause,
       onPrevious,
       onNext,
@@ -275,6 +281,21 @@ export const FloatingPlayerPill = React.forwardRef<
                     />
                   </div>
                 </div>
+
+                {/* Expand / Minimize toggle chevron */}
+                <SpringButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={onToggleExpand || onExpandNowPlaying}
+                  aria-label={isExpanded ? "Minimize player" : "Expand player"}
+                  className="text-text-secondary hover:text-white"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4" />
+                  )}
+                </SpringButton>
               </>
             )}
           </div>

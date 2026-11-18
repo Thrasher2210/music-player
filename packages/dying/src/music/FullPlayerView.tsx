@@ -202,23 +202,24 @@ export const FullPlayerView: React.FC<FullPlayerViewProps> = ({
       </div>
 
       {/* Main 2-Column Split: Left Canvas Artwork | Right Tabs & Queue */}
-      <div className="relative z-10 flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 px-6 sm:px-10 lg:px-14 py-6 overflow-hidden">
+      <div className="relative z-10 flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 px-6 sm:px-10 lg:px-14 pt-3 pb-28 sm:pb-36 overflow-hidden">
         {/* LEFT COLUMN: Large Square Album Artwork with Ambient Glow + Audio/Video Switcher */}
-        <div className="lg:col-span-6 flex flex-col items-center justify-center h-full min-h-0 max-w-xl mx-auto w-full">
-          {/* Top Collapse Button & Title for Mobile */}
-          <div className="w-full flex lg:hidden items-center justify-between mb-4">
+        <div className="lg:col-span-6 flex flex-col items-center justify-between h-full min-h-0 max-w-xl mx-auto w-full">
+          {/* Top Collapse Button & Title */}
+          <div className="w-full flex items-center justify-between mb-2 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              aria-label="Collapse player"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-text-secondary hover:text-white hover:bg-surface-hover transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+              aria-label="Minimize player"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface hover:bg-surface-hover text-text-secondary hover:text-white border border-border-subtle transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
             >
-              <ChevronDown size={24} />
+              <ChevronDown size={16} />
+              <span>Minimize</span>
             </button>
             <span className="text-xs font-semibold uppercase tracking-widest text-text-tertiary">
               Now Playing
             </span>
-            <div className="w-9" />
+            <div className="w-20" />
           </div>
 
           {/* Large Square Artwork Container */}
@@ -319,7 +320,7 @@ export const FullPlayerView: React.FC<FullPlayerViewProps> = ({
         </div>
 
         {/* RIGHT COLUMN: 3-Tab Panel (UP NEXT | LYRICS | RELATED) */}
-        <div className="lg:col-span-6 flex flex-col min-h-0 h-full overflow-hidden">
+        <div className="lg:col-span-6 flex flex-col min-h-0 h-full overflow-hidden bg-surface/30 backdrop-blur-xl border border-border-subtle rounded-2xl p-4 sm:p-5 shadow-2xl">
           {/* YouTube Music Flat Text Tabs Header */}
           <div className="flex items-center border-b border-border-subtle shrink-0 mb-4 px-2">
             <button
