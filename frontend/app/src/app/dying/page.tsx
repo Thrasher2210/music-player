@@ -68,6 +68,7 @@ import {
   HeroBannerCard,
   MediaShelf,
   MediaCard,
+  ScrubSlider,
 } from '@mp/dying';
 import { MathView } from '@/components/MathView';
 
@@ -710,13 +711,12 @@ function DyingPortalContent() {
                       </span>
                       <span className="text-xs font-mono text-emerald-400">Tone {contrastSurfaceTone}</span>
                     </Flex>
-                    <input
-                      type="range"
+                    <ScrubSlider
                       min={0}
                       max={100}
                       value={contrastSurfaceTone}
-                      onChange={(e) => setContrastSurfaceTone(Number(e.target.value))}
-                      className="w-full accent-white cursor-pointer"
+                      onValueChange={(val) => setContrastSurfaceTone(val)}
+                      showThumbOnHoverOnly={false}
                     />
                   </div>
 
@@ -727,13 +727,12 @@ function DyingPortalContent() {
                       </span>
                       <span className="text-xs font-mono text-emerald-400">Tone {contrastTextTone}</span>
                     </Flex>
-                    <input
-                      type="range"
+                    <ScrubSlider
                       min={0}
                       max={100}
                       value={contrastTextTone}
-                      onChange={(e) => setContrastTextTone(Number(e.target.value))}
-                      className="w-full accent-white cursor-pointer"
+                      onValueChange={(val) => setContrastTextTone(val)}
+                      showThumbOnHoverOnly={false}
                     />
                   </div>
 
@@ -809,13 +808,12 @@ function DyingPortalContent() {
                       </span>
                       <span className="text-xs font-mono text-emerald-400">{outerRadius}px</span>
                     </Flex>
-                    <input
-                      type="range"
+                    <ScrubSlider
                       min={8}
                       max={48}
                       value={outerRadius}
-                      onChange={(e) => setOuterRadius(Number(e.target.value))}
-                      className="w-full accent-white cursor-pointer"
+                      onValueChange={(val) => setOuterRadius(val)}
+                      showThumbOnHoverOnly={false}
                     />
                   </div>
 
@@ -826,13 +824,12 @@ function DyingPortalContent() {
                       </span>
                       <span className="text-xs font-mono text-emerald-400">{outerPadding}px</span>
                     </Flex>
-                    <input
-                      type="range"
+                    <ScrubSlider
                       min={4}
                       max={32}
                       value={outerPadding}
-                      onChange={(e) => setOuterPadding(Number(e.target.value))}
-                      className="w-full accent-white cursor-pointer"
+                      onValueChange={(val) => setOuterPadding(val)}
+                      showThumbOnHoverOnly={false}
                     />
                   </div>
 
@@ -894,13 +891,12 @@ function DyingPortalContent() {
                       </span>
                       <span className="text-xs font-mono text-emerald-400">{springStiffness}</span>
                     </Flex>
-                    <input
-                      type="range"
+                    <ScrubSlider
                       min={100}
                       max={800}
                       value={springStiffness}
-                      onChange={(e) => setSpringStiffness(Number(e.target.value))}
-                      className="w-full accent-white cursor-pointer"
+                      onValueChange={(val) => setSpringStiffness(val)}
+                      showThumbOnHoverOnly={false}
                     />
                   </div>
 
@@ -911,13 +907,12 @@ function DyingPortalContent() {
                       </span>
                       <span className="text-xs font-mono text-emerald-400">{springDamping}</span>
                     </Flex>
-                    <input
-                      type="range"
+                    <ScrubSlider
                       min={10}
                       max={60}
                       value={springDamping}
-                      onChange={(e) => setSpringDamping(Number(e.target.value))}
-                      className="w-full accent-white cursor-pointer"
+                      onValueChange={(val) => setSpringDamping(val)}
+                      showThumbOnHoverOnly={false}
                     />
                   </div>
 

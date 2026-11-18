@@ -80,7 +80,7 @@ export interface PlayerStoreState {
   toggleRepeat: () => void;
   setShuffle: (shuffle: boolean) => void;
   toggleShuffle: () => void;
-  setQueue: (tracks: Track[], startIndex?: number) => void;
+  setQueue: (tracks: Track[], startIndex?: number, autoPlay?: boolean) => void;
   addToQueue: (track: Track) => void;
   removeFromQueue: (index: number) => void;
   clearQueue: () => void;
@@ -483,10 +483,10 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     get().setShuffle(nextShuffle);
   },
 
-  setQueue: (tracks: Track[], startIndex = 0) => {
+  setQueue: (tracks: Track[], startIndex = 0, autoPlay = true) => {
     const engine = get().engine;
     if (engine) {
-      engine.setQueue(tracks, startIndex);
+      engine.setQueue(tracks, startIndex, autoPlay);
     }
     set({ queue: [...tracks], currentIndex: startIndex });
   },

@@ -96,7 +96,7 @@ export default function HomePage() {
         const nextRadio = await getNextRadio(track.videoId);
         if (nextRadio && nextRadio.queue && nextRadio.queue.length > 0) {
           const radioQueue = [track, ...nextRadio.queue.filter((t) => t.videoId !== track.videoId)];
-          setQueue(radioQueue, 0);
+          setQueue(radioQueue, 0, false);
         }
       }
     } catch (err) {

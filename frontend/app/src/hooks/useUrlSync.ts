@@ -44,7 +44,8 @@ export function useUrlSync({ isFullPlayerOpen, setIsFullPlayerOpen }: UseUrlSync
       setIsFullPlayerOpen(true);
     }
 
-    if (videoId && (!currentTrack || currentTrack.videoId !== videoId)) {
+    const current = usePlayerStore.getState().currentTrack;
+    if (videoId && (!current || current.videoId !== videoId)) {
       const initialTrack: Track = {
         id: videoId,
         videoId,
@@ -60,7 +61,7 @@ export function useUrlSync({ isFullPlayerOpen, setIsFullPlayerOpen }: UseUrlSync
         console.warn('[useUrlSync] Autoplay blocked by browser policy on cold load:', err?.message);
       });
     }
-  }, [pathname, searchParams, currentTrack, isInitialized, initialize, playTrack, setIsFullPlayerOpen]);
+  }, [pathname, searchParams, isInitialized, initialize, playTrack, setIsFullPlayerOpen]);
 
   // 2. Track change: update shallow URL params (?v=videoId) on the current route
   useEffect(() => {
