@@ -130,7 +130,8 @@ export function generateDashMpd(
       const sampleRate = fmt.audioSampleRate || (fmt.itag === 251 ? '48000' : '44100');
       const channels = fmt.audioChannels || 2;
 
-      const isFormatSabr = Boolean(isSabrMode || fmt.is_sabr || fmt.isSabr);
+      // A format is only SABR if it has no direct URL and SABR mode or format flag is set
+      const isFormatSabr = Boolean(!fmt.url && (isSabrMode || fmt.is_sabr || fmt.isSabr));
       let rawUrl: string;
       if (isFormatSabr) {
         const sabrFmt = buildSabrFormat(fmt as any);

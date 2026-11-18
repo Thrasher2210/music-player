@@ -108,7 +108,7 @@ describe('@mp/player-core unit tests', () => {
     cache.clear();
 
     assert.equal(cache.isBenched('IOS'), false);
-    assert.deepEqual(cache.getActiveClients(), ['VISIONOS', 'IOS', 'WEB_REMIX', 'WEB', 'MWEB']);
+    assert.deepEqual(cache.getActiveClients(), ['IOS', 'VISIONOS', 'WEB_REMIX', 'WEB', 'MWEB']);
 
     cache.bench('IOS', 'Playback restricted');
     assert.equal(cache.isBenched('IOS'), true);

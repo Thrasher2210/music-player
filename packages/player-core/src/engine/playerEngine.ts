@@ -89,6 +89,8 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   private isShuffle = false;
   private activeClient: InnerTubeClientName | null = null;
   private playRequestId = 0;
+  private errorRecoveryAttempts = 0;
+  private readonly MAX_ERROR_RECOVERY_ATTEMPTS = 3;
 
   constructor(options: PlayerEngineOptions = {}) {
     super();
@@ -139,10 +141,15 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       this.playbackState = 'error';
       this.emit('error', err);
 
-      // Attempt immediate seamless auto-recovery at the current timestamp so playback never halts
-      if (currentTrack?.videoId) {
+      // Attempt bounded auto-recovery at the current timestamp so playback never loops infinitely
+      if (currentTrack?.videoId && this.errorRecoveryAttempts < this.MAX_ERROR_RECOVERY_ATTEMPTS) {
+        this.errorRecoveryAttempts++;
         const resumeTime = Math.max(0, this.currentTime);
         this.play(undefined, resumeTime).catch(() => {});
+      } else if (this.errorRecoveryAttempts >= this.MAX_ERROR_RECOVERY_ATTEMPTS) {
+        console.error(
+          `[PlayerEngine] Max auto-recovery attempts (${this.MAX_ERROR_RECOVERY_ATTEMPTS}) reached for videoId "${currentTrack?.videoId}".`
+        );
       }
     });
   }
@@ -331,7 +338,11 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
         walkResult.playerResponse.streamingData?.serverAbrStreamingUrl ||
         (walkResult.playerResponse.streamingData as any)?.server_abr_streaming_url;
 
-      const isSabr = Boolean((walkResult.is_sabr || walkResult.isSabr) && serverAbrStreamingUrl);
+      const isSabr = Boolean(
+        (walkResult.is_sabr || walkResult.isSabr) &&
+        serverAbrStreamingUrl &&
+        walkResult.audioFormats.some((f) => !f.url)
+      );
 
       // Configure SABR on audioDriver if active
       if (typeof (this.audioDriver as any).configureSabr === 'function' && isSabr) {
@@ -368,6 +379,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
 
       // 5. Start playback
       await this.audioDriver.play();
+      this.errorRecoveryAttempts = 0;
 
       // 6. Prefetch stream for the next track in queue for instant 0ms track skipping
       const nextTrack = this.queue[this.currentIndex + 1];

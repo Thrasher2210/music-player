@@ -142,6 +142,8 @@ export async function GET(req: NextRequest) {
       const headers = getBaseHeaders(clientParam, `bytes=${reqStart}-${reqEnd}`);
       const upstreamRes = await fetchWithFallback(targetUrl, headers, req.signal);
 
+      const buf = await upstreamRes.arrayBuffer();
+
       const responseHeaders = new Headers();
       responseHeaders.set('Access-Control-Allow-Origin', '*');
       responseHeaders.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
@@ -149,17 +151,15 @@ export async function GET(req: NextRequest) {
       responseHeaders.set('Accept-Ranges', 'bytes');
       responseHeaders.set('Cache-Control', 'public, max-age=86400, immutable');
 
-      const contentType = upstreamRes.headers.get('content-type');
-      if (contentType) responseHeaders.set('Content-Type', contentType);
+      const contentType = upstreamRes.headers.get('content-type') || 'audio/mp4';
+      responseHeaders.set('Content-Type', contentType);
+      responseHeaders.set('Content-Length', buf.byteLength.toString());
 
-      const contentLength = upstreamRes.headers.get('content-length');
-      if (contentLength) responseHeaders.set('Content-Length', contentLength);
+      const contentRange = upstreamRes.headers.get('content-range') || `bytes ${reqStart}-${reqEnd}/*`;
+      responseHeaders.set('Content-Range', contentRange);
 
-      const contentRange = upstreamRes.headers.get('content-range');
-      if (contentRange) responseHeaders.set('Content-Range', contentRange);
-
-      return new NextResponse(upstreamRes.body, {
-        status: upstreamRes.status,
+      return new NextResponse(buf, {
+        status: upstreamRes.status === 200 ? 206 : upstreamRes.status,
         headers: responseHeaders,
       });
     }

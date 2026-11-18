@@ -7,8 +7,8 @@ import {
 import { InnerTubeClient } from '../innertube/client';
 
 export const CLIENT_WALK_PRIORITY: readonly InnerTubeClientName[] = [
-  'VISIONOS',
   'IOS',
+  'VISIONOS',
   'WEB_REMIX',
   'WEB',
   'MWEB',
@@ -190,8 +190,15 @@ async function attemptClient(
     response.streamingData?.serverAbrStreamingUrl ||
     (response.streamingData as any)?.server_abr_streaming_url;
 
-  // SABR is ONLY valid if an actual serverAbrStreamingUrl was returned by InnerTube
-  const isSabrClient = Boolean(serverAbrStreamingUrl);
+  // Check if response contains direct playable audio formats with URLs
+  const hasDirectAudio = allFormats.some(
+    (fmt) =>
+      ([251, 250, 249, 140, 139, 171].includes(fmt.itag) || fmt.mimeType?.toLowerCase().startsWith('audio/')) &&
+      Boolean(fmt.url)
+  );
+
+  // SABR is ONLY valid when formats do not have direct URLs and a serverAbrStreamingUrl exists
+  const isSabrClient = !hasDirectAudio && Boolean(serverAbrStreamingUrl);
 
   const audioFormats = allFormats
     .filter((fmt) => {
