@@ -43,30 +43,27 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
       themeContext = null;
     }
 
-    const [localTheme, setLocalTheme] = useState<Theme>(() => {
+    // Deterministic SSR state to prevent hydration mismatches
+    const [mounted, setMounted] = useState(false);
+    const [localTheme, setLocalTheme] = useState<Theme>("dark");
+
+    // Rehydrate from localStorage/DOM only on client mount
+    useEffect(() => {
+      setMounted(true);
       if (typeof window !== "undefined") {
         const stored = localStorage.getItem("dying-theme");
         if (stored && ["dark", "oled", "light", "system"].includes(stored)) {
-          return stored as Theme;
+          setLocalTheme(stored as Theme);
+          return;
         }
         const currentAttr = document.documentElement.getAttribute("data-theme");
         if (currentAttr && ["dark", "oled", "light"].includes(currentAttr)) {
-          return currentAttr as Theme;
+          setLocalTheme(currentAttr as Theme);
         }
       }
-      return "dark";
-    });
+    }, []);
 
-    // Synchronize initial DOM theme on client mount if outside context
-    useEffect(() => {
-      if (!themeContext && typeof document !== "undefined") {
-        const stored = (localStorage.getItem("dying-theme") as Theme) || "dark";
-        setLocalTheme(stored);
-        applyThemeToDom(stored);
-      }
-    }, [themeContext]);
-
-    const currentTheme: Theme = value ?? themeContext?.theme ?? localTheme;
+    const effectiveTheme: Theme = value ?? (mounted ? (themeContext?.theme ?? localTheme) : "dark");
 
     const applyThemeToDom = (themeId: Theme) => {
       if (typeof document === "undefined") return;
@@ -106,6 +103,7 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
     return (
       <div
         ref={ref}
+        suppressHydrationWarning
         className={cn("flex flex-col items-center gap-1.5 select-none", className)}
         {...props}
       >
@@ -116,9 +114,9 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
         >
           {THEME_OPTIONS.map((option) => {
             const Icon = option.icon;
-            const isSelected =
-              currentTheme === option.id ||
-              (option.id === "dark" && currentTheme === "oled");
+            const isSelected = mounted
+              ? effectiveTheme === option.id || (option.id === "dark" && effectiveTheme === "oled")
+              : option.id === "dark";
 
             return (
               <button
@@ -127,6 +125,7 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
                 role="radio"
                 aria-checked={isSelected}
                 aria-label={option.label}
+                suppressHydrationWarning
                 onClick={() => handleSelect(option.id)}
                 className={cn(
                   "relative inline-flex items-center justify-center rounded-full transition-all duration-200 cursor-pointer",
@@ -143,9 +142,9 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
           })}
         </div>
 
-        {showLabel && (
+        {showLabel && mounted && (
           <span className="text-xs text-text-secondary font-medium tracking-tight">
-            Selected theme: {currentTheme}
+            Selected theme: {effectiveTheme}
           </span>
         )}
       </div>

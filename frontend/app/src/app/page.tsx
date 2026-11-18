@@ -122,6 +122,11 @@ export default function HomePage() {
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const { user, isAuthenticated } = useAuthStore();
   const router = useRouter();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const [, startTransition] = useTransition();
 
@@ -409,7 +414,7 @@ export default function HomePage() {
               <ThemeSwitcher size="sm" />
             </Tooltip>
 
-            {isAuthenticated ? (
+            {hasMounted && isAuthenticated ? (
               <Tooltip content={`Account: ${user?.name || 'User'}`}>
                 <Avatar
                   fallback={(user?.name || 'U')[0].toUpperCase()}
