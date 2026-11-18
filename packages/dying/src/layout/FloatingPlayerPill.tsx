@@ -48,6 +48,7 @@ export interface FloatingPlayerPillProps
   onToggleRepeat?: () => void;
   onToggleLyrics?: () => void;
   onExpandNowPlaying?: () => void;
+  onArtistClick?: () => void;
 
   trailingSlot?: React.ReactNode;
 }
@@ -93,6 +94,7 @@ export const FloatingPlayerPill = React.forwardRef<
       onToggleRepeat,
       onToggleLyrics,
       onExpandNowPlaying,
+      onArtistClick,
       trailingSlot,
       ...props
     },
@@ -158,7 +160,11 @@ export const FloatingPlayerPill = React.forwardRef<
                     {title}
                   </span>
                   <span
-                    className="truncate text-[11px] sm:text-xs text-text-secondary"
+                    onClick={onArtistClick}
+                    className={cn(
+                      "truncate text-[11px] sm:text-xs text-text-secondary",
+                      onArtistClick && "hover:underline hover:text-white cursor-pointer"
+                    )}
                     title={artist}
                   >
                     {artist}

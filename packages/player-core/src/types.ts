@@ -31,7 +31,9 @@ export interface Track {
   videoId: string;
   title: string;
   artist: string;
+  artistId?: string;
   album?: string;
+  albumId?: string;
   duration: number; // in seconds
   thumbnail: string;
   thumbnails?: Thumbnail[];
@@ -154,5 +156,40 @@ export interface HomeFeedData {
 export interface NextRadioData {
   queue: Track[];
   related: ShelfItemData[];
+}
+
+export interface ArtistDetails {
+  id: string;
+  name: string;
+  subscribers?: string;
+  bannerUrl?: string;
+  avatarUrl?: string;
+  description?: string;
+  topSongs: Track[];
+  albums: ShelfItemData[];
+  singles: ShelfItemData[];
+  relatedArtists: ShelfItemData[];
+}
+
+export interface AlbumDetails {
+  id: string;
+  title: string;
+  artist: string;
+  artistBrowseId?: string;
+  year?: string;
+  coverUrl?: string;
+  trackCount?: number;
+  duration?: string;
+  tracks: Track[];
+}
+
+export interface RemotePlaylistDetails {
+  id: string;
+  title: string;
+  description?: string;
+  author?: string;
+  coverUrl?: string;
+  trackCount?: number;
+  tracks: Track[];
 }
 

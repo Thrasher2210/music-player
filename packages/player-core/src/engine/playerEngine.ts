@@ -1,9 +1,12 @@
 import {
+  AlbumDetails,
+  ArtistDetails,
   ClientVerdict,
   HomeFeedData,
   InnerTubeClientName,
   NextRadioData,
   PlaybackState,
+  RemotePlaylistDetails,
   RepeatMode,
   ShelfItemData,
   Track,
@@ -525,6 +528,34 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
    */
   async getNextRadio(videoId: string): Promise<NextRadioData> {
     return this.innerTube.getNextRadio(videoId);
+  }
+
+  /**
+   * Fetch full artist details including top songs, albums, and singles
+   */
+  async getArtist(browseId: string): Promise<ArtistDetails> {
+    return this.innerTube.getArtist(browseId);
+  }
+
+  /**
+   * Fetch full album details and tracklist
+   */
+  async getAlbum(browseId: string): Promise<AlbumDetails> {
+    return this.innerTube.getAlbum(browseId);
+  }
+
+  /**
+   * Fetch remote playlist details and tracklist
+   */
+  async getPlaylist(playlistId: string): Promise<RemotePlaylistDetails> {
+    return this.innerTube.getPlaylist(playlistId);
+  }
+
+  /**
+   * Raw browse request
+   */
+  async browse(browseId: string, params?: string): Promise<any> {
+    return this.innerTube.browse(browseId, params);
   }
 
   async destroy(): Promise<void> {

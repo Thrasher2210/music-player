@@ -14,10 +14,14 @@ import {
   NetworkAdapter,
   HomeFeedData,
   NextRadioData,
+  ArtistDetails,
+  AlbumDetails,
+  RemotePlaylistDetails,
 } from '@mp/player-core';
 import { type TrackData } from '@mp/dying';
 import { type LyricsResponse } from '@mp/api-contract';
 
+export type { Track };
 export type NetworkAdapterType = 'dev-proxy' | 'web-extension' | 'native-http';
 
 export interface DiagnosticInfo {
@@ -85,6 +89,9 @@ export interface PlayerStoreState {
   getDiagnosticInfo: () => DiagnosticInfo;
   getHomeFeed: (moodParam?: string) => Promise<HomeFeedData>;
   getNextRadio: (videoId: string) => Promise<NextRadioData>;
+  getArtist: (browseId: string) => Promise<ArtistDetails>;
+  getAlbum: (browseId: string) => Promise<AlbumDetails>;
+  getPlaylist: (playlistId: string) => Promise<RemotePlaylistDetails>;
   fetchLyrics: (track: Track) => Promise<LyricsResponse | null>;
 }
 
@@ -94,7 +101,9 @@ export function toTrackData(track: Track): TrackData {
     id: track.id || track.videoId,
     title: track.title,
     artist: track.artist,
+    artistId: track.artistId,
     album: track.album || 'YouTube Music',
+    albumId: track.albumId,
     duration: track.duration,
     thumbnailUrl: track.thumbnail,
   };
@@ -555,6 +564,39 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       }
     }
     return radioData;
+  },
+
+  getArtist: async (browseId: string): Promise<ArtistDetails> => {
+    let engine = get().engine || sharedEngine;
+    if (!engine) {
+      const adapter = createNetworkAdapter(get().networkAdapterType);
+      sharedEngine = new PlayerEngine({ networkAdapter: adapter });
+      set({ engine: sharedEngine });
+      engine = sharedEngine;
+    }
+    return engine.getArtist(browseId);
+  },
+
+  getAlbum: async (browseId: string): Promise<AlbumDetails> => {
+    let engine = get().engine || sharedEngine;
+    if (!engine) {
+      const adapter = createNetworkAdapter(get().networkAdapterType);
+      sharedEngine = new PlayerEngine({ networkAdapter: adapter });
+      set({ engine: sharedEngine });
+      engine = sharedEngine;
+    }
+    return engine.getAlbum(browseId);
+  },
+
+  getPlaylist: async (playlistId: string): Promise<RemotePlaylistDetails> => {
+    let engine = get().engine || sharedEngine;
+    if (!engine) {
+      const adapter = createNetworkAdapter(get().networkAdapterType);
+      sharedEngine = new PlayerEngine({ networkAdapter: adapter });
+      set({ engine: sharedEngine });
+      engine = sharedEngine;
+    }
+    return engine.getPlaylist(playlistId);
   },
 
   getDiagnosticInfo: (): DiagnosticInfo => {

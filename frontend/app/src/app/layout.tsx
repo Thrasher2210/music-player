@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { ThemeProviderClient } from "../components/ThemeProviderClient";
+import { PersistentAppShell } from "../components/layout/PersistentAppShell";
 import "./globals.css";
 import "katex/dist/katex.min.css";
 
@@ -25,7 +27,11 @@ export default function RootLayout({
     <html lang="en" className="dark" data-theme="dark" suppressHydrationWarning>
       <body className="min-h-dvh bg-canvas text-text-primary antialiased">
         <ThemeProviderClient>
-          {children}
+          <Suspense fallback={null}>
+            <PersistentAppShell>
+              {children}
+            </PersistentAppShell>
+          </Suspense>
         </ThemeProviderClient>
       </body>
     </html>

@@ -1,4 +1,6 @@
 import {
+  AlbumDetails,
+  ArtistDetails,
   AudioFormat,
   HomeFeedData,
   InnerTubeClientName,
@@ -7,6 +9,7 @@ import {
   MoodChipData,
   NextRadioData,
   PlayerResponse,
+  RemotePlaylistDetails,
   ShelfItemData,
   Track,
 } from '../types';
@@ -137,22 +140,40 @@ export function parseTrackFromRenderer(item: any): Track | null {
     }
 
     let artist = 'Unknown Artist';
+    let artistId: string | undefined;
+    let album: string | undefined;
+    let albumId: string | undefined;
     let duration = 0;
-    const subRuns = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
-    if (subRuns && subRuns.length > 0) {
-      const runTexts: string[] = subRuns
-        .map((r: any) => r.text)
-        .filter((t: string) => t && t !== ' • ' && t !== '•');
+    const subRuns = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
 
-      if (runTexts.length > 0) {
-        artist = runTexts[0];
+    for (const r of subRuns) {
+      const bId = r.navigationEndpoint?.browseEndpoint?.browseId;
+      if (bId?.startsWith('UC')) {
+        artist = r.text;
+        artistId = bId;
+      } else if (bId?.startsWith('MPREb_')) {
+        album = r.text;
+        albumId = bId;
       }
+    }
 
-      for (const text of runTexts) {
-        if (/^\d+:\d+(:\d+)?$/.test(text.trim())) {
-          duration = parseDuration(text);
-          break;
+    if (artist === 'Unknown Artist' && subRuns.length > 0) {
+      const filtered = subRuns
+        .filter((r: any) => r.text && r.text !== ' • ' && r.text !== '•' && !/^(song|video)$/i.test(r.text.trim()));
+      if (filtered.length > 0) {
+        artist = filtered[0].text;
+        artistId = filtered[0].navigationEndpoint?.browseEndpoint?.browseId;
+        if (filtered.length > 1 && !album) {
+          album = filtered[1].text;
+          albumId = filtered[1].navigationEndpoint?.browseEndpoint?.browseId;
         }
+      }
+    }
+
+    for (const r of subRuns) {
+      if (/^\d+:\d+(:\d+)?$/.test(r.text?.trim())) {
+        duration = parseDuration(r.text);
+        break;
       }
     }
 
@@ -176,6 +197,9 @@ export function parseTrackFromRenderer(item: any): Track | null {
         videoId,
         title,
         artist,
+        artistId,
+        album,
+        albumId,
         duration,
         thumbnail,
         thumbnails: rawThumbs,
@@ -528,6 +552,264 @@ export class InnerTubeClient {
   }
 
   /**
+   * Generic browse request to YouTube Music browse endpoint
+   */
+  async browse(
+    browseId: string,
+    params?: string,
+    clientName: InnerTubeClientName = 'WEB_REMIX'
+  ): Promise<any> {
+    const context = INNERTUBE_CONTEXTS[clientName];
+    const endpoint = `${this.baseUrl}/youtubei/v1/browse?key=${INNERTUBE_PUBLIC_KEY}&prettyPrint=false`;
+
+    const payload: Record<string, any> = {
+      context,
+      browseId,
+    };
+    if (params) {
+      payload.params = params;
+    }
+
+    return this.network.postJson<any>(endpoint, payload, {
+      'Content-Type': 'text/plain',
+      'X-YouTube-Client-Name': context.client.clientName,
+      'X-YouTube-Client-Version': context.client.clientVersion,
+    });
+  }
+
+  /**
+   * Fetch full artist details including top songs, albums, singles, and related artists
+   */
+  async getArtist(browseId: string): Promise<ArtistDetails> {
+    const data = await this.browse(browseId);
+
+    // Extract header metadata
+    const header =
+      data.header?.musicImmersiveHeaderRenderer ||
+      data.header?.musicVisualHeaderRenderer ||
+      data.header?.musicHeaderRenderer;
+
+    const name =
+      header?.title?.runs?.[0]?.text ||
+      header?.title?.simpleText ||
+      'Unknown Artist';
+
+    const subscribers =
+      header?.subscriptionButton?.subscribeButtonRenderer?.subscriberCountText?.runs?.[0]?.text ||
+      header?.subscriberCountText?.runs?.[0]?.text ||
+      header?.subscriberCountText?.simpleText ||
+      undefined;
+
+    const bannerThumbs =
+      header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
+      header?.foregroundThumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
+      [];
+    const bannerUrl =
+      bannerThumbs.length > 0 ? bannerThumbs[bannerThumbs.length - 1].url : undefined;
+    const avatarUrl =
+      bannerThumbs.length > 0 ? bannerThumbs[0].url : undefined;
+
+    const description =
+      header?.description?.runs?.[0]?.text ||
+      header?.description?.simpleText ||
+      undefined;
+
+    const topSongs: Track[] = [];
+    const albums: ShelfItemData[] = [];
+    const singles: ShelfItemData[] = [];
+    const relatedArtists: ShelfItemData[] = [];
+
+    const contents =
+      data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents ||
+      data.contents?.twoColumnBrowseResultsRenderer?.secondaryContents?.sectionListRenderer?.contents ||
+      [];
+
+    for (const section of contents) {
+      const shelf = section.musicShelfRenderer;
+      const carousel = section.musicCarouselShelfRenderer;
+
+      const title = (
+        shelf?.title?.runs?.[0]?.text ||
+        carousel?.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.[0]?.text ||
+        ''
+      ).toLowerCase();
+
+      if (shelf && (/top songs|songs/i.test(title) || topSongs.length === 0)) {
+        const shelfTracks = this.parseSearchResults(shelf);
+        for (const t of shelfTracks) {
+          if (!t.artist || t.artist === 'Unknown Artist') t.artist = name;
+          if (!t.artistId) t.artistId = browseId;
+          topSongs.push(t);
+        }
+      }
+
+      if (carousel) {
+        const items = carousel.contents || [];
+        const parsedItems: ShelfItemData[] = [];
+        for (const item of items) {
+          const sItem = parseShelfItem(item);
+          if (sItem) parsedItems.push(sItem);
+        }
+
+        if (/album/i.test(title)) {
+          albums.push(...parsedItems);
+        } else if (/single|ep/i.test(title)) {
+          singles.push(...parsedItems);
+        } else if (/fans might also like|similar|related/i.test(title)) {
+          relatedArtists.push(...parsedItems);
+        }
+      }
+    }
+
+    // Fallback if topSongs was not found in a named shelf
+    if (topSongs.length === 0) {
+      const allTracks = this.parseSearchResults(data);
+      for (const t of allTracks.slice(0, 10)) {
+        if (!t.artist || t.artist === 'Unknown Artist') t.artist = name;
+        if (!t.artistId) t.artistId = browseId;
+        topSongs.push(t);
+      }
+    }
+
+    return {
+      id: browseId,
+      name,
+      subscribers,
+      bannerUrl,
+      avatarUrl,
+      description,
+      topSongs,
+      albums,
+      singles,
+      relatedArtists,
+    };
+  }
+
+  /**
+   * Fetch full album details and tracklist
+   */
+  async getAlbum(browseId: string): Promise<AlbumDetails> {
+    const data = await this.browse(browseId);
+
+    // Locate header
+    let header: any =
+      data.header?.musicResponsiveHeaderRenderer ||
+      data.header?.musicDetailHeaderRenderer;
+
+    if (!header) {
+      const firstSection =
+        data.contents?.twoColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0];
+      if (firstSection?.musicResponsiveHeaderRenderer) {
+        header = firstSection.musicResponsiveHeaderRenderer;
+      }
+    }
+
+    const title =
+      header?.title?.runs?.[0]?.text ||
+      header?.title?.simpleText ||
+      'Unknown Album';
+
+    const straplineRuns = header?.straplineTextOne?.runs || [];
+    const subtitleRuns = header?.subtitle?.runs || [];
+
+    const artistRun = straplineRuns[0] || subtitleRuns.find((r: any) => r.navigationEndpoint?.browseEndpoint?.browseId?.startsWith('UC'));
+    const artist = artistRun?.text || 'Unknown Artist';
+    const artistBrowseId = artistRun?.navigationEndpoint?.browseEndpoint?.browseId;
+
+    let year: string | undefined;
+    for (const r of [...subtitleRuns, ...straplineRuns]) {
+      const match = r.text?.match(/\b(19|20)\d{2}\b/);
+      if (match) {
+        year = match[0];
+        break;
+      }
+    }
+
+    const coverThumbs =
+      header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+    const coverUrl =
+      coverThumbs.length > 0 ? coverThumbs[coverThumbs.length - 1].url : undefined;
+
+    const tracks = this.parseSearchResults(data);
+    for (const t of tracks) {
+      if (!t.artist || t.artist === 'Unknown Artist') {
+        t.artist = artist;
+      }
+      if (!t.artistId && artistBrowseId) {
+        t.artistId = artistBrowseId;
+      }
+      t.album = title;
+      t.albumId = browseId;
+      if (!t.thumbnail && coverUrl) {
+        t.thumbnail = coverUrl;
+      }
+    }
+
+    return {
+      id: browseId,
+      title,
+      artist,
+      artistBrowseId,
+      year,
+      coverUrl,
+      trackCount: tracks.length,
+      tracks,
+    };
+  }
+
+  /**
+   * Fetch full playlist details and tracklist (YouTube or remote)
+   */
+  async getPlaylist(playlistId: string): Promise<RemotePlaylistDetails> {
+    const cleanId = playlistId.replace(/^VL/, '');
+    const browseId = `VL${cleanId}`;
+    const data = await this.browse(browseId);
+
+    let header: any =
+      data.header?.musicResponsiveHeaderRenderer ||
+      data.header?.musicDetailHeaderRenderer;
+
+    if (!header) {
+      const firstSection =
+        data.contents?.twoColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents?.[0];
+      if (firstSection?.musicResponsiveHeaderRenderer) {
+        header = firstSection.musicResponsiveHeaderRenderer;
+      }
+    }
+
+    const title =
+      header?.title?.runs?.[0]?.text ||
+      header?.title?.simpleText ||
+      'Playlist';
+
+    const author =
+      header?.straplineTextOne?.runs?.[0]?.text ||
+      header?.subtitle?.runs?.[0]?.text ||
+      undefined;
+
+    const description =
+      header?.description?.runs?.[0]?.text ||
+      header?.description?.simpleText ||
+      undefined;
+
+    const coverThumbs =
+      header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+    const coverUrl =
+      coverThumbs.length > 0 ? coverThumbs[coverThumbs.length - 1].url : undefined;
+
+    const tracks = this.parseSearchResults(data);
+    return {
+      id: playlistId,
+      title,
+      description,
+      author,
+      coverUrl,
+      trackCount: tracks.length,
+      tracks,
+    };
+  }
+
+  /**
    * Parse YouTube Music Home feed browse response into chips, quick picks, and shelves
    */
   parseHomeFeed(data: any): HomeFeedData {
@@ -837,26 +1119,43 @@ export class InnerTubeClient {
           }
         }
 
-        // Extract artist & duration from second column
+        // Extract artist, album & duration from columns
         let artist = 'Unknown Artist';
+        let artistId: string | undefined;
+        let album: string | undefined;
+        let albumId: string | undefined;
         let duration = 0;
         const subRuns =
-          flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
-        if (subRuns && subRuns.length > 0) {
-          const runTexts: string[] = subRuns
-            .map((r: any) => r.text)
-            .filter((t: string) => t && t !== ' • ' && t !== '•');
+          flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
 
-          if (runTexts.length > 0) {
-            artist = runTexts[0];
+        for (const r of subRuns) {
+          const bId = r.navigationEndpoint?.browseEndpoint?.browseId;
+          if (bId?.startsWith('UC')) {
+            artist = r.text;
+            artistId = bId;
+          } else if (bId?.startsWith('MPREb_')) {
+            album = r.text;
+            albumId = bId;
           }
+        }
 
-          // Check if any run is a duration e.g. "3:42"
-          for (const text of runTexts) {
-            if (/^\d+:\d+(:\d+)?$/.test(text.trim())) {
-              duration = parseDuration(text);
-              break;
+        if (artist === 'Unknown Artist' && subRuns.length > 0) {
+          const filtered = subRuns
+            .filter((r: any) => r.text && r.text !== ' • ' && r.text !== '•' && !/^(song|video)$/i.test(r.text.trim()));
+          if (filtered.length > 0) {
+            artist = filtered[0].text;
+            artistId = filtered[0].navigationEndpoint?.browseEndpoint?.browseId;
+            if (filtered.length > 1 && !album) {
+              album = filtered[1].text;
+              albumId = filtered[1].navigationEndpoint?.browseEndpoint?.browseId;
             }
+          }
+        }
+
+        for (const r of subRuns) {
+          if (/^\d+:\d+(:\d+)?$/.test(r.text?.trim())) {
+            duration = parseDuration(r.text);
+            break;
           }
         }
 
@@ -884,6 +1183,9 @@ export class InnerTubeClient {
             videoId,
             title,
             artist,
+            artistId,
+            album,
+            albumId,
             duration,
             thumbnail,
             thumbnails: rawThumbs,
