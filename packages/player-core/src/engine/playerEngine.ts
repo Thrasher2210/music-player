@@ -285,9 +285,15 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       if (index < 0 || index >= this.queue.length) return;
       this.currentIndex = index;
     } else {
-      // Fast-path: resume if a current track is loaded and the driver is paused
+      // Fast-path: ONLY if a stream has ALREADY been loaded into the driver and is currently paused
+      const isLoaded =
+        typeof (this.audioDriver as any).hasLoadedStream === 'function'
+          ? (this.audioDriver as any).hasLoadedStream()
+          : this.audioDriver.getState() === 'paused';
+
       if (
         this.getCurrentTrack() &&
+        isLoaded &&
         (this.audioDriver.isPaused() || this.playbackState === 'paused')
       ) {
         this.playbackState = 'playing';
@@ -408,7 +414,9 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   }
 
   async seek(seconds: number): Promise<void> {
-    await this.audioDriver.seek(seconds);
+    this.currentTime = Math.max(0, seconds);
+    await this.audioDriver.seek(this.currentTime);
+    this.emit('timeUpdate', this.currentTime);
   }
 
   setVolume(volume: number): void {

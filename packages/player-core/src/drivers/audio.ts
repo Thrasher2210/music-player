@@ -44,6 +44,7 @@ export interface AudioDriver {
   getDuration(): number;
   isPaused(): boolean;
   getState(): AudioPlaybackState;
+  hasLoadedStream?(): boolean;
   configureSabr?(config: SabrStreamConfig): void;
   on<E extends keyof AudioDriverEvents>(event: E, listener: AudioDriverEvents[E]): () => void;
   off<E extends keyof AudioDriverEvents>(event: E, listener: AudioDriverEvents[E]): void;
@@ -299,6 +300,7 @@ export class ShakaMseAudioDriver implements AudioDriver {
   private listeners: { [E in keyof AudioDriverEvents]?: Set<AudioDriverEvents[E]> } = {};
   private activeBlobUrl: string | null = null;
   private boundElementListeners: Array<{ type: string; listener: EventListener }> = [];
+  private volume = 1;
 
   private sabrAdapter: SabrStreamingAdapter | null = null;
   private sabrPlayerAdapter: ShakaPlayerAdapter | null = null;
@@ -322,6 +324,8 @@ export class ShakaMseAudioDriver implements AudioDriver {
       this.state = 'idle';
       return;
     }
+
+    this.mediaElement.volume = this.volume;
 
     const shaka = await getShaka();
 
@@ -565,12 +569,14 @@ export class ShakaMseAudioDriver implements AudioDriver {
   }
 
   setVolume(volume: number): void {
-    if (!this.mediaElement) return;
-    this.mediaElement.volume = Math.max(0, Math.min(1, volume));
+    this.volume = Math.max(0, Math.min(1, volume));
+    if (this.mediaElement) {
+      this.mediaElement.volume = this.volume;
+    }
   }
 
   getVolume(): number {
-    return this.mediaElement ? this.mediaElement.volume : 1;
+    return this.volume;
   }
 
   getCurrentTime(): number {
@@ -589,6 +595,15 @@ export class ShakaMseAudioDriver implements AudioDriver {
 
   getState(): AudioPlaybackState {
     return this.state;
+  }
+
+  hasLoadedStream(): boolean {
+    return Boolean(
+      this.mediaElement &&
+      this.player &&
+      this.state !== 'idle' &&
+      this.state !== 'error'
+    );
   }
 
   on<E extends keyof AudioDriverEvents>(event: E, listener: AudioDriverEvents[E]): () => void {

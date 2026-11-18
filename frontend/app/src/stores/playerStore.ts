@@ -374,6 +374,8 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
           await currentEng.play();
         } else if (queue.length > 0) {
           await currentEng.play(0);
+        } else if (get().currentTrack) {
+          await currentEng.playTrack(get().currentTrack!);
         }
       } catch (err: any) {
         set({
@@ -385,7 +387,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   },
 
   seek: async (seconds: number) => {
-    const engine = get().engine;
+    const engine = get().engine || sharedEngine;
     if (engine) {
       await engine.seek(seconds);
       set({ currentTime: seconds });
@@ -393,7 +395,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   },
 
   next: async () => {
-    const engine = get().engine;
+    const engine = get().engine || sharedEngine;
     if (engine) {
       await engine.next();
       const current = engine.getCurrentTrack();
@@ -410,7 +412,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   },
 
   previous: async () => {
-    const engine = get().engine;
+    const engine = get().engine || sharedEngine;
     if (engine) {
       await engine.previous();
       const current = engine.getCurrentTrack();
@@ -427,7 +429,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   },
 
   setVolume: (volume: number) => {
-    const engine = get().engine;
+    const engine = get().engine || sharedEngine;
     const clamped = Math.max(0, Math.min(1, volume));
     if (engine) {
       engine.setVolume(clamped);
@@ -436,7 +438,8 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   },
 
   toggleMute: () => {
-    const { isMuted, volume, engine } = get();
+    const { isMuted, volume } = get();
+    const engine = get().engine || sharedEngine;
     if (isMuted) {
       const restored = volume === 0 ? 0.75 : volume;
       if (engine) engine.setVolume(restored);
