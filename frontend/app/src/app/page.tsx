@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useTransition, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   Home as HomeIcon,
@@ -14,6 +15,7 @@ import {
   Sparkles,
   Play,
   X,
+  LogIn,
 } from 'lucide-react';
 import {
   AppShell,
@@ -121,6 +123,7 @@ export default function HomePage() {
   const [relatedItems, setRelatedItems] = useState<RelatedItem[]>([]);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const { user, isAuthenticated } = useAuthStore();
+  const router = useRouter();
 
   const [, startTransition] = useTransition();
 
@@ -441,15 +444,27 @@ export default function HomePage() {
               />
             </Tooltip>
 
-            <Tooltip content={isAuthenticated ? `Account: ${user?.name}` : 'Account Settings'}>
-              <Avatar
-                fallback={(user?.name || 'G')[0].toUpperCase()}
+            {isAuthenticated ? (
+              <Tooltip content={`Account: ${user?.name || 'User'}`}>
+                <Avatar
+                  fallback={(user?.name || 'U')[0].toUpperCase()}
+                  size="sm"
+                  aria-label={`User Account: ${user?.name || 'User'}`}
+                  onClick={() => setIsAccountModalOpen(true)}
+                  className="bg-emerald-600 text-white font-bold cursor-pointer hover:ring-2 hover:ring-emerald-400 transition-all select-none"
+                />
+              </Tooltip>
+            ) : (
+              <Button
+                variant="primary"
                 size="sm"
-                aria-label={`User Account: ${user?.name || 'Guest'}`}
-                onClick={() => setIsAccountModalOpen(true)}
-                className="bg-emerald-600 text-white font-bold cursor-pointer hover:ring-2 hover:ring-emerald-400 transition-all select-none"
-              />
-            </Tooltip>
+                leftIcon={<LogIn size={14} />}
+                onClick={() => router.push('/login')}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-950/40"
+              >
+                Sign In
+              </Button>
+            )}
           </Flex>
         </Flex>
       }

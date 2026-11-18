@@ -15,18 +15,14 @@ interface AuthState {
   setUser: (user: UserProfile | null) => void;
   loginAsGuest: (name?: string) => void;
   login: (name: string, email: string) => void;
+  loginWithProvider: (provider: 'google' | 'github' | 'apple' | 'discord') => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      user: {
-        id: 'guest-1',
-        name: 'Guest User',
-        email: 'guest@ganegan.local',
-        isGuest: true,
-      },
+      user: null,
       isAuthenticated: false,
       setUser: (user) => set({ user, isAuthenticated: Boolean(user && !user.isGuest) }),
       loginAsGuest: (name = 'Guest User') =>
@@ -39,9 +35,22 @@ export const useAuthStore = create<AuthState>()(
           user: { id: `user-${Date.now()}`, name, email, isGuest: false },
           isAuthenticated: true,
         }),
+      loginWithProvider: (provider: 'google' | 'github' | 'apple' | 'discord') => {
+        const providerNames: Record<string, { name: string; email: string }> = {
+          google: { name: 'Google Explorer', email: 'user@gmail.com' },
+          github: { name: 'GitHub Developer', email: 'dev@github.com' },
+          apple: { name: 'Apple Listener', email: 'user@icloud.com' },
+          discord: { name: 'Discord Member', email: 'member@discord.gg' },
+        };
+        const info = providerNames[provider] || { name: 'GaneGan User', email: 'user@ganegan.app' };
+        set({
+          user: { id: `${provider}-${Date.now()}`, name: info.name, email: info.email, isGuest: false },
+          isAuthenticated: true,
+        });
+      },
       logout: () =>
         set({
-          user: { id: 'guest-1', name: 'Guest User', email: 'guest@ganegan.local', isGuest: true },
+          user: null,
           isAuthenticated: false,
         }),
     }),
