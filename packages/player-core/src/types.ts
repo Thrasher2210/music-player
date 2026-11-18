@@ -58,6 +58,18 @@ export interface AudioFormat {
   audioSampleRate?: string;
   audioChannels?: number;
   loudnessDb?: number;
+  is_sabr?: boolean;
+  isSabr?: boolean;
+  xtags?: string;
+  lastModified?: string;
+  last_modified_ms?: string;
+  audioQuality?: string;
+  audio_quality?: string;
+  quality?: string;
+  qualityLabel?: string;
+  quality_label?: string;
+  targetDurationSec?: number;
+  target_duration_sec?: number;
 }
 
 export interface PlayabilityStatus {
@@ -72,6 +84,8 @@ export interface StreamingData {
   adaptiveFormats?: AudioFormat[];
   dashManifestUrl?: string;
   hlsManifestUrl?: string;
+  serverAbrStreamingUrl?: string;
+  videoPlaybackUstreamerConfig?: string;
 }
 
 export interface PlayerResponse {

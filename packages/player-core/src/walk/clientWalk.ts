@@ -7,10 +7,10 @@ import {
 import { InnerTubeClient } from '../innertube/client';
 
 export const CLIENT_WALK_PRIORITY: readonly InnerTubeClientName[] = [
-  'VISIONOS',
   'WEB_REMIX',
-  'WEB',
+  'VISIONOS',
   'IOS',
+  'WEB',
   'MWEB',
 ] as const;
 
@@ -142,6 +142,9 @@ export interface ClientWalkResult {
   playerResponse: PlayerResponse;
   audioFormats: AudioFormat[];
   verdicts: ClientVerdict[];
+  is_sabr?: boolean;
+  isSabr?: boolean;
+  serverAbrStreamingUrl?: string;
 }
 
 // 10-minute in-memory cache for resolved stream URLs
@@ -183,14 +186,35 @@ async function attemptClient(
     ...(response.streamingData?.adaptiveFormats || []),
   ];
 
-  const audioFormats = allFormats.filter((fmt) => {
-    const isAudioMime = fmt.mimeType && fmt.mimeType.toLowerCase().startsWith('audio/');
-    const isAudioItag = [251, 250, 249, 140, 139, 171].includes(fmt.itag);
-    return (isAudioMime || isAudioItag) && Boolean(fmt.url);
-  });
+  // Prioritize WEB_REMIX with SABR streaming, and other clients with direct URLs (e.g. VISIONOS)
+  const isSabrClient =
+    client === 'WEB_REMIX' ||
+    Boolean(response.streamingData?.serverAbrStreamingUrl);
+
+  const audioFormats = allFormats
+    .filter((fmt) => {
+      const isAudioMime = fmt.mimeType && fmt.mimeType.toLowerCase().startsWith('audio/');
+      const isAudioItag = [251, 250, 249, 140, 139, 171].includes(fmt.itag);
+      if (!isAudioMime && !isAudioItag) return false;
+      // SABR formats do not require direct URL because they use the SABR protocol
+      if (isSabrClient) return true;
+      return Boolean(fmt.url);
+    })
+    .map((fmt) => {
+      if (isSabrClient) {
+        return {
+          ...fmt,
+          is_sabr: true,
+          isSabr: true,
+        };
+      }
+      return fmt;
+    });
 
   if (audioFormats.length === 0) {
-    const reason = 'No direct playable audio streams with direct URLs';
+    const reason = isSabrClient
+      ? 'No audio formats available in SABR streaming data'
+      : 'No direct playable audio streams with direct URLs';
     cache.bench(client, reason);
     throw new Error(reason);
   }
@@ -200,6 +224,9 @@ async function attemptClient(
     playerResponse: response,
     audioFormats,
     verdicts: [{ client, playable: true }],
+    is_sabr: isSabrClient,
+    isSabr: isSabrClient,
+    serverAbrStreamingUrl: response.streamingData?.serverAbrStreamingUrl,
   };
 }
 
@@ -218,7 +245,7 @@ export function prefetchStream(
 
 /**
  * Execute client walk with 10-minute stream caching and priority walking.
- * Resolves valid direct audio streams in sub-second latency.
+ * Prioritizes WEB_REMIX with SABR and VISIONOS with direct Opus/AAC.
  */
 export async function executeClientWalk(
   videoId: string,
@@ -244,7 +271,7 @@ export async function executeClientWalk(
     candidates = [...CLIENT_WALK_PRIORITY];
   }
 
-  // 2. Iterate candidates in priority order (IOS -> VISIONOS -> etc.)
+  // 2. Iterate candidates in priority order (WEB_REMIX -> VISIONOS -> IOS -> WEB -> MWEB)
   const verdicts: ClientVerdict[] = [];
 
   for (const client of candidates) {
@@ -268,4 +295,3 @@ export async function executeClientWalk(
     .join('; ');
   throw new Error(`[ClientWalk] All clients refused or failed for videoId "${videoId}": ${errorSummary}`);
 }
-

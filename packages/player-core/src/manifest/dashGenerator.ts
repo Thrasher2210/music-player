@@ -1,9 +1,12 @@
 import { AudioFormat } from '../types';
+import { buildSabrFormat, createFormatKey } from 'googlevideo/utils';
 
 export interface DashGeneratorOptions {
   durationMs?: number;
   minBufferTimeSeconds?: number;
   urlTransformer?: (url: string) => string;
+  is_sabr?: boolean;
+  isSabr?: boolean;
 }
 
 /**
@@ -59,15 +62,29 @@ function parseMimeAndCodecs(rawMimeType: string, itag: number): { mime: string; 
 }
 
 /**
- * Generate synthetic in-memory DASH MPD XML string from googlevideo audio adaptiveFormats
+ * Generate synthetic in-memory DASH MPD XML string from googlevideo audio adaptiveFormats.
+ * Supports both SABR formats (with is_sabr: true DASH manifest) and direct formats.
  * Prioritizes Opus (itag 251) and AAC (itag 140).
  */
 export function generateDashMpd(
   formats: AudioFormat[],
   options: DashGeneratorOptions = {}
 ): string {
-  // Filter for valid audio formats with URLs
-  const candidateFormats = formats.filter((f) => Boolean(f.url));
+  const isSabrMode = Boolean(
+    options.is_sabr ||
+    options.isSabr ||
+    formats.some((f) => f.is_sabr || f.isSabr)
+  );
+
+  // Filter for valid audio formats:
+  // For SABR formats, url is not required (routed to sabr:// protocol)
+  // For direct formats, valid url must be present
+  const candidateFormats = formats.filter((f) => {
+    const isAudio = [251, 140, 250, 249, 139, 171].includes(f.itag) || f.mimeType?.startsWith('audio/');
+    if (!isAudio) return false;
+    if (isSabrMode || f.is_sabr || f.isSabr) return true;
+    return Boolean(f.url);
+  });
 
   if (candidateFormats.length === 0) {
     throw new Error('[DashGenerator] Cannot generate DASH MPD: No audio formats with valid URLs provided');
@@ -112,16 +129,31 @@ export function generateDashMpd(
       const bandwidth = fmt.bitrate || fmt.averageBitrate || (fmt.itag === 251 ? 160000 : 128000);
       const sampleRate = fmt.audioSampleRate || (fmt.itag === 251 ? '48000' : '44100');
       const channels = fmt.audioChannels || 2;
-      const resolvedUrl = options.urlTransformer ? options.urlTransformer(fmt.url!) : fmt.url!;
+
+      const isFormatSabr = Boolean(isSabrMode || fmt.is_sabr || fmt.isSabr);
+      let rawUrl: string;
+      if (isFormatSabr) {
+        const sabrFmt = buildSabrFormat(fmt as any);
+        const formatKey = createFormatKey(sabrFmt);
+        rawUrl = `sabr://audio?key=${encodeURIComponent(formatKey)}`;
+      } else {
+        rawUrl = fmt.url || '';
+      }
+
+      const resolvedUrl = (!isFormatSabr && options.urlTransformer)
+        ? options.urlTransformer(rawUrl)
+        : rawUrl;
       const escapedUrl = escapeXml(resolvedUrl);
 
-      let segmentXml = '';
-      if (fmt.initRange && fmt.indexRange) {
-        segmentXml = `
-        <SegmentBase indexRange="${fmt.indexRange.start}-${fmt.indexRange.end}">
-          <Initialization range="${fmt.initRange.start}-${fmt.initRange.end}"/>
+      const initStart = fmt.initRange?.start || '0';
+      const initEnd = fmt.initRange?.end || (fmt.itag === 251 ? '740' : '632');
+      const indexStart = fmt.indexRange?.start || (parseInt(initEnd, 10) + 1).toString();
+      const indexEnd = fmt.indexRange?.end || (parseInt(indexStart, 10) + 283).toString();
+
+      const segmentXml = `
+        <SegmentBase indexRange="${indexStart}-${indexEnd}">
+          <Initialization range="${initStart}-${initEnd}"/>
         </SegmentBase>`;
-      }
 
       return `      <Representation id="${fmt.itag}"
                       mimeType="${mime}"
@@ -134,10 +166,12 @@ export function generateDashMpd(
     })
     .join('\n');
 
+  const sabrAttr = isSabrMode ? ' is_sabr="true"' : '';
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <MPD xmlns="urn:mpeg:dash:schema:mpd:2011"
      profiles="urn:mpeg:dash:profile:isoff-on-demand:2011"
-     type="static"
+     type="static"${sabrAttr}
      minBufferTime="${minBufferTime}"
      mediaPresentationDuration="${isoDuration}">
   <Period id="0" start="PT0S">

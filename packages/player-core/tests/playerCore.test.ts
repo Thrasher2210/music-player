@@ -15,6 +15,9 @@ import {
   PlayerEngine,
   AudioFormat,
   Track,
+  ShakaMseAudioDriver,
+  buildSabrFormat,
+  executeClientWalk,
 } from '../src/index';
 
 describe('@mp/player-core unit tests', () => {
@@ -105,11 +108,11 @@ describe('@mp/player-core unit tests', () => {
     cache.clear();
 
     assert.equal(cache.isBenched('IOS'), false);
-    assert.deepEqual(cache.getActiveClients(), ['IOS', 'VISIONOS', 'WEB_REMIX', 'WEB', 'MWEB']);
+    assert.deepEqual(cache.getActiveClients(), ['WEB_REMIX', 'VISIONOS', 'IOS', 'WEB', 'MWEB']);
 
     cache.bench('IOS', 'Playback restricted');
     assert.equal(cache.isBenched('IOS'), true);
-    assert.deepEqual(cache.getActiveClients(), ['VISIONOS', 'WEB_REMIX', 'WEB', 'MWEB']);
+    assert.deepEqual(cache.getActiveClients(), ['WEB_REMIX', 'VISIONOS', 'WEB', 'MWEB']);
 
     cache.unbench('IOS');
     assert.equal(cache.isBenched('IOS'), false);
@@ -650,5 +653,142 @@ describe('@mp/player-core unit tests', () => {
     assert.equal(capturedBody.videoId, 'test_video_abc');
     assert.equal(capturedBody.context.client.clientName, 'WEB_REMIX');
     assert.equal(capturedHeaders['X-YouTube-Client-Name'], 'WEB_REMIX');
+  });
+
+  it('generates SABR DASH MPD XML with is_sabr: true and sabr: protocol URIs', () => {
+    const formats: AudioFormat[] = [
+      {
+        itag: 251,
+        mimeType: 'audio/webm; codecs="opus"',
+        bitrate: 160000,
+        audioSampleRate: '48000',
+        audioChannels: 2,
+        is_sabr: true,
+        initRange: { start: '0', end: '740' },
+        indexRange: { start: '741', end: '1024' },
+      },
+      {
+        itag: 140,
+        mimeType: 'audio/mp4; codecs="mp4a.40.2"',
+        bitrate: 128000,
+        audioSampleRate: '44100',
+        audioChannels: 2,
+        is_sabr: true,
+        initRange: { start: '0', end: '632' },
+        indexRange: { start: '633', end: '896' },
+      },
+    ];
+
+    const xml = generateDashMpd(formats, { is_sabr: true, durationMs: 210000 });
+    assert.ok(xml.includes('is_sabr="true"'));
+    assert.ok(xml.includes('<BaseURL>sabr://audio?key='));
+    assert.ok(xml.includes('Representation id="251"'));
+    assert.ok(xml.includes('codecs="opus"'));
+    assert.ok(xml.includes('Representation id="140"'));
+    assert.ok(xml.includes('codecs="mp4a.40.2"'));
+    assert.ok(xml.includes('<SegmentBase indexRange="741-1024">'));
+  });
+
+  it('prioritizes WEB_REMIX with SABR formats in executeClientWalk', async () => {
+    const mockAdapter = {
+      name: 'mock',
+      fetch: async () => new Response('{}'),
+      postJson: async <T>(_url: string, body: any): Promise<T> => {
+        const clientName = body.context?.client?.clientName;
+        if (clientName === 'WEB_REMIX') {
+          return {
+            playabilityStatus: { status: 'OK' },
+            streamingData: {
+              serverAbrStreamingUrl: 'https://googlevideo.com/videoplayback?serverabr=1',
+              adaptiveFormats: [
+                {
+                  itag: 251,
+                  mimeType: 'audio/webm; codecs="opus"',
+                  bitrate: 160000,
+                  audioSampleRate: '48000',
+                  approxDurationMs: '240000',
+                },
+                {
+                  itag: 140,
+                  mimeType: 'audio/mp4; codecs="mp4a.40.2"',
+                  bitrate: 128000,
+                  audioSampleRate: '44100',
+                  approxDurationMs: '240000',
+                },
+              ],
+            },
+          } as T;
+        }
+        return { playabilityStatus: { status: 'ERROR' } } as T;
+      },
+    };
+
+    const client = new InnerTubeClient({ networkAdapter: mockAdapter });
+    const result = await executeClientWalk('sample_vid', client, new VerdictCache());
+
+    assert.equal(result.client, 'WEB_REMIX');
+    assert.equal(result.is_sabr, true);
+    assert.equal(result.audioFormats.length, 2);
+    assert.equal(result.audioFormats[0].is_sabr, true);
+    assert.ok(result.serverAbrStreamingUrl?.includes('serverabr=1'));
+  });
+
+  it('supports direct formats with VISIONOS when WEB_REMIX is unavailable', async () => {
+    const cache = new VerdictCache();
+    cache.bench('WEB_REMIX', 'Benched for test');
+
+    const mockAdapter = {
+      name: 'mock',
+      fetch: async () => new Response('{}'),
+      postJson: async <T>(_url: string, body: any): Promise<T> => {
+        const clientName = body.context?.client?.clientName;
+        if (clientName === 'VISIONOS') {
+          return {
+            playabilityStatus: { status: 'OK' },
+            streamingData: {
+              adaptiveFormats: [
+                {
+                  itag: 251,
+                  mimeType: 'audio/webm; codecs="opus"',
+                  bitrate: 160000,
+                  url: 'https://googlevideo.com/videoplayback?itag=251&sparams=visionos',
+                  initRange: { start: '0', end: '740' },
+                  indexRange: { start: '741', end: '1024' },
+                },
+              ],
+            },
+          } as T;
+        }
+        return { playabilityStatus: { status: 'ERROR' } } as T;
+      },
+    };
+
+    const client = new InnerTubeClient({ networkAdapter: mockAdapter });
+    const result = await executeClientWalk('sample_visionos_vid', client, cache);
+
+    assert.equal(result.client, 'VISIONOS');
+    assert.equal(result.is_sabr, false);
+    assert.equal(result.audioFormats.length, 1);
+    assert.ok(result.audioFormats[0].url?.includes('visionos'));
+  });
+
+  it('buildSabrFormat builds valid SABR formats and ShakaMseAudioDriver initializes cleanly', async () => {
+    const sabrFmt = buildSabrFormat({
+      itag: 251,
+      mimeType: 'audio/webm; codecs="opus"',
+      bitrate: 160000,
+      audioSampleRate: '48000',
+      audioChannels: 2,
+    } as any);
+
+    assert.equal(sabrFmt.itag, 251);
+    assert.equal(sabrFmt.codecCode, 'o');
+
+    const driver = new ShakaMseAudioDriver();
+    assert.equal(driver.name, 'shaka-mse');
+    assert.equal(driver.getState(), 'idle');
+    await driver.initialize();
+    assert.equal(driver.getState(), 'idle');
+    await driver.destroy();
   });
 });

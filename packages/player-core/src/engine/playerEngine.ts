@@ -326,8 +326,28 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       this.activeClient = walkResult.client;
       this.emit('walkVerdict', walkResult.verdicts, walkResult.client);
 
+      const isSabr = Boolean(walkResult.is_sabr || walkResult.isSabr || walkResult.client === 'WEB_REMIX');
+
+      // Configure SABR on audioDriver if active
+      if (typeof (this.audioDriver as any).configureSabr === 'function' && isSabr) {
+        const ustreamerConfig =
+          (walkResult.playerResponse as any)?.playerConfig?.mediaCommonConfig?.mediaUstreamerRequestConfig?.videoPlaybackUstreamerConfig ||
+          (walkResult.playerResponse as any)?.videoPlaybackUstreamerConfig ||
+          'CAE=';
+
+        (this.audioDriver as any).configureSabr({
+          serverAbrStreamingUrl:
+            walkResult.serverAbrStreamingUrl ||
+            walkResult.playerResponse.streamingData?.serverAbrStreamingUrl,
+          ustreamerConfig,
+          formats: walkResult.audioFormats,
+        });
+      }
+
       // 2. Generate synthetic DASH MPD XML manifest
       const mpdXml = generateDashMpd(walkResult.audioFormats, {
+        is_sabr: isSabr,
+        isSabr: isSabr,
         durationMs: currentTrack.duration ? currentTrack.duration * 1000 : undefined,
         urlTransformer: (url) =>
           typeof this.networkAdapter.resolveStreamUrl === 'function'

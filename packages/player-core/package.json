@@ -14,6 +14,8 @@
     "test": "tsx --test tests/playerCore.test.ts"
   },
   "dependencies": {
+    "bgutils-js": "^4.0.3",
+    "googlevideo": "^5.0.1",
     "shaka-player": "^5.3.5",
     "youtubei.js": "^18.3.0"
   },
