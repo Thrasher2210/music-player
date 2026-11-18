@@ -55,6 +55,8 @@ export {
   type IconButtonProps,
   ButtonGroup,
   type ButtonGroupProps,
+  ThemeSwitcher,
+  type ThemeSwitcherProps,
   Spinner,
   type SpinnerProps,
   Badge,

@@ -10,8 +10,6 @@ import {
   Plus,
   Heart,
   Cast,
-  Sun,
-  Moon,
   Sparkles,
   Play,
   X,
@@ -45,6 +43,7 @@ import {
   Separator,
   Button,
   IconButton,
+  ThemeSwitcher,
   Badge,
   Tooltip,
   Input,
@@ -108,7 +107,6 @@ export default function HomePage() {
   const [searchResults, setSearchResults] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [activeNav, setActiveNav] = useState<'home' | 'explore' | 'library' | 'liked'>('home');
-  const [currentTheme, setCurrentTheme] = useState<'oled' | 'dark' | 'light'>('oled');
 
   // Live YouTube Music Feed State
   const [moodChips, setMoodChips] = useState<MoodChipData[]>([]);
@@ -156,16 +154,6 @@ export default function HomePage() {
       isMounted = false;
     };
   }, [initialize, getHomeFeed]);
-
-  const switchTheme = (theme: 'oled' | 'dark' | 'light') => {
-    setCurrentTheme(theme);
-    document.documentElement.setAttribute('data-theme', theme);
-    if (theme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      document.documentElement.classList.add('dark');
-    }
-  };
 
   // Play track immediately and concurrently seed infinite Up Next queue with live radio
   const handlePlayTrackWithRadio = useCallback(
@@ -419,29 +407,8 @@ export default function HomePage() {
               />
             </Tooltip>
 
-            <Tooltip content={`Switch Theme (Current: ${currentTheme.toUpperCase()})`}>
-              <IconButton
-                aria-label="Switch theme"
-                variant="ghost"
-                size="md"
-                shape="circle"
-                icon={
-                  currentTheme === 'oled' ? (
-                    <Sun size={18} className="text-amber-400" />
-                  ) : (
-                    <Moon size={18} className="text-cyan-400" />
-                  )
-                }
-                onClick={() =>
-                  switchTheme(
-                    currentTheme === 'oled'
-                      ? 'dark'
-                      : currentTheme === 'dark'
-                      ? 'light'
-                      : 'oled'
-                  )
-                }
-              />
+            <Tooltip content="Appearance (System / Light / Dark)">
+              <ThemeSwitcher size="sm" />
             </Tooltip>
 
             {isAuthenticated ? (

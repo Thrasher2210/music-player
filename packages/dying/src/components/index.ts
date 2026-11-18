@@ -1,6 +1,7 @@
 // Actions
 export { Button, type ButtonProps } from "./Button";
 export { IconButton, type IconButtonProps, ButtonGroup, type ButtonGroupProps } from "./IconButton";
+export { ThemeSwitcher, type ThemeSwitcherProps } from "./ThemeSwitcher";
 
 // Feedback
 export { Spinner, type SpinnerProps } from "./Spinner";
