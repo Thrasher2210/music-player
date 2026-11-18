@@ -226,18 +226,22 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     });
 
     engine.on('trackChange', (track, index) => {
+      const prev = get().currentTrack;
+      const isSameVideo = Boolean(prev?.videoId && track?.videoId && prev.videoId === track.videoId);
       const cached = track?.videoId ? lyricsCache.get(track.videoId) : null;
       set({
-        currentTrack: track,
+        currentTrack: track ? { ...track } : null,
         currentIndex: index,
-        currentTime: 0,
-        bufferedAheadSeconds: 0,
-        bufferedPercent: 0,
+        ...(isSameVideo ? {} : {
+          currentTime: 0,
+          bufferedAheadSeconds: 0,
+          bufferedPercent: 0,
+        }),
         lyrics: cached || null,
         isLyricsLoading: track ? !cached : false,
         lyricsError: null,
       });
-      if (track) {
+      if (track && (!isSameVideo || !get().lyrics)) {
         debouncedFetchLyrics(track, get().fetchLyrics);
       }
     });
@@ -558,6 +562,29 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     if (!engine) return { queue: [], related: [] };
     const radioData = await engine.getNextRadio(videoId, playlistId);
     if (radioData.queue.length > 0) {
+      // Enrich currentTrack in store if it has placeholder metadata
+      const currentTrack = get().currentTrack;
+      const firstRadioTrack = radioData.queue[0];
+      if (
+        currentTrack &&
+        firstRadioTrack &&
+        (currentTrack.videoId === firstRadioTrack.videoId || currentTrack.title === 'Loading...')
+      ) {
+        const enriched: Track = {
+          ...currentTrack,
+          title: (currentTrack.title === 'Loading...' ? firstRadioTrack.title : currentTrack.title) || firstRadioTrack.title,
+          artist: (currentTrack.artist === 'YouTube Music' ? firstRadioTrack.artist : currentTrack.artist) || firstRadioTrack.artist,
+          thumbnail: (!currentTrack.thumbnail ? firstRadioTrack.thumbnail : currentTrack.thumbnail) || firstRadioTrack.thumbnail,
+          duration: firstRadioTrack.duration || currentTrack.duration,
+        };
+        const q = engine.getQueue();
+        if (q.length > 0 && (q[0].videoId === enriched.videoId || q[0].title === 'Loading...')) {
+          q[0] = enriched;
+          (engine as any).queue = q;
+        }
+        set({ currentTrack: enriched, queue: [...engine.getQueue()] });
+      }
+
       // Append new radio songs to the engine queue if not already present
       const currentQueue = get().queue;
       const existingIds = new Set(currentQueue.map((t) => t.id || t.videoId));

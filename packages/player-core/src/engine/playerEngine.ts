@@ -341,6 +341,38 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       this.activeClient = walkResult.client;
       this.emit('walkVerdict', walkResult.verdicts, walkResult.client);
 
+      // Enrich currentTrack metadata if placeholder or missing details
+      const details = (walkResult.playerResponse as any)?.videoDetails;
+      if (details) {
+        let changed = false;
+        if (!currentTrack.title || currentTrack.title === 'Loading...') {
+          currentTrack.title = details.title || currentTrack.title;
+          changed = true;
+        }
+        if (!currentTrack.artist || currentTrack.artist === 'YouTube Music') {
+          currentTrack.artist = details.author || currentTrack.artist;
+          changed = true;
+        }
+        if (details.lengthSeconds) {
+          const sec = parseInt(details.lengthSeconds, 10);
+          if (!isNaN(sec) && sec > 0 && (!currentTrack.duration || currentTrack.duration === 180)) {
+            currentTrack.duration = sec;
+            this.duration = sec;
+            this.emit('durationChange', sec);
+            changed = true;
+          }
+        }
+        const thumbs = details.thumbnail?.thumbnails;
+        if (thumbs && thumbs.length > 0 && (!currentTrack.thumbnail || currentTrack.thumbnail === '')) {
+          currentTrack.thumbnail = thumbs[thumbs.length - 1].url;
+          currentTrack.thumbnails = thumbs;
+          changed = true;
+        }
+        if (changed) {
+          this.emit('trackChange', currentTrack, this.currentIndex);
+        }
+      }
+
       const serverAbrStreamingUrl =
         walkResult.serverAbrStreamingUrl ||
         walkResult.playerResponse.streamingData?.serverAbrStreamingUrl ||
