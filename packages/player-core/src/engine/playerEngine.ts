@@ -10,7 +10,7 @@ import {
 } from '../types';
 import { NetworkAdapter, NativeHttpAdapter } from '../adapters/network';
 import { InnerTubeClient } from '../innertube/client';
-import { executeClientWalk, prefetchStream, VerdictCache } from '../walk/clientWalk';
+import { executeClientWalk, invalidateStreamCache, prefetchStream, VerdictCache } from '../walk/clientWalk';
 import { createDashBlobUrl, generateDashMpd } from '../manifest/dashGenerator';
 import { AudioDriver, ShakaMseAudioDriver } from '../drivers/audio';
 
@@ -128,12 +128,22 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     });
 
     this.audioDriver.on('error', (err) => {
+      const currentTrack = this.getCurrentTrack();
+      if (currentTrack?.videoId) {
+        invalidateStreamCache(currentTrack.videoId);
+      }
       // If error occurred mid-stream, bench active client immediately so walk falls back to the next client
       if (this.activeClient) {
         this.verdictCache.bench(this.activeClient, `mid-stream chunk stall: ${err.message}`);
       }
       this.playbackState = 'error';
       this.emit('error', err);
+
+      // Attempt immediate seamless auto-recovery at the current timestamp so playback never halts
+      if (currentTrack?.videoId) {
+        const resumeTime = Math.max(0, this.currentTime);
+        this.play(undefined, resumeTime).catch(() => {});
+      }
     });
   }
 
@@ -263,7 +273,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     }
   }
 
-  async play(index?: number): Promise<void> {
+  async play(index?: number, startTime?: number): Promise<void> {
     if (typeof index === 'number') {
       if (index < 0 || index >= this.queue.length) return;
       this.currentIndex = index;
@@ -283,6 +293,18 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
 
     const currentTrack = this.getCurrentTrack();
     if (!currentTrack) return;
+
+    // If recovering from an error or startTime is provided, resume at that timestamp instead of 0
+    const startSeek =
+      typeof startTime === 'number'
+        ? startTime
+        : this.playbackState === 'error'
+          ? Math.max(0, this.currentTime)
+          : 0;
+
+    if (this.playbackState === 'error') {
+      invalidateStreamCache(currentTrack.videoId);
+    }
 
     this.emit('trackChange', currentTrack, this.currentIndex);
 
@@ -317,7 +339,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       const manifestUrl = createDashBlobUrl(mpdXml);
 
       // 4. Load stream in audio driver
-      await this.audioDriver.load(manifestUrl);
+      await this.audioDriver.load(manifestUrl, startSeek);
 
       if (currentRequestId !== this.playRequestId) return;
 

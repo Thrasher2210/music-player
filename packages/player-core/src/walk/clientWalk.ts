@@ -152,6 +152,17 @@ interface CachedStreamEntry {
 }
 const streamResultCache = new Map<string, CachedStreamEntry>();
 
+/**
+ * Invalidate in-memory stream cache for a specific videoId or all tracks
+ */
+export function invalidateStreamCache(videoId?: string): void {
+  if (videoId) {
+    streamResultCache.delete(videoId);
+  } else {
+    streamResultCache.clear();
+  }
+}
+
 async function attemptClient(
   client: InnerTubeClientName,
   videoId: string,
@@ -217,8 +228,12 @@ export async function executeClientWalk(
   // 1. Check in-memory stream cache for instant 0ms playback
   const now = Date.now();
   const cached = streamResultCache.get(videoId);
-  if (cached && cached.expiresAt > now) {
-    return cached.result;
+  if (cached) {
+    if (cached.expiresAt > now && !cache.isBenched(cached.result.client)) {
+      return cached.result;
+    }
+    // Expired or benched client cache entry
+    streamResultCache.delete(videoId);
   }
 
   let candidates = cache.getActiveClients();

@@ -19,7 +19,10 @@ export async function GET(req: NextRequest) {
     }
 
     const clientParam = parsed.searchParams.get('c') || '';
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      Accept: '*/*',
+      'Accept-Encoding': 'identity',
+    };
 
     if (clientParam === 'IOS') {
       headers['User-Agent'] = 'com.google.ios.youtube/19.45.4 (iPhone16,2; U; CPU iOS 18_1_0 like Mac OS X; US)';
@@ -46,10 +49,34 @@ export async function GET(req: NextRequest) {
       headers['Range'] = rangeHeader;
     }
 
-    const upstreamRes = await fetch(targetUrl, {
+    let upstreamRes = await fetch(targetUrl, {
       method: 'GET',
       headers,
     });
+
+    // Fallback: If YouTube CDN dropped chunk with 403, retry once with desktop browser headers
+    if (upstreamRes.status === 403) {
+      const fallbackHeaders: Record<string, string> = {
+        Accept: '*/*',
+        'Accept-Encoding': 'identity',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+      };
+      if (rangeHeader) {
+        fallbackHeaders['Range'] = rangeHeader;
+      }
+      try {
+        const retryRes = await fetch(targetUrl, {
+          method: 'GET',
+          headers: fallbackHeaders,
+        });
+        if (retryRes.ok || retryRes.status === 206) {
+          upstreamRes = retryRes;
+        }
+      } catch {
+        // Continue with original upstreamRes
+      }
+    }
 
     const responseHeaders = new Headers();
     responseHeaders.set('Access-Control-Allow-Origin', '*');

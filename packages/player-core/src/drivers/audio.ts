@@ -220,6 +220,7 @@ export class ShakaMseAudioDriver implements AudioDriver {
     // If recovering from a stream/network error, re-attach mediaElement to clear broken MediaSource
     if (this.state === 'error' && this.player && this.mediaElement) {
       try {
+        await (this.player as any).unload();
         await (this.player as any).detach();
         await (this.player as any).attach(this.mediaElement);
       } catch {
