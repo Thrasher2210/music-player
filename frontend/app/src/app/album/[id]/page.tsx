@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Play, Pause, Shuffle, Disc3, Clock } from 'lucide-react';
+import { Play, Pause, Shuffle, Share2, Disc3, Clock } from 'lucide-react';
 import {
   Container,
   Box,
@@ -190,32 +190,42 @@ export default function AlbumPage() {
             <span>• {album.tracks.length} songs</span>
           </Flex>
 
-          <Flex align="center" gap="3" className="pt-2 justify-center sm:justify-start">
+          <Flex align="center" gap="3" className="pt-3 justify-center sm:justify-start flex-wrap">
             <Button
               variant="primary"
               size="lg"
-              className="rounded-full shadow-lg shadow-white/10"
+              className="rounded-full font-bold px-7 shadow-xl shadow-white/10 hover:scale-105 active:scale-95 transition-all"
+              leftIcon={
+                isThisAlbumPlaying ? (
+                  <Pause size={18} className="fill-current" />
+                ) : (
+                  <Play size={18} className="fill-current ml-0.5" />
+                )
+              }
               onClick={() => handlePlayAlbum(false)}
             >
-              {isThisAlbumPlaying ? (
-                <>
-                  <Pause size={18} className="fill-current mr-2" />
-                  Pause
-                </>
-              ) : (
-                <>
-                  <Play size={18} className="fill-current mr-2" />
-                  Play Album
-                </>
-              )}
+              {isThisAlbumPlaying ? 'Pause' : 'Play album'}
+            </Button>
+            <Button
+              variant="glass"
+              size="lg"
+              className="rounded-full font-semibold px-5 hover:scale-105 active:scale-95 transition-all"
+              leftIcon={<Shuffle size={18} />}
+              onClick={() => handlePlayAlbum(true)}
+            >
+              Shuffle
             </Button>
             <IconButton
-              aria-label="Shuffle album"
-              variant="secondary"
-              size="md"
-              className="rounded-full"
-              icon={<Shuffle size={18} />}
-              onClick={() => handlePlayAlbum(true)}
+              aria-label="Share album"
+              variant="glass"
+              shape="circle"
+              size="lg"
+              icon={<Share2 size={19} />}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  navigator.clipboard.writeText(window.location.href);
+                }
+              }}
             />
           </Flex>
         </Stack>

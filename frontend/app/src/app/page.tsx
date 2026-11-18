@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { Play } from 'lucide-react';
 import {
   AmbientAura,
   Flex,
@@ -187,9 +188,10 @@ export default function HomePage() {
               </Stack>
 
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="sm"
-                className="text-xs font-semibold rounded-full"
+                className="rounded-full text-xs font-semibold px-4 hover:scale-105 active:scale-95 transition-all shadow-sm"
+                leftIcon={<Play size={12} className="fill-current" />}
                 onClick={() => {
                   if (quickPicks[0]) {
                     handlePlayTrackWithRadio(quickPicks[0]);

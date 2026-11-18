@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Play, Pause, Shuffle, Heart, ListMusic, Clock } from 'lucide-react';
+import { Play, Pause, Shuffle, Heart, Share2, ListMusic, Clock } from 'lucide-react';
 import {
   Container,
   Box,
@@ -237,32 +237,42 @@ export default function PlaylistPage() {
           </Flex>
 
           {tracks.length > 0 && (
-            <Flex align="center" gap="3" className="pt-2 justify-center sm:justify-start">
+            <Flex align="center" gap="3" className="pt-3 justify-center sm:justify-start flex-wrap">
               <Button
                 variant="primary"
                 size="lg"
-                className="rounded-full shadow-lg shadow-white/10"
+                className="rounded-full font-bold px-7 shadow-xl shadow-white/10 hover:scale-105 active:scale-95 transition-all"
+                leftIcon={
+                  isThisPlaylistPlaying ? (
+                    <Pause size={18} className="fill-current" />
+                  ) : (
+                    <Play size={18} className="fill-current ml-0.5" />
+                  )
+                }
                 onClick={() => handlePlayAll(false)}
               >
-                {isThisPlaylistPlaying ? (
-                  <>
-                    <Pause size={18} className="fill-current mr-2" />
-                    Pause
-                  </>
-                ) : (
-                  <>
-                    <Play size={18} className="fill-current mr-2" />
-                    Play All
-                  </>
-                )}
+                {isThisPlaylistPlaying ? 'Pause' : 'Play all'}
+              </Button>
+              <Button
+                variant="glass"
+                size="lg"
+                className="rounded-full font-semibold px-5 hover:scale-105 active:scale-95 transition-all"
+                leftIcon={<Shuffle size={18} />}
+                onClick={() => handlePlayAll(true)}
+              >
+                Shuffle
               </Button>
               <IconButton
-                aria-label="Shuffle playlist"
-                variant="secondary"
-                size="md"
-                className="rounded-full"
-                icon={<Shuffle size={18} />}
-                onClick={() => handlePlayAll(true)}
+                aria-label="Share playlist"
+                variant="glass"
+                shape="circle"
+                size="lg"
+                icon={<Share2 size={19} />}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    navigator.clipboard.writeText(window.location.href);
+                  }
+                }}
               />
             </Flex>
           )}
