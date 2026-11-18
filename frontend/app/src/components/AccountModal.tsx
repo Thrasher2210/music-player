@@ -10,6 +10,7 @@ import {
   DialogFooter,
   Button,
   Input,
+  FormField,
   Avatar,
   Badge,
   Stack,
@@ -18,7 +19,7 @@ import {
   Separator,
 } from '@mp/dying';
 import { useAuthStore } from '../stores/authStore';
-import { User, LogOut, Check, Sparkles } from 'lucide-react';
+import { User, LogOut, Check, Sparkles, Mail } from 'lucide-react';
 
 export interface AccountModalProps {
   open: boolean;
@@ -53,13 +54,12 @@ export const AccountModal: React.FC<AccountModalProps> = ({ open, onOpenChange }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-canvas/95 border-border-subtle backdrop-blur-2xl p-6 select-none shadow-2xl">
+      <DialogContent className="max-w-md select-none">
         <DialogHeader>
           <Flex align="center" gap="3">
             <Avatar
               fallback={initial}
               size="md"
-              className="bg-emerald-600 text-white font-bold"
             />
             <Stack gap="1">
               <DialogTitle className="text-lg font-bold text-text-primary">
@@ -76,43 +76,40 @@ export const AccountModal: React.FC<AccountModalProps> = ({ open, onOpenChange }
 
         <form onSubmit={handleSave}>
           <Stack gap="4" className="py-4">
-            <Flex justify="between" align="center" className="p-3 rounded-xl bg-surface/60 border border-border-subtle">
+            <Flex justify="between" align="center" className="p-3 rounded-xl bg-surface-active border border-border-subtle">
               <Flex align="center" gap="2">
-                <Sparkles size={16} className="text-emerald-400" />
+                <Sparkles size={16} className="text-accent" />
                 <Stack gap="1">
                   <Text size="xs" weight="semibold">GaneGan Unlimited</Text>
                   <Text size="xs" color="tertiary">Ad-free InnerTube streaming</Text>
                 </Stack>
               </Flex>
-              <Badge variant="glass" size="sm" className="text-emerald-400 border-emerald-500/30">
+              <Badge variant="glass" size="sm">
                 {isAuthenticated ? 'Active' : 'Guest Mode'}
               </Badge>
             </Flex>
 
-            <Stack gap="1">
-              <Text size="xs" weight="medium" color="secondary">
-                Display Name
-              </Text>
+            <FormField label="Display Name" id="account-name" required>
               <Input
+                id="account-name"
                 value={nameInput}
                 onChange={(e) => setNameInput(e.target.value)}
                 placeholder="Enter your name"
-                leftIcon={<User size={15} className="text-text-tertiary" />}
+                leftIcon={<User size={15} />}
                 required
               />
-            </Stack>
+            </FormField>
 
-            <Stack gap="1">
-              <Text size="xs" weight="medium" color="secondary">
-                Email Address
-              </Text>
+            <FormField label="Email Address" id="account-email">
               <Input
+                id="account-email"
                 type="email"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="name@example.com"
+                leftIcon={<Mail size={15} />}
               />
-            </Stack>
+            </FormField>
           </Stack>
 
           <Separator className="my-2" />
@@ -121,11 +118,10 @@ export const AccountModal: React.FC<AccountModalProps> = ({ open, onOpenChange }
             {isAuthenticated ? (
               <Button
                 type="button"
-                variant="ghost"
+                variant="danger"
                 size="sm"
                 leftIcon={<LogOut size={14} />}
                 onClick={handleLogout}
-                className="text-status-error hover:bg-status-error/10"
               >
                 Sign Out
               </Button>
@@ -147,7 +143,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({ open, onOpenChange }
                 variant="primary"
                 size="sm"
                 leftIcon={isSaved ? <Check size={14} /> : undefined}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
               >
                 {isSaved ? 'Saved!' : isAuthenticated ? 'Save Profile' : 'Save & Continue'}
               </Button>

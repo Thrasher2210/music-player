@@ -451,7 +451,7 @@ export default function HomePage() {
                   size="sm"
                   aria-label={`User Account: ${user?.name || 'User'}`}
                   onClick={() => setIsAccountModalOpen(true)}
-                  className="bg-emerald-600 text-white font-bold cursor-pointer hover:ring-2 hover:ring-emerald-400 transition-all select-none"
+                  className="cursor-pointer select-none"
                 />
               </Tooltip>
             ) : (
@@ -460,7 +460,6 @@ export default function HomePage() {
                 size="sm"
                 leftIcon={<LogIn size={14} />}
                 onClick={() => router.push('/login')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-950/40"
               >
                 Sign In
               </Button>
