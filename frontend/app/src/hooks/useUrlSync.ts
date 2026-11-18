@@ -76,20 +76,4 @@ export function useUrlSync({ isFullPlayerOpen, setIsFullPlayerOpen }: UseUrlSync
     const newUrl = `${pathname}?${newParams.toString()}`;
     window.history.replaceState(null, '', newUrl);
   }, [currentTrack?.videoId, pathname, searchParams]);
-
-  // 3. Full Player / Lyrics view sync with /watch?v=videoId
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    if (isFullPlayerOpen && pathname !== '/watch') {
-      previousPathRef.current = `${pathname}${window.location.search}`;
-      const v = currentTrack?.videoId || searchParams.get('v') || '';
-      const watchUrl = v ? `/watch?v=${v}` : '/watch';
-      router.push(watchUrl);
-    } else if (!isFullPlayerOpen && pathname === '/watch') {
-      const target = previousPathRef.current || '/';
-      previousPathRef.current = null;
-      router.push(target);
-    }
-  }, [isFullPlayerOpen, pathname, currentTrack?.videoId, searchParams, router]);
 }
