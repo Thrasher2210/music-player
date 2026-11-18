@@ -128,8 +128,6 @@ export default function HomePage() {
   // Initialize audio engine and load initial real YouTube Music live feed
   useEffect(() => {
     initialize();
-    document.documentElement.setAttribute('data-theme', 'oled');
-    document.documentElement.classList.add('dark');
 
     let isMounted = true;
     setIsLoadingFeed(true);

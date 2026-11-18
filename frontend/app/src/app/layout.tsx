@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ThemeProviderClient } from "../components/ThemeProviderClient";
 import "./globals.css";
 import "katex/dist/katex.min.css";
 
@@ -21,9 +22,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark" data-theme="dark">
+    <html lang="en" className="dark" data-theme="dark" suppressHydrationWarning>
       <body className="min-h-dvh bg-canvas text-text-primary antialiased">
-        {children}
+        <ThemeProviderClient>
+          {children}
+        </ThemeProviderClient>
       </body>
     </html>
   );

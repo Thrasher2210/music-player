@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Monitor, Sun, Moon } from "lucide-react";
 import { useTheme, type Theme } from "../tokens/ThemeProvider";
 import { cn } from "../utils/cn";
@@ -38,35 +38,69 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
   ) => {
     let themeContext: ReturnType<typeof useTheme> | null = null;
     try {
-      // Safe fallback if used outside ThemeProvider
       themeContext = useTheme();
     } catch {
       themeContext = null;
     }
 
-    const currentTheme: Theme = value ?? themeContext?.theme ?? "system";
+    const [localTheme, setLocalTheme] = useState<Theme>(() => {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("dying-theme");
+        if (stored && ["dark", "oled", "light", "system"].includes(stored)) {
+          return stored as Theme;
+        }
+        const currentAttr = document.documentElement.getAttribute("data-theme");
+        if (currentAttr && ["dark", "oled", "light"].includes(currentAttr)) {
+          return currentAttr as Theme;
+        }
+      }
+      return "dark";
+    });
 
-    const handleSelect = (themeId: Theme) => {
-      if (onThemeChange) {
-        onThemeChange(themeId);
-      } else if (themeContext) {
-        themeContext.setTheme(themeId);
-      } else if (typeof document !== "undefined") {
-        const root = document.documentElement;
-        if (themeId === "system") {
-          const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          root.setAttribute("data-theme", isDark ? "dark" : "light");
-          if (isDark) root.classList.add("dark");
-          else root.classList.remove("dark");
+    // Synchronize initial DOM theme on client mount if outside context
+    useEffect(() => {
+      if (!themeContext && typeof document !== "undefined") {
+        const stored = (localStorage.getItem("dying-theme") as Theme) || "dark";
+        setLocalTheme(stored);
+        applyThemeToDom(stored);
+      }
+    }, [themeContext]);
+
+    const currentTheme: Theme = value ?? themeContext?.theme ?? localTheme;
+
+    const applyThemeToDom = (themeId: Theme) => {
+      if (typeof document === "undefined") return;
+      localStorage.setItem("dying-theme", themeId);
+      const root = document.documentElement;
+
+      if (themeId === "system") {
+        const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        root.setAttribute("data-theme", isDark ? "dark" : "light");
+        if (isDark) root.classList.add("dark");
+        else root.classList.remove("dark");
+      } else {
+        root.setAttribute("data-theme", themeId);
+        if (themeId === "light") {
+          root.classList.remove("dark");
         } else {
-          root.setAttribute("data-theme", themeId);
-          if (themeId === "light") root.classList.remove("dark");
-          else root.classList.add("dark");
+          root.classList.add("dark");
         }
       }
     };
 
-    const iconSize = size === "sm" ? 14 : 16;
+    const handleSelect = (themeId: Theme) => {
+      setLocalTheme(themeId);
+      if (onThemeChange) {
+        onThemeChange(themeId);
+      }
+      if (themeContext) {
+        themeContext.setTheme(themeId);
+      } else {
+        applyThemeToDom(themeId);
+      }
+    };
+
+    const iconSize = size === "sm" ? 13 : 15;
     const buttonSize = size === "sm" ? "h-6 w-6" : "h-7 w-7";
 
     return (
@@ -99,7 +133,7 @@ export const ThemeSwitcher = React.forwardRef<HTMLDivElement, ThemeSwitcherProps
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-1 focus-visible:ring-offset-canvas",
                   buttonSize,
                   isSelected
-                    ? "bg-white text-black shadow-sm font-semibold scale-100"
+                    ? "bg-white text-black shadow-md font-semibold scale-100"
                     : "text-text-tertiary hover:text-text-primary hover:bg-white/[0.08] active:scale-95"
                 )}
               >
