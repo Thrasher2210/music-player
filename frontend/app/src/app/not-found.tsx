@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { Box, Stack, Heading, Text, Button } from '@mp/dying';
 
