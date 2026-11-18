@@ -18,7 +18,7 @@ import { SyncedLyricsView, LyricLine } from "./SyncedLyricsView";
 import { AmbientAura } from "../effects/AmbientAura";
 import { SoundWave } from "../effects/SoundWave";
 import { Switch } from "../components/Controls";
-import { EmptyState } from "../components/Feedback";
+import { EmptyState, Skeleton } from "../components/Feedback";
 import { Button } from "../components/Button";
 import { cn } from "../utils/cn";
 
@@ -72,7 +72,21 @@ export interface FullPlayerViewProps {
   onToggleMediaMode?: (mode: "audio" | "video") => void;
 
   // Tab-specific Data
-  lyrics?: LyricLine[] | string;
+  lyrics?:
+    | LyricLine[]
+    | string
+    | {
+        lines?: Array<{ time?: number; timeMs?: number | null; text: string }>;
+        synced?: boolean;
+        plainLyrics?: string;
+        source?: string;
+      };
+  synced?: boolean;
+  plainLyrics?: string;
+  source?: string;
+  lyricsSource?: string;
+  isLyricsLoading?: boolean;
+  lyricsLoading?: boolean;
   related?: RelatedItem[];
   onSelectRelated?: (item: RelatedItem) => void;
 
@@ -115,6 +129,12 @@ export const FullPlayerView: React.FC<FullPlayerViewProps> = ({
   onToggleMediaMode,
 
   lyrics,
+  synced,
+  plainLyrics,
+  source,
+  lyricsSource,
+  isLyricsLoading,
+  lyricsLoading,
   related = [],
   onSelectRelated,
 
@@ -164,19 +184,50 @@ export const FullPlayerView: React.FC<FullPlayerViewProps> = ({
 
   const thumbnail = track?.thumbnailUrl || track?.thumbnail;
 
-  // Parse lyrics if passed as string into LyricLine[]
+  const isLyricsObj = typeof lyrics === "object" && lyrics !== null && !Array.isArray(lyrics);
+  const resolvedSynced =
+    synced !== undefined
+      ? synced
+      : isLyricsObj && "synced" in lyrics && typeof lyrics.synced === "boolean"
+      ? lyrics.synced
+      : undefined;
+
+  const resolvedPlainLyrics =
+    plainLyrics !== undefined
+      ? plainLyrics
+      : isLyricsObj && "plainLyrics" in lyrics && typeof lyrics.plainLyrics === "string"
+      ? lyrics.plainLyrics
+      : typeof lyrics === "string" && resolvedSynced === false
+      ? lyrics
+      : undefined;
+
+  const resolvedSource =
+    source || lyricsSource || (isLyricsObj && "source" in lyrics ? (lyrics as { source?: string }).source : undefined);
+  const resolvedLoading = Boolean(isLyricsLoading || lyricsLoading);
+
+  // Parse lyrics if passed as string or object into LyricLine[]
   const parsedLyrics: LyricLine[] = useMemo(() => {
     if (!lyrics) return [];
     if (Array.isArray(lyrics)) return lyrics;
-    return lyrics
-      .split("\n")
-      .filter((line) => line.trim().length > 0)
-      .map((text, idx) => ({
-        id: `line-${idx}`,
-        time: idx * 5,
-        text: text.trim(),
+    if (isLyricsObj && "lines" in lyrics && Array.isArray((lyrics as any).lines)) {
+      return (lyrics as any).lines.map((line: any, idx: number) => ({
+        id: line.id || `line-${idx}`,
+        time: line.time ?? ((line.timeMs ?? 0) / 1000),
+        text: line.text,
       }));
-  }, [lyrics]);
+    }
+    if (typeof lyrics === "string") {
+      return lyrics
+        .split("\n")
+        .filter((line) => line.trim().length > 0)
+        .map((text, idx) => ({
+          id: `line-${idx}`,
+          time: idx * 5,
+          text: text.trim(),
+        }));
+    }
+    return [];
+  }, [lyrics, isLyricsObj]);
 
   // Queue filter chips matching YouTube Music
   const filterChips = ["All", "Familiar", "Discover", "Popular", "Deep cuts"];
@@ -559,15 +610,34 @@ export const FullPlayerView: React.FC<FullPlayerViewProps> = ({
                 <h3 className="text-sm font-bold uppercase tracking-wider text-text-primary">
                   Lyrics
                 </h3>
-                <span className="text-xs text-text-tertiary">Synced Karaoke</span>
+                <span className="text-xs text-text-tertiary">
+                  {resolvedLoading
+                    ? "Loading..."
+                    : resolvedSynced === false
+                    ? "Plain Lyrics"
+                    : "Synced Karaoke"}
+                </span>
               </div>
 
               <div className="flex-1 min-h-0 overflow-hidden">
-                {parsedLyrics.length > 0 ? (
+                {resolvedLoading ? (
+                  <div className="flex flex-col gap-4 py-8 max-w-xl mx-auto w-full px-6">
+                    <Skeleton className="h-7 w-3/4" />
+                    <Skeleton className="h-7 w-1/2" />
+                    <Skeleton className="h-8 w-5/6" />
+                    <Skeleton className="h-7 w-2/3" />
+                    <Skeleton className="h-8 w-4/5" />
+                    <Skeleton className="h-7 w-3/5" />
+                    <Skeleton className="h-7 w-1/2" />
+                  </div>
+                ) : parsedLyrics.length > 0 || resolvedPlainLyrics ? (
                   <SyncedLyricsView
                     lyrics={parsedLyrics}
                     currentTime={currentTime}
                     onSeek={onSeek}
+                    synced={resolvedSynced}
+                    plainLyrics={resolvedPlainLyrics}
+                    source={resolvedSource}
                     className="h-full"
                   />
                 ) : (

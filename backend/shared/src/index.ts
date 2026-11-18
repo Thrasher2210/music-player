@@ -69,16 +69,26 @@ export type ImportStatus = z.infer<typeof importStatusSchema>;
 
 // ---- Lyrics ----
 
+export const lyricWordSchema = z.object({
+  time: z.number(),
+  text: z.string(),
+});
+export type LyricWord = z.infer<typeof lyricWordSchema>;
+
+export const lyricLineSchema = z.object({
+  time: z.number(),
+  timeMs: z.number().int().nonnegative().optional().nullable(),
+  text: z.string(),
+  words: z.array(lyricWordSchema).optional(),
+});
+export type LyricLine = z.infer<typeof lyricLineSchema>;
+
 export const lyricsResponseSchema = z.object({
   videoId: videoIdSchema,
   synced: z.boolean(),
   // LRC-format lines; empty when unsynced/plain
-  lines: z.array(
-    z.object({
-      timeMs: z.number().int().nonnegative().nullable(),
-      text: z.string(),
-    }),
-  ),
+  lines: z.array(lyricLineSchema),
+  plainLyrics: z.string().optional(),
   source: z.string(),
 });
 export type LyricsResponse = z.infer<typeof lyricsResponseSchema>;

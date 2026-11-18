@@ -47,35 +47,92 @@ function LoginForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [oauthWarning, setOauthWarning] = useState<{ provider: string; message: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const { login, loginWithProvider, loginAsGuest } = useAuthStore();
+  const { login, register, loginWithProvider, loginAsGuest } = useAuthStore();
 
-  const handleProviderLogin = (provider: 'google' | 'github' | 'apple' | 'discord', label: string) => {
-    setStatusMessage(`Connecting to ${label}...`);
-    loginWithProvider(provider);
-    setTimeout(() => {
-      setStatusMessage('Signed in successfully! Redirecting...');
-      setTimeout(() => {
-        router.push('/');
-      }, 400);
-    }, 400);
+  const handleProviderLogin = async (
+    provider: 'google' | 'github' | 'apple' | 'discord',
+    label: string
+  ) => {
+    setErrorMessage(null);
+    setStatusMessage(null);
+    setOauthWarning(null);
+    setIsLoading(true);
+
+    try {
+      const res = await loginWithProvider(provider);
+      if (res?.error) {
+        setOauthWarning({
+          provider: label,
+          message: `${label} OAuth is not configured in this development environment (missing client credentials).`,
+        });
+      }
+    } catch {
+      setOauthWarning({
+        provider: label,
+        message: `${label} OAuth is not configured in this development environment (missing client credentials).`,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleCreateDemoAccount = async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    setOauthWarning(null);
+    const demoEmail = `listener.${Date.now().toString().slice(-4)}@ganegan.app`;
+    const demoPass = 'DemoPassword123!';
+    const res = await register('GaneGan Listener', demoEmail, demoPass);
+    setIsLoading(false);
+    if (res.success) {
+      setStatusMessage(`Demo account ready (${demoEmail})! Redirecting...`);
+      setTimeout(() => router.push('/'), 400);
+    } else {
+      setErrorMessage(res.error || 'Failed to create demo account.');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !password) {
+      setErrorMessage('Please provide both email and password.');
+      return;
+    }
 
-    const displayName = mode === 'register' && name.trim() ? name.trim() : email.split('@')[0];
-    setStatusMessage(mode === 'register' ? 'Creating your account...' : 'Signing in...');
-    login(displayName, email);
+    setErrorMessage(null);
+    setStatusMessage(null);
+    setOauthWarning(null);
+    setIsLoading(true);
 
-    setTimeout(() => {
-      setStatusMessage('Success! Redirecting...');
-      setTimeout(() => {
-        router.push('/');
-      }, 400);
-    }, 400);
+    if (mode === 'register') {
+      const displayName = name.trim() || email.split('@')[0];
+      const res = await register(displayName, email, password);
+      setIsLoading(false);
+      if (!res.success) {
+        setErrorMessage(res.error || 'Failed to create account.');
+      } else {
+        setStatusMessage('Account created successfully! Redirecting...');
+        setTimeout(() => {
+          router.push('/');
+        }, 400);
+      }
+    } else {
+      const res = await login(email, password);
+      setIsLoading(false);
+      if (!res.success) {
+        setErrorMessage(res.error || 'Invalid email or password.');
+      } else {
+        setStatusMessage('Signed in successfully! Redirecting...');
+        setTimeout(() => {
+          router.push('/');
+        }, 400);
+      }
+    }
   };
 
   const handleGuestLogin = () => {
@@ -88,7 +145,7 @@ function LoginForm() {
 
   return (
     <Box className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-hidden bg-canvas select-none">
-      {/* Background Subtle Ambient Aura: Deep Emerald Tone with Low Intensity */}
+      {/* Background Subtle Ambient Aura */}
       <AmbientAura
         primaryColor="#064e3b"
         secondaryColor="#18181b"
@@ -98,7 +155,7 @@ function LoginForm() {
         className="fixed inset-0 pointer-events-none"
       />
 
-      {/* Top Navigation: Return to Player with generous margin */}
+      {/* Top Navigation: Return to Player */}
       <Box className="absolute top-6 left-6 sm:top-8 sm:left-8 z-20">
         <Button
           variant="glass"
@@ -113,7 +170,7 @@ function LoginForm() {
       {/* Centered Obsidian Glass Card */}
       <Card
         variant="glass"
-        className="relative z-10 w-full max-w-[420px] p-6 sm:p-7 backdrop-blur-3xl shadow-2xl rounded-2xl border-white/[0.1] bg-surface/90"
+        className="relative z-10 w-full max-w-[420px] p-6 sm:p-7 backdrop-blur-3xl shadow-2xl rounded-2xl border-border-subtle bg-surface/90"
       >
         <CardHeader className="text-center items-center pb-3">
           <Flex align="center" gap="2" justify="center" className="mb-1">
@@ -150,7 +207,9 @@ function LoginForm() {
                 leftIcon={<LogIn size={14} />}
                 onClick={() => {
                   setMode('login');
+                  setErrorMessage(null);
                   setStatusMessage(null);
+                  setOauthWarning(null);
                 }}
                 className={mode === 'login' ? 'shadow-sm' : 'text-text-secondary hover:text-text-primary'}
               >
@@ -163,7 +222,9 @@ function LoginForm() {
                 leftIcon={<UserPlus size={14} />}
                 onClick={() => {
                   setMode('register');
+                  setErrorMessage(null);
                   setStatusMessage(null);
+                  setOauthWarning(null);
                 }}
                 className={mode === 'register' ? 'shadow-sm' : 'text-text-secondary hover:text-text-primary'}
               >
@@ -172,7 +233,47 @@ function LoginForm() {
             </Flex>
           </Box>
 
-          {/* Feedback Alert */}
+          {/* Real Server Error Alert */}
+          {errorMessage && (
+            <Alert
+              variant="error"
+              title="Authentication Failed"
+              onClose={() => setErrorMessage(null)}
+              className="text-xs py-2.5"
+            >
+              {errorMessage}
+            </Alert>
+          )}
+
+          {/* Social OAuth Fallback / Notice with 1-Click Demo Creation */}
+          {oauthWarning && (
+            <Alert
+              variant="warning"
+              title={`${oauthWarning.provider} OAuth Unavailable`}
+              onClose={() => setOauthWarning(null)}
+              className="text-xs py-2.5"
+            >
+              <Stack gap="2">
+                <Text size="xs" color="secondary">
+                  {oauthWarning.message}
+                </Text>
+                <Box>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    leftIcon={<Sparkles size={13} />}
+                    onClick={handleCreateDemoAccount}
+                    disabled={isLoading}
+                  >
+                    Create Demo Account (1-Click)
+                  </Button>
+                </Box>
+              </Stack>
+            </Alert>
+          )}
+
+          {/* Success Status Alert */}
           {statusMessage && (
             <Alert
               variant="success"
@@ -191,6 +292,7 @@ function LoginForm() {
               size="sm"
               fullWidth
               leftIcon={<Globe size={15} />}
+              disabled={isLoading}
               onClick={() => handleProviderLogin('google', 'Google')}
             >
               Google
@@ -202,6 +304,7 @@ function LoginForm() {
               size="sm"
               fullWidth
               leftIcon={<Github size={15} />}
+              disabled={isLoading}
               onClick={() => handleProviderLogin('github', 'GitHub')}
             >
               GitHub
@@ -213,6 +316,7 @@ function LoginForm() {
               size="sm"
               fullWidth
               leftIcon={<Music2 size={15} />}
+              disabled={isLoading}
               onClick={() => handleProviderLogin('apple', 'Apple ID')}
             >
               Apple ID
@@ -224,6 +328,7 @@ function LoginForm() {
               size="sm"
               fullWidth
               leftIcon={<Disc size={15} />}
+              disabled={isLoading}
               onClick={() => handleProviderLogin('discord', 'Discord')}
             >
               Discord
@@ -276,7 +381,7 @@ function LoginForm() {
                   id="password-input"
                   name="password"
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -290,9 +395,14 @@ function LoginForm() {
                 variant="primary"
                 size="md"
                 fullWidth
+                disabled={isLoading}
                 className="mt-1"
               >
-                {mode === 'login' ? 'Sign In with Email' : 'Create GaneGan Account'}
+                {isLoading
+                  ? 'Processing...'
+                  : mode === 'login'
+                  ? 'Sign In with Email'
+                  : 'Create GaneGan Account'}
               </Button>
             </Stack>
           </form>
@@ -303,12 +413,13 @@ function LoginForm() {
             type="button"
             variant="ghost"
             size="xs"
+            disabled={isLoading}
             onClick={handleGuestLogin}
             className="text-text-secondary hover:text-text-primary"
           >
             Continue as Guest (Instant Playback)
           </Button>
-          <Text variant="secondary" size="xs" className="text-[10px]">
+          <Text variant="secondary" size="xs">
             Protected by GaneGan clean InnerTube audio engine.
           </Text>
         </CardFooter>

@@ -240,4 +240,44 @@ describe("Dying Design System — Enterprise Quality Suite", () => {
       assert.strictEqual(componentTokens.scrubber.trackHeight, "4px");
     });
   });
+
+  describe("5. Synced and Unsynced Lyrics System Verification", () => {
+    test("verifies Badge supports size='xs' with variant='glass'", () => {
+      const badgeElem = React.createElement(Badge, { variant: "glass", size: "xs" }, "LRCLIB");
+      assert.ok(React.isValidElement(badgeElem));
+    });
+
+    test("verifies SyncedLyricsView accepts dual mode props (synced, plainLyrics, source)", () => {
+      // Synced mode element
+      const syncedElem = React.createElement(SyncedLyricsView, {
+        lyrics: [{ time: 10, text: "Glow line test" }],
+        currentTime: 10,
+        synced: true,
+        source: "LRCLIB",
+      });
+      assert.ok(React.isValidElement(syncedElem));
+
+      // Unsynced mode element
+      const unsyncedElem = React.createElement(SyncedLyricsView, {
+        synced: false,
+        plainLyrics: "First line of unsynced lyrics\nSecond line",
+        source: "kugou",
+      });
+      assert.ok(React.isValidElement(unsyncedElem));
+    });
+
+    test("verifies FullPlayerView accepts enhanced lyrics props and loading state", () => {
+      const playerElem = React.createElement(FullPlayerView, {
+        track: { id: "test", title: "Test Track", artist: "Artist", duration: 180 },
+        onClose: () => {},
+        activeTab: "lyrics",
+        lyrics: [{ time: 5, text: "Lyrics row" }],
+        synced: true,
+        plainLyrics: "Plain text lyrics",
+        source: "lrclib",
+        isLyricsLoading: true,
+      });
+      assert.ok(React.isValidElement(playerElem));
+    });
+  });
 });

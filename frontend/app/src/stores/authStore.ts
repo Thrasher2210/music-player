@@ -1,61 +1,251 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { authClient } from '../lib/auth-client';
 
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  image?: string;
+  image?: string | null;
   isGuest?: boolean;
+}
+
+export interface GuestLike {
+  videoId: string;
+  title: string;
+  artist: string;
+  albumArt?: string | null;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  error?: string;
 }
 
 interface AuthState {
   user: UserProfile | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   setUser: (user: UserProfile | null) => void;
+  initializeSession: () => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthResponse>;
+  register: (name: string, email: string, password: string) => Promise<AuthResponse>;
+  loginWithProvider: (provider: 'google' | 'github' | 'apple' | 'discord') => Promise<any>;
+  logout: () => Promise<void>;
   loginAsGuest: (name?: string) => void;
-  login: (name: string, email: string) => void;
-  loginWithProvider: (provider: 'google' | 'github' | 'apple' | 'discord') => void;
-  logout: () => void;
+  migrateGuestLikes: () => Promise<void>;
+  addGuestLike: (like: GuestLike) => void;
+  getGuestLikes: () => GuestLike[];
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
+      isLoading: false,
+
       setUser: (user) => set({ user, isAuthenticated: Boolean(user && !user.isGuest) }),
-      loginAsGuest: (name = 'Guest User') =>
-        set({
-          user: { id: `guest-${Date.now()}`, name, email: 'guest@ganegan.local', isGuest: true },
-          isAuthenticated: false,
-        }),
-      login: (name: string, email: string) =>
-        set({
-          user: { id: `user-${Date.now()}`, name, email, isGuest: false },
-          isAuthenticated: true,
-        }),
-      loginWithProvider: (provider: 'google' | 'github' | 'apple' | 'discord') => {
-        const providerNames: Record<string, { name: string; email: string }> = {
-          google: { name: 'Google Explorer', email: 'user@gmail.com' },
-          github: { name: 'GitHub Developer', email: 'dev@github.com' },
-          apple: { name: 'Apple Listener', email: 'user@icloud.com' },
-          discord: { name: 'Discord Member', email: 'member@discord.gg' },
-        };
-        const info = providerNames[provider] || { name: 'GaneGan User', email: 'user@ganegan.app' };
-        set({
-          user: { id: `${provider}-${Date.now()}`, name: info.name, email: info.email, isGuest: false },
-          isAuthenticated: true,
+
+      initializeSession: async () => {
+        set({ isLoading: true });
+        try {
+          const session = await authClient.getSession();
+          if (session?.data?.user) {
+            const u = session.data.user;
+            set({
+              user: {
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                image: u.image ?? null,
+                isGuest: false,
+              },
+              isAuthenticated: true,
+            });
+            // Silently migrate any local guest likes to backend
+            void get().migrateGuestLikes();
+          } else {
+            const current = get().user;
+            if (current && !current.isGuest) {
+              set({ user: null, isAuthenticated: false });
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to restore auth session:', err);
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      login: async (email: string, password: string): Promise<AuthResponse> => {
+        try {
+          const res = await authClient.signIn.email({
+            email,
+            password,
+          });
+
+          if (res?.error) {
+            return {
+              success: false,
+              error: res.error.message || 'Invalid email or password.',
+            };
+          }
+
+          if (res?.data?.user) {
+            const u = res.data.user;
+            set({
+              user: {
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                image: u.image ?? null,
+                isGuest: false,
+              },
+              isAuthenticated: true,
+            });
+            // Silent background guest library migration
+            void get().migrateGuestLikes();
+          }
+
+          return { success: true };
+        } catch (err: any) {
+          return {
+            success: false,
+            error: err?.message || 'An unexpected error occurred during sign in.',
+          };
+        }
+      },
+
+      register: async (name: string, email: string, password: string): Promise<AuthResponse> => {
+        try {
+          const res = await authClient.signUp.email({
+            name,
+            email,
+            password,
+          });
+
+          if (res?.error) {
+            return {
+              success: false,
+              error: res.error.message || 'Failed to create account.',
+            };
+          }
+
+          if (res?.data?.user) {
+            const u = res.data.user;
+            set({
+              user: {
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                image: u.image ?? null,
+                isGuest: false,
+              },
+              isAuthenticated: true,
+            });
+            // Silent background guest library migration
+            void get().migrateGuestLikes();
+          }
+
+          return { success: true };
+        } catch (err: any) {
+          return {
+            success: false,
+            error: err?.message || 'An unexpected error occurred during registration.',
+          };
+        }
+      },
+
+      loginWithProvider: async (provider: 'google' | 'github' | 'apple' | 'discord') => {
+        return authClient.signIn.social({
+          provider,
+          callbackURL: typeof window !== 'undefined' ? window.location.origin : '/',
         });
       },
-      logout: () =>
+
+      logout: async () => {
+        try {
+          await authClient.signOut();
+        } catch (err) {
+          console.warn('Sign out error:', err);
+        }
         set({
           user: null,
           isAuthenticated: false,
+        });
+      },
+
+      loginAsGuest: (name = 'Guest User') =>
+        set({
+          user: {
+            id: `guest-${Date.now()}`,
+            name,
+            email: 'guest@ganegan.local',
+            isGuest: true,
+          },
+          isAuthenticated: false,
         }),
+
+      migrateGuestLikes: async () => {
+        if (typeof window === 'undefined') return;
+        try {
+          const stored = localStorage.getItem('ganegan_guest_likes');
+          if (!stored) return;
+          const likes: GuestLike[] = JSON.parse(stored);
+          if (!Array.isArray(likes) || likes.length === 0) return;
+
+          await Promise.allSettled(
+            likes.map(async (like) => {
+              if (!like.videoId) return;
+              return fetch(`/api/likes/${encodeURIComponent(like.videoId)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  title: like.title || 'Unknown Title',
+                  artist: like.artist || 'Unknown Artist',
+                  albumArt: like.albumArt ?? null,
+                }),
+              });
+            })
+          );
+
+          localStorage.removeItem('ganegan_guest_likes');
+        } catch (err) {
+          console.warn('Failed to migrate guest likes:', err);
+        }
+      },
+
+      addGuestLike: (like: GuestLike) => {
+        if (typeof window === 'undefined') return;
+        try {
+          const stored = localStorage.getItem('ganegan_guest_likes');
+          const likes: GuestLike[] = stored ? JSON.parse(stored) : [];
+          if (!likes.some((l) => l.videoId === like.videoId)) {
+            likes.push(like);
+            localStorage.setItem('ganegan_guest_likes', JSON.stringify(likes));
+          }
+        } catch (err) {
+          console.warn('Error saving guest like:', err);
+        }
+      },
+
+      getGuestLikes: (): GuestLike[] => {
+        if (typeof window === 'undefined') return [];
+        try {
+          const stored = localStorage.getItem('ganegan_guest_likes');
+          return stored ? JSON.parse(stored) : [];
+        } catch {
+          return [];
+        }
+      },
     }),
     {
       name: 'ganegan-auth-session',
     }
   )
 );
+
+if (typeof window !== 'undefined') {
+  void useAuthStore.getState().initializeSession();
+}

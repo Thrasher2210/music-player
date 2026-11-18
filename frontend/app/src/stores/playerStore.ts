@@ -16,6 +16,7 @@ import {
   NextRadioData,
 } from '@mp/player-core';
 import { type TrackData } from '@mp/dying';
+import { type LyricsResponse } from '@mp/api-contract';
 
 export type NetworkAdapterType = 'dev-proxy' | 'web-extension' | 'native-http';
 
@@ -55,6 +56,11 @@ export interface PlayerStoreState {
   verdicts: ClientVerdict[];
   error: string | null;
 
+  // Lyrics
+  lyrics: LyricsResponse | null;
+  isLyricsLoading: boolean;
+  lyricsError: string | null;
+
   // Actions
   initialize: (mediaElement?: HTMLMediaElement) => void;
   playTrack: (track: Track) => Promise<void>;
@@ -79,6 +85,7 @@ export interface PlayerStoreState {
   getDiagnosticInfo: () => DiagnosticInfo;
   getHomeFeed: (moodParam?: string) => Promise<HomeFeedData>;
   getNextRadio: (videoId: string) => Promise<NextRadioData>;
+  fetchLyrics: (track: Track) => Promise<LyricsResponse | null>;
 }
 
 // Convert core Track to dying TrackData
@@ -136,6 +143,30 @@ function updateBufferStatus(
   });
 }
 
+const lyricsCache = new Map<string, LyricsResponse>();
+let lyricsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedFetchLyrics(
+  track: Track | null,
+  fetchFn: (track: Track) => Promise<LyricsResponse | null>,
+  delay = 250
+) {
+  if (lyricsDebounceTimer) {
+    clearTimeout(lyricsDebounceTimer);
+    lyricsDebounceTimer = null;
+  }
+  if (!track || !track.videoId) return;
+
+  if (lyricsCache.has(track.videoId)) {
+    fetchFn(track);
+    return;
+  }
+
+  lyricsDebounceTimer = setTimeout(() => {
+    fetchFn(track);
+  }, delay);
+}
+
 export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   engine: null,
   isInitialized: false,
@@ -158,6 +189,10 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   networkAdapterType: 'dev-proxy',
   verdicts: [],
   error: null,
+
+  lyrics: null,
+  isLyricsLoading: false,
+  lyricsError: null,
 
   initialize: (mediaElement?: HTMLMediaElement) => {
     if (typeof window === 'undefined') return;
@@ -182,13 +217,20 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     });
 
     engine.on('trackChange', (track, index) => {
+      const cached = track?.videoId ? lyricsCache.get(track.videoId) : null;
       set({
         currentTrack: track,
         currentIndex: index,
         currentTime: 0,
         bufferedAheadSeconds: 0,
         bufferedPercent: 0,
+        lyrics: cached || null,
+        isLyricsLoading: track ? !cached : false,
+        lyricsError: null,
       });
+      if (track) {
+        debouncedFetchLyrics(track, get().fetchLyrics);
+      }
     });
 
     engine.on('timeUpdate', (time) => {
@@ -250,11 +292,17 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     if (!engine) return;
 
     // Optimistic instant state flip
+    const cached = track.videoId ? lyricsCache.get(track.videoId) : null;
     set({
       currentTrack: track,
       playbackState: 'playing',
       error: null,
+      lyrics: cached || null,
+      isLyricsLoading: track.videoId ? !cached : false,
+      lyricsError: null,
     });
+
+    debouncedFetchLyrics(track, get().fetchLyrics);
 
     try {
       await engine.playTrack(track);
@@ -346,6 +394,16 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     const engine = get().engine;
     if (engine) {
       await engine.next();
+      const current = engine.getCurrentTrack();
+      if (current) {
+        const cached = current.videoId ? lyricsCache.get(current.videoId) : null;
+        set({
+          lyrics: cached || null,
+          isLyricsLoading: current.videoId ? !cached : false,
+          lyricsError: null,
+        });
+        debouncedFetchLyrics(current, get().fetchLyrics);
+      }
     }
   },
 
@@ -353,6 +411,16 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     const engine = get().engine;
     if (engine) {
       await engine.previous();
+      const current = engine.getCurrentTrack();
+      if (current) {
+        const cached = current.videoId ? lyricsCache.get(current.videoId) : null;
+        set({
+          lyrics: cached || null,
+          isLyricsLoading: current.videoId ? !cached : false,
+          lyricsError: null,
+        });
+        debouncedFetchLyrics(current, get().fetchLyrics);
+      }
     }
   },
 
@@ -496,5 +564,46 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       networkAdapter: s.networkAdapterType,
       verdicts: s.verdicts,
     };
+  },
+
+  fetchLyrics: async (track: Track): Promise<LyricsResponse | null> => {
+    if (!track || !track.videoId) {
+      set({ lyrics: null, isLyricsLoading: false, lyricsError: null });
+      return null;
+    }
+
+    if (lyricsCache.has(track.videoId)) {
+      const cached = lyricsCache.get(track.videoId)!;
+      set({ lyrics: cached, isLyricsLoading: false, lyricsError: null });
+      return cached;
+    }
+
+    set({ isLyricsLoading: true, lyricsError: null });
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      const durationSec = track.duration || 0;
+      const url = `${apiUrl}/api/lyrics?videoId=${track.videoId}&title=${encodeURIComponent(track.title || '')}&artist=${encodeURIComponent(track.artist || '')}&durationSec=${durationSec}`;
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch lyrics: HTTP ${res.status}`);
+      }
+      const data: LyricsResponse = await res.json();
+      lyricsCache.set(track.videoId, data);
+
+      const current = get().currentTrack;
+      if (current && (current.videoId === track.videoId || current.id === track.id)) {
+        set({ lyrics: data, isLyricsLoading: false, lyricsError: null });
+      }
+      return data;
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to load lyrics';
+      const current = get().currentTrack;
+      if (current && (current.videoId === track.videoId || current.id === track.id)) {
+        set({ lyrics: null, isLyricsLoading: false, lyricsError: msg });
+      }
+      return null;
+    }
   },
 }));

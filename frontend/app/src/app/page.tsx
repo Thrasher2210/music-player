@@ -85,6 +85,8 @@ export default function HomePage() {
     isShuffle,
     bufferedPercent,
     queue,
+    lyrics,
+    isLyricsLoading,
     playTrack,
     togglePlay,
     pause,
@@ -489,6 +491,8 @@ export default function HomePage() {
           activeTab={fullPlayerTab}
           onTabChange={setFullPlayerTab}
           queue={queue.map(toTrackData)}
+          lyrics={lyrics || undefined}
+          isLyricsLoading={isLyricsLoading}
           onSelectTrack={(t) => {
             const matched = queue.find((x) => (x.id || x.videoId) === t.id);
             if (matched) {

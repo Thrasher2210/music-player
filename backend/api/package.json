@@ -9,7 +9,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'no linter yet'",
-    "test": "echo 'no tests yet'"
+    "test": "tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
