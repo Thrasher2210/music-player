@@ -415,7 +415,18 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   next: async () => {
     const engine = get().engine || sharedEngine;
     if (engine) {
-      await engine.next();
+      try {
+        await engine.next();
+      } catch (err: any) {
+        console.warn('[PlayerStore] Error playing next track:', err);
+        set({ error: err?.message || 'Track playback failed' });
+        // Auto-skip unplayable track if more tracks exist in queue
+        const q = engine.getQueue();
+        const idx = engine.getCurrentIndex();
+        if (idx < q.length - 1) {
+          get().next().catch(() => {});
+        }
+      }
       const current = engine.getCurrentTrack();
       if (current) {
         const cached = current.videoId ? lyricsCache.get(current.videoId) : null;
@@ -432,7 +443,12 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   previous: async () => {
     const engine = get().engine || sharedEngine;
     if (engine) {
-      await engine.previous();
+      try {
+        await engine.previous();
+      } catch (err: any) {
+        console.warn('[PlayerStore] Error playing previous track:', err);
+        set({ error: err?.message || 'Track playback failed' });
+      }
       const current = engine.getCurrentTrack();
       if (current) {
         const cached = current.videoId ? lyricsCache.get(current.videoId) : null;

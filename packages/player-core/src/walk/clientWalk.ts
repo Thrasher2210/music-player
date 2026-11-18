@@ -14,7 +14,7 @@ export const CLIENT_WALK_PRIORITY: readonly InnerTubeClientName[] = [
   'MWEB',
 ] as const;
 
-export const BENCH_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+export const BENCH_DURATION_MS = 30 * 1000; // 30 seconds transient bench (not 10 minutes)
 const LOCAL_STORAGE_KEY = 'mp_verdict_cache';
 
 export interface VerdictEntry {
@@ -23,7 +23,7 @@ export interface VerdictEntry {
 }
 
 /**
- * VerdictCache manages in-memory and optional localStorage benching of clients
+ * VerdictCache manages in-memory benching of clients
  */
 export class VerdictCache {
   private inMemoryCache: Map<InnerTubeClientName, VerdictEntry> = new Map();
@@ -37,37 +37,15 @@ export class VerdictCache {
       return;
     }
     try {
-      const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Record<string, VerdictEntry>;
-        const now = Date.now();
-        for (const [key, entry] of Object.entries(parsed)) {
-          if (entry && entry.benchedUntil > now) {
-            this.inMemoryCache.set(key as InnerTubeClientName, entry);
-          }
-        }
-      }
+      // Clear legacy stale benches from localStorage so users never get locked out
+      window.localStorage.removeItem(LOCAL_STORAGE_KEY);
     } catch {
-      // Storage access may be blocked or restricted; in-memory fallback continues
+      // Ignore
     }
   }
 
   private persistToStorage(): void {
-    if (typeof window === 'undefined' || !window.localStorage) {
-      return;
-    }
-    try {
-      const obj: Record<string, VerdictEntry> = {};
-      const now = Date.now();
-      for (const [key, entry] of this.inMemoryCache.entries()) {
-        if (entry.benchedUntil > now) {
-          obj[key] = entry;
-        }
-      }
-      window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(obj));
-    } catch {
-      // Ignore storage persistence errors
-    }
+    // In-memory only to avoid persistent lockouts across page reloads
   }
 
   /**
@@ -295,6 +273,26 @@ export async function executeClientWalk(
         reason: err?.message || 'Failed',
         benchedUntil: Date.now() + BENCH_DURATION_MS,
       });
+    }
+  }
+
+  // If the filtered candidates failed but some clients were previously benched, retry all clients fresh once
+  if (candidates.length < CLIENT_WALK_PRIORITY.length) {
+    cache.clear();
+    const remaining = CLIENT_WALK_PRIORITY.filter((c) => !candidates.includes(c));
+    for (const client of remaining) {
+      try {
+        const result = await attemptClient(client, videoId, innerTubeClient, cache);
+        streamResultCache.set(videoId, { expiresAt: now + STREAM_CACHE_TTL_MS, result });
+        return result;
+      } catch (err: any) {
+        verdicts.push({
+          client,
+          playable: false,
+          reason: err?.message || 'Failed',
+          benchedUntil: Date.now() + BENCH_DURATION_MS,
+        });
+      }
     }
   }
 

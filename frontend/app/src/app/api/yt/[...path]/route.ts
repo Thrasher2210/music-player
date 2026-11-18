@@ -22,15 +22,49 @@ export async function POST(
 
     const bodyText = await req.text();
 
+    let clientName = '';
+    let clientVersion = '';
+    try {
+      const parsedBody = JSON.parse(bodyText);
+      clientName = parsedBody?.context?.client?.clientName || '';
+      clientVersion = parsedBody?.context?.client?.clientVersion || '';
+    } catch {
+      // not JSON
+    }
+
+    const isIos = clientName.toLowerCase() === 'ios';
+    const isVision = clientName.toLowerCase() === 'visionos';
+    const isMweb = clientName.toUpperCase() === 'MWEB';
+    const isWeb = clientName.toUpperCase() === 'WEB';
+
+    let headerClientName = '67';
+    let headerClientVersion = '1.20240101.01.00';
+    let userAgent =
+      req.headers.get('user-agent') ||
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+
+    if (isIos) {
+      headerClientName = '5';
+      headerClientVersion = clientVersion || '20.11.6';
+      userAgent = 'com.google.ios.youtube/20.11.6 (iPhone16,2; U; CPU OS 17_4 like Mac OS X; en_US)';
+    } else if (isVision) {
+      headerClientName = '111';
+      headerClientVersion = clientVersion || '1.02';
+    } else if (isMweb) {
+      headerClientName = '62';
+      headerClientVersion = clientVersion || '2.20240101.01.00';
+    } else if (isWeb) {
+      headerClientName = '1';
+      headerClientVersion = clientVersion || '2.20240101.01.00';
+    }
+
     const forwardHeaders: Record<string, string> = {
       'Content-Type': req.headers.get('content-type') || 'text/plain',
-      'User-Agent':
-        req.headers.get('user-agent') ||
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+      'User-Agent': userAgent,
       Origin: 'https://music.youtube.com',
       Referer: 'https://music.youtube.com/',
-      'X-YouTube-Client-Name': req.headers.get('x-youtube-client-name') || '67',
-      'X-YouTube-Client-Version': req.headers.get('x-youtube-client-version') || '1.20240101.01.00',
+      'X-YouTube-Client-Name': req.headers.get('x-youtube-client-name') || headerClientName,
+      'X-YouTube-Client-Version': req.headers.get('x-youtube-client-version') || headerClientVersion,
     };
 
     const visitorData = req.headers.get('x-goog-visitor-id');
