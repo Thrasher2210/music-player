@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import { getDb, schema } from "@mp/db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { requireUser } from "./playlists.js";
 
 export const historyRoutes: FastifyPluginAsync = async (app) => {
@@ -35,4 +35,3 @@ export const historyRoutes: FastifyPluginAsync = async (app) => {
   });
 };
 
-import { eq } from "drizzle-orm";

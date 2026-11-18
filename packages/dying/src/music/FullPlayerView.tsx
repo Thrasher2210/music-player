@@ -360,11 +360,11 @@ export const FullPlayerView: React.FC<FullPlayerViewProps> = ({
                   "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all cursor-pointer",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
                   liked
-                    ? "text-status-error bg-status-error/10 hover:bg-status-error/20"
+                    ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
                     : "text-text-secondary hover:text-white hover:bg-surface-hover"
                 )}
               >
-                <Heart size={22} className={liked ? "fill-current" : ""} />
+                <Heart size={22} className={liked ? "fill-emerald-400" : ""} />
               </button>
             )}
           </div>

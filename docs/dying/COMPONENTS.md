@@ -62,6 +62,31 @@ import { Separator } from '@mp/dying';
 
 ## 2. Foundational Components
 
+### `BrandLogo` / `GaneGanLogo`
+Official brand vector mark and typography lockup for GaneGan, dynamically integrated with Dying design tokens and theme modes.
+```tsx
+import { BrandLogo } from '@mp/dying';
+
+// Pure vector mark
+<BrandLogo variant="mark" size="sm" />
+
+// Styled typography wordmark with brand-accent highlighted 'G's
+<BrandLogo variant="wordmark" size="md" subtitle="Streaming Engine" />
+
+// Full lockup (Mark + Wordmark)
+<BrandLogo variant="full" size="md" />
+
+// Squircle App Icon tile with specular highlight
+<BrandLogo variant="app-icon" size="md" />
+
+// Graphite acrylic monochrome tile
+<BrandLogo variant="monochrome-tile" size="md" />
+```
+- **Variants:** `mark`, `wordmark`, `full`, `app-icon`, `monochrome-tile`.
+- **Sizes:** `xs` (16px), `sm` (20px), `md` (28px), `lg` (40px), `xl` (56px), or custom `number`.
+- **Colors:** `brand` (default theme-reactive vermillion/coral), `monochrome`, `white`, `current`.
+- **Props:** `showSubtitle?: boolean`, `subtitle?: string`, `badge?: ReactNode`.
+
 ### `Button`
 Polymorphic action button with variants, sizes, loading states, and icon slots.
 ```tsx

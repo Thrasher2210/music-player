@@ -16,6 +16,9 @@ import {
   Heading,
   Separator,
   VisuallyHidden,
+  BrandLogo,
+  GaneGanLogo,
+  BrandSymbolMark,
   Button,
   IconButton,
   ButtonGroup,
@@ -102,6 +105,14 @@ describe("Dying Design System — Enterprise Quality Suite", () => {
       assert.strictEqual(semanticTokens.text.secondary, "#98989d");
       assert.strictEqual(semanticTokens.text.tertiary, "#86868b");
       assert.strictEqual(semanticTokens.text.kicker, "#86868b");
+    });
+
+    test("verifies GaneGan brand vermillion/coral identity tokens", () => {
+      assert.strictEqual(primitiveTokens.colors.brandCoral, "#FF6A4D");
+      assert.strictEqual(primitiveTokens.colors.brandVermillion, "#D6452B");
+      assert.strictEqual(semanticTokens.brand.primary, "#FF6A4D");
+      assert.strictEqual(semanticTokens.brand.primaryLight, "#D6452B");
+      assert.ok(semanticTokens.brand.subtle.includes("rgba"));
     });
 
     test("verifies 4px baseline spacing rhythm", () => {
@@ -278,6 +289,35 @@ describe("Dying Design System — Enterprise Quality Suite", () => {
         isLyricsLoading: true,
       });
       assert.ok(React.isValidElement(playerElem));
+    });
+  });
+
+  describe("6. Brand Identity & Logo System (GaneGan)", () => {
+    test("verifies BrandLogo renders mark, wordmark, full lockup, and tiles", () => {
+      const mark = React.createElement(BrandLogo, { variant: "mark", size: "sm" });
+      assert.ok(React.isValidElement(mark));
+
+      const wordmark = React.createElement(BrandLogo, { variant: "wordmark", size: "md" });
+      assert.ok(React.isValidElement(wordmark));
+
+      const full = React.createElement(BrandLogo, {
+        variant: "full",
+        size: "lg",
+        subtitle: "Streaming",
+      });
+      assert.ok(React.isValidElement(full));
+
+      const appIcon = React.createElement(BrandLogo, { variant: "app-icon", size: "md" });
+      assert.ok(React.isValidElement(appIcon));
+
+      const monoTile = React.createElement(BrandLogo, { variant: "monochrome-tile", size: "md" });
+      assert.ok(React.isValidElement(monoTile));
+    });
+
+    test("verifies GaneGanLogo alias and BrandSymbolMark SVG primitive", () => {
+      assert.strictEqual(GaneGanLogo, BrandLogo);
+      const symbol = React.createElement(BrandSymbolMark, { size: 32 });
+      assert.ok(React.isValidElement(symbol));
     });
   });
 });

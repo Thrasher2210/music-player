@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { auth } from "../auth.js";
 import { getDb, schema } from "@mp/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 
 export const requireUser = async (req: any): Promise<string> => {
   const session = await auth.api.getSession({ headers: req.headers });
@@ -113,7 +113,12 @@ export const playlistsRoutes: FastifyPluginAsync = async (app) => {
     }
     await db
       .delete(schema.playlistTracks)
-      .where(eq(schema.playlistTracks.playlistId, id));
+      .where(
+        and(
+          eq(schema.playlistTracks.playlistId, id),
+          eq(schema.playlistTracks.videoId, videoId),
+        ),
+      );
     return { ok: true, videoId };
   });
 
@@ -132,5 +137,3 @@ export const playlistsRoutes: FastifyPluginAsync = async (app) => {
     return { ok: true };
   });
 };
-
-import { sql } from "drizzle-orm";

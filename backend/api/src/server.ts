@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { auth, trustedOrigins } from "./auth.js";
 import { playlistsRoutes } from "./routes/playlists.js";
 import { likesRoutes } from "./routes/likes.js";
+import { historyRoutes } from "./routes/history.js";
 import { lyricsRoutes } from "./routes/lyrics.js";
 import { importRoutes } from "./routes/import.js";
 
@@ -38,6 +39,7 @@ export async function buildServer(opts?: { logger?: boolean }): Promise<FastifyI
 
   await app.register(playlistsRoutes, { prefix: "/api/playlists" });
   await app.register(likesRoutes, { prefix: "/api/likes" });
+  await app.register(historyRoutes, { prefix: "/api/history" });
   await app.register(lyricsRoutes, { prefix: "/api/lyrics" });
   await app.register(importRoutes, { prefix: "/api/import" });
 

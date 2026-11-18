@@ -12,6 +12,7 @@ import {
   Mic2,
   ChevronUp,
   ChevronDown,
+  Heart,
 } from "lucide-react";
 import { GlassPanel } from "../primitives/GlassPanel";
 import { ScrubSlider } from "../primitives/ScrubSlider";
@@ -34,6 +35,8 @@ export interface PlayerBarProps
   showQueue?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  isLiked?: boolean;
+  onToggleLike?: () => void;
 
   onPlayPause?: () => void;
   onPrevious?: () => void;
@@ -69,6 +72,8 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
   showQueue = false,
   isExpanded = false,
   onToggleExpand,
+  isLiked = false,
+  onToggleLike,
 
   onPlayPause,
   onPrevious,
@@ -131,6 +136,26 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
                 {currentTrack.artist}
               </span>
             </div>
+
+            {onToggleLike && (
+              <SpringButton
+                variant="ghost"
+                size="xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleLike();
+                }}
+                aria-label={isLiked ? "Unlike" : "Like"}
+                className={cn(
+                  "shrink-0 ml-1 transition-colors",
+                  isLiked
+                    ? "text-emerald-400"
+                    : "text-text-tertiary hover:text-text-primary"
+                )}
+              >
+                <Heart size={18} className={isLiked ? "fill-emerald-400" : ""} />
+              </SpringButton>
+            )}
           </>
         ) : (
           <div className="text-xs text-text-tertiary font-medium">No track playing</div>

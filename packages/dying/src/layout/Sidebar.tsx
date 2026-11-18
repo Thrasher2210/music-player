@@ -1,6 +1,7 @@
 import React from "react";
-import { Search, X, Music2 } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { cn } from "../utils/cn";
+import { BrandLogo } from "../components/BrandLogo";
 
 /* -------------------------------------------------------------------------- */
 /* SidebarBrand                                                               */
@@ -16,8 +17,8 @@ export interface SidebarBrandProps
 
 export const SidebarBrand: React.FC<SidebarBrandProps> = ({
   className,
-  logo = <Music2 className="h-5 w-5 text-white" />,
-  title = "Music",
+  logo = <BrandLogo variant="mark" size="sm" />,
+  title = <BrandLogo variant="wordmark" size="sm" />,
   subtitle,
   badge,
   ...props
@@ -31,7 +32,7 @@ export const SidebarBrand: React.FC<SidebarBrandProps> = ({
       {...props}
     >
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface border border-border-subtle shadow-specular-inset">
           {logo}
         </div>
         <div className="flex flex-col min-w-0">

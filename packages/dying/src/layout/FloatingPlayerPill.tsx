@@ -12,6 +12,7 @@ import {
   Music2,
   ChevronUp,
   ChevronDown,
+  Heart,
 } from "lucide-react";
 import { ScrubSlider } from "../primitives/ScrubSlider";
 import { SpringButton } from "../primitives/SpringButton";
@@ -34,6 +35,8 @@ export interface FloatingPlayerPillProps
   isLyricsOpen?: boolean;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
+  isLiked?: boolean;
+  onToggleLike?: () => void;
 
   onPlayPause?: () => void;
   onPrevious?: () => void;
@@ -78,6 +81,8 @@ export const FloatingPlayerPill = React.forwardRef<
       isLyricsOpen = false,
       isExpanded = false,
       onToggleExpand,
+      isLiked = false,
+      onToggleLike,
       onPlayPause,
       onPrevious,
       onNext,
@@ -159,6 +164,26 @@ export const FloatingPlayerPill = React.forwardRef<
                     {artist}
                   </span>
                 </div>
+
+                {onToggleLike && (
+                  <SpringButton
+                    variant="ghost"
+                    size="xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleLike();
+                    }}
+                    aria-label={isLiked ? "Unlike" : "Like"}
+                    className={cn(
+                      "shrink-0 ml-1 transition-colors",
+                      isLiked
+                        ? "text-emerald-400"
+                        : "text-text-tertiary hover:text-text-primary"
+                    )}
+                  >
+                    <Heart size={16} className={isLiked ? "fill-emerald-400" : ""} />
+                  </SpringButton>
+                )}
               </>
             ) : (
               <>

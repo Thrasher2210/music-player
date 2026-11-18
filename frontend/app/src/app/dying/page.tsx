@@ -24,6 +24,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import {
+  BrandLogo,
   OledBase,
   GlassPanel,
   TrackTable,
@@ -379,6 +380,67 @@ function DyingPortalContent() {
         {/* TAB 1: COMPONENTS & PRIMITIVES */}
         {activeTab === 'components' && (
           <div className="space-y-16">
+            {/* Brand Identity & Logo Section */}
+            <section className="space-y-6">
+              <div className="flex flex-col gap-1">
+                <Text variant="kicker" size="xs">Brand Identity · System Vector Marks</Text>
+                <Heading level={2} size="h2">GaneGan Brand Logo</Heading>
+                <Text variant="secondary" size="sm">
+                  Core musical mark blending uppercase &apos;G&apos;, vinyl grooves, and an eighth-note into Dying&apos;s monochrome &amp; vermillion design tokens.
+                </Text>
+              </div>
+
+              <Grid cols={3} gap="4">
+                <Card variant="glass" className="p-5 flex flex-col justify-between">
+                  <div>
+                    <Text variant="kicker" size="xs">Lockup &amp; Typography</Text>
+                    <Heading level={4} size="h4" className="mt-1 mb-3">Full Lockup &amp; Wordmark</Heading>
+                    <Stack gap="4" className="py-2">
+                      <BrandLogo variant="full" size="md" subtitle="Streaming Engine" />
+                      <BrandLogo variant="wordmark" size="lg" badge={<Badge variant="glass" size="xs">PRO</Badge>} />
+                      <BrandLogo variant="wordmark" size="sm" showSubtitle subtitle="Apple Music Aesthetics" />
+                    </Stack>
+                  </div>
+                  <Text variant="tertiary" size="xs" className="mt-4 font-mono">
+                    variant=&quot;full&quot; | variant=&quot;wordmark&quot;
+                  </Text>
+                </Card>
+
+                <Card variant="glass" className="p-5 flex flex-col justify-between">
+                  <div>
+                    <Text variant="kicker" size="xs">Vector Symbol</Text>
+                    <Heading level={4} size="h4" className="mt-1 mb-3">SVG Mark Scale</Heading>
+                    <Flex align="center" gap="4" className="py-3">
+                      <BrandLogo variant="mark" size="xs" />
+                      <BrandLogo variant="mark" size="sm" />
+                      <BrandLogo variant="mark" size="md" />
+                      <BrandLogo variant="mark" size="lg" />
+                      <BrandLogo variant="mark" size="xl" />
+                    </Flex>
+                  </div>
+                  <Text variant="tertiary" size="xs" className="mt-4 font-mono">
+                    size=&quot;xs&quot; | &quot;sm&quot; | &quot;md&quot; | &quot;lg&quot; | &quot;xl&quot;
+                  </Text>
+                </Card>
+
+                <Card variant="glass" className="p-5 flex flex-col justify-between">
+                  <div>
+                    <Text variant="kicker" size="xs">App Tiles &amp; Curvature</Text>
+                    <Heading level={4} size="h4" className="mt-1 mb-3">App Icon &amp; Monochrome</Heading>
+                    <Flex align="center" gap="4" className="py-2">
+                      <BrandLogo variant="app-icon" size="sm" />
+                      <BrandLogo variant="app-icon" size="md" />
+                      <BrandLogo variant="monochrome-tile" size="md" />
+                      <BrandLogo variant="mark" color="monochrome" size="md" />
+                    </Flex>
+                  </div>
+                  <Text variant="tertiary" size="xs" className="mt-4 font-mono">
+                    variant=&quot;app-icon&quot; | &quot;monochrome-tile&quot;
+                  </Text>
+                </Card>
+              </Grid>
+            </section>
+
             {/* Primitives Section */}
             <section className="space-y-6">
               <div className="flex flex-col gap-1">

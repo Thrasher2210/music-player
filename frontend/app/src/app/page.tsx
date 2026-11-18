@@ -11,12 +11,16 @@ import {
   Heart,
   Cast,
   Sparkles,
-  Play,
   X,
   LogIn,
+  Play,
+  Shuffle,
+  Trash2,
+  ListMusic,
 } from 'lucide-react';
 import {
   AppShell,
+  BrandLogo,
   Sidebar,
   SidebarBrand,
   SidebarNav,
@@ -49,28 +53,20 @@ import {
   Input,
   Avatar,
   Skeleton,
+  type TrackData,
 } from '@mp/dying';
 import { usePlayerStore, toTrackData } from '../stores/playerStore';
 import { useAuthStore } from '../stores/authStore';
+import { useLibraryStore } from '../stores/libraryStore';
 import { AccountModal } from '../components/AccountModal';
+import { CreatePlaylistDialog } from '../components/CreatePlaylistDialog';
+import { AddToPlaylistModal } from '../components/AddToPlaylistModal';
+import { useMediaSession } from '../hooks/useMediaSession';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import {
   type Track,
   type MediaShelfData,
 } from '@mp/player-core';
-
-interface PlaylistNav {
-  id: string;
-  name: string;
-  subtitle: string;
-  pinned?: boolean;
-}
-
-const USER_PLAYLISTS: PlaylistNav[] = [
-  { id: 'liked', name: 'Liked music', subtitle: 'Auto playlist', pinned: true },
-  { id: 'pl-1', name: 'Top Mixes', subtitle: 'Curated for you' },
-  { id: 'pl-2', name: 'Chill Drive', subtitle: 'Relaxed grooves' },
-  { id: 'pl-3', name: 'Focus Flow', subtitle: 'Deep work beats' },
-];
 
 export default function HomePage() {
   const {
@@ -97,6 +93,8 @@ export default function HomePage() {
     toggleMute,
     toggleRepeat,
     toggleShuffle,
+    setShuffle,
+    setQueue,
     addToQueue,
     removeFromQueue,
     search,
@@ -104,11 +102,32 @@ export default function HomePage() {
     getNextRadio,
   } = usePlayerStore();
 
+  const {
+    playlists,
+    likedTracks,
+    fetchLibrary,
+    toggleLike,
+    isLiked,
+    deletePlaylist,
+    fetchPlaylistTracks,
+    recordPlayHistory,
+  } = useLibraryStore();
+
   // Search & Navigation State
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [activeNav, setActiveNav] = useState<'home' | 'explore' | 'library' | 'liked'>('home');
+  const [activeNav, setActiveNav] = useState<'home' | 'explore' | 'library'>('home');
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>('liked');
+
+  // Playlist view tracks state
+  const [selectedPlaylistTracks, setSelectedPlaylistTracks] = useState<Track[]>([]);
+  const [isLoadingPlaylistTracks, setIsLoadingPlaylistTracks] = useState(false);
+
+  // Dialog & Modal State
+  const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
+  const [isAddToPlaylistOpen, setIsAddToPlaylistOpen] = useState(false);
+  const [trackToAddToPlaylist, setTrackToAddToPlaylist] = useState<Track | null>(null);
 
   // Live YouTube Music Feed State
   const [moodChips, setMoodChips] = useState<MoodChipData[]>([]);
@@ -126,9 +145,42 @@ export default function HomePage() {
   const router = useRouter();
   const [hasMounted, setHasMounted] = useState(false);
 
+  const handleToggleLyrics = useCallback(() => {
+    if (isFullPlayerOpen && fullPlayerTab === 'lyrics') {
+      setIsFullPlayerOpen(false);
+    } else {
+      setFullPlayerTab('lyrics');
+      setIsFullPlayerOpen(true);
+    }
+  }, [isFullPlayerOpen, fullPlayerTab]);
+
+  const handleCloseModals = useCallback(() => {
+    if (isAccountModalOpen) {
+      setIsAccountModalOpen(false);
+    } else if (isCreatePlaylistOpen) {
+      setIsCreatePlaylistOpen(false);
+    } else if (isAddToPlaylistOpen) {
+      setIsAddToPlaylistOpen(false);
+    } else if (isFullPlayerOpen) {
+      setIsFullPlayerOpen(false);
+    }
+  }, [isAccountModalOpen, isCreatePlaylistOpen, isAddToPlaylistOpen, isFullPlayerOpen]);
+
+  // Wire OS Media Session & Global Keyboard Shortcuts
+  useMediaSession();
+  useKeyboardShortcuts({
+    toggleLyrics: handleToggleLyrics,
+    closeModals: handleCloseModals,
+  });
+
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  // Fetch user library on mount and when authentication changes
+  useEffect(() => {
+    fetchLibrary();
+  }, [fetchLibrary, isAuthenticated]);
 
   const [, startTransition] = useTransition();
 
@@ -160,12 +212,35 @@ export default function HomePage() {
     };
   }, [initialize, getHomeFeed]);
 
-  // Play track immediately and concurrently seed infinite Up Next queue with live radio
+  // Fetch tracks for custom playlist when selected
+  useEffect(() => {
+    if (activeNav === 'library' && selectedPlaylistId && selectedPlaylistId !== 'liked') {
+      let isMounted = true;
+      setIsLoadingPlaylistTracks(true);
+      fetchPlaylistTracks(selectedPlaylistId)
+        .then((tracks) => {
+          if (isMounted) {
+            setSelectedPlaylistTracks(tracks);
+          }
+        })
+        .finally(() => {
+          if (isMounted) {
+            setIsLoadingPlaylistTracks(false);
+          }
+        });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [activeNav, selectedPlaylistId, fetchPlaylistTracks]);
+
+  // Play track immediately, record history, and seed infinite radio
   const handlePlayTrackWithRadio = useCallback(
     (track: Track) => {
       playTrack(track);
       const vid = track.videoId || track.id;
       if (vid) {
+        recordPlayHistory(vid, 0);
         getNextRadio(vid)
           .then((radio) => {
             if (radio.related && radio.related.length > 0) {
@@ -177,7 +252,40 @@ export default function HomePage() {
           });
       }
     },
-    [playTrack, getNextRadio]
+    [playTrack, getNextRadio, recordPlayHistory]
+  );
+
+  // Play all tracks in list
+  const handlePlayAll = useCallback(
+    (tracks: Track[]) => {
+      if (!tracks.length) return;
+      setQueue(tracks, 0);
+      handlePlayTrackWithRadio(tracks[0]);
+    },
+    [setQueue, handlePlayTrackWithRadio]
+  );
+
+  // Shuffle all tracks in list
+  const handleShuffleAll = useCallback(
+    (tracks: Track[]) => {
+      if (!tracks.length) return;
+      const shuffled = [...tracks].sort(() => Math.random() - 0.5);
+      setShuffle(true);
+      setQueue(shuffled, 0);
+      handlePlayTrackWithRadio(shuffled[0]);
+    },
+    [setShuffle, setQueue, handlePlayTrackWithRadio]
+  );
+
+  // Delete custom playlist
+  const handleDeletePlaylist = useCallback(
+    async (id: string) => {
+      const ok = await deletePlaylist(id);
+      if (ok) {
+        setSelectedPlaylistId('liked');
+      }
+    },
+    [deletePlaylist]
   );
 
   // Mood Chip Selection: dynamically swap live feed
@@ -242,6 +350,18 @@ export default function HomePage() {
   const isSearchActive = searchQuery.trim().length > 0;
   const isCurrentlyPlaying = playbackState === 'playing';
 
+  // Helper to enrich core Track with live like status for dying TrackData
+  const getTrackDataWithLiked = useCallback(
+    (t: Track): TrackData => {
+      const vid = t.videoId || t.id;
+      return {
+        ...toTrackData(t),
+        isLiked: isLiked(vid),
+      };
+    },
+    [isLiked]
+  );
+
   // Group quick picks into 4-song clusters for YouTube Music desktop grid
   const quickPickClusters = useMemo(() => {
     const clusters: Track[][] = [];
@@ -251,6 +371,20 @@ export default function HomePage() {
     return clusters;
   }, [quickPicks]);
 
+  // Current active playlist object (if custom)
+  const currentCustomPlaylist = useMemo(() => {
+    if (selectedPlaylistId === 'liked') return null;
+    return playlists.find((p) => p.id === selectedPlaylistId) || null;
+  }, [playlists, selectedPlaylistId]);
+
+  // Tracks for currently viewed playlist
+  const currentLibraryTracks = useMemo(() => {
+    if (selectedPlaylistId === 'liked') {
+      return likedTracks;
+    }
+    return selectedPlaylistTracks;
+  }, [selectedPlaylistId, likedTracks, selectedPlaylistTracks]);
+
   return (
     <AppShell
       sidebar={
@@ -258,17 +392,9 @@ export default function HomePage() {
           <Flex direction="col" className="h-full overflow-hidden">
             {/* Top Brand Logo */}
             <SidebarBrand
-              logo={
-                <Flex
-                  align="center"
-                  justify="center"
-                  className="h-7 w-7 rounded-full bg-red-600 text-white shadow-md"
-                >
-                  <Play size={14} className="fill-current ml-0.5" />
-                </Flex>
-              }
-              title="Music"
-              subtitle="GaneGan Engine"
+              logo={<BrandLogo variant="mark" size="sm" />}
+              title={<BrandLogo variant="wordmark" size="sm" />}
+              subtitle="Streaming"
             />
 
             {/* Primary Navigation Drawer */}
@@ -296,10 +422,11 @@ export default function HomePage() {
               <SidebarNavItem
                 icon={<Library className="h-4 w-4" />}
                 label="Library"
-                active={activeNav === 'library'}
+                active={activeNav === 'library' && !isSearchActive && !isFullPlayerOpen}
                 onClick={() => {
                   setActiveNav('library');
                   setIsFullPlayerOpen(false);
+                  handleClearSearch();
                 }}
               />
             </SidebarNav>
@@ -315,7 +442,7 @@ export default function HomePage() {
                 size="sm"
                 leftIcon={<Plus size={16} />}
                 className="w-full justify-start text-xs font-semibold text-text-primary hover:bg-surface-active rounded-full"
-                onClick={() => handleSearchChange('Discover Weekly')}
+                onClick={() => setIsCreatePlaylistOpen(true)}
               >
                 New playlist
               </Button>
@@ -323,17 +450,50 @@ export default function HomePage() {
 
             {/* User Playlists Scrollable Rail */}
             <Box className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
-              {USER_PLAYLISTS.map((pl) => (
+              {/* Liked Music (Always pinned on top) */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedPlaylistId('liked');
+                  setActiveNav('library');
+                  setIsFullPlayerOpen(false);
+                  handleClearSearch();
+                }}
+                className={`w-full justify-start flex-col items-start px-3 py-2 h-auto text-left rounded-lg transition-colors group ${
+                  activeNav === 'library' && selectedPlaylistId === 'liked' && !isSearchActive
+                    ? 'bg-surface-active text-text-primary'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                <Flex justify="between" align="center" className="w-full">
+                  <Text size="xs" weight="medium" className="truncate flex-1">
+                    Liked music
+                  </Text>
+                  <Heart
+                    size={12}
+                    className="text-emerald-400 fill-emerald-400 shrink-0 ml-1.5"
+                  />
+                </Flex>
+                <Text size="xs" className="text-text-tertiary truncate">
+                  {likedTracks.length} {likedTracks.length === 1 ? 'song' : 'songs'} • Auto playlist
+                </Text>
+              </Button>
+
+              {/* Dynamic User Playlists from Backend */}
+              {playlists.map((pl) => (
                 <Button
                   key={pl.id}
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setActiveNav('liked');
-                    handleSearchChange(pl.name);
+                    setSelectedPlaylistId(pl.id);
+                    setActiveNav('library');
+                    setIsFullPlayerOpen(false);
+                    handleClearSearch();
                   }}
                   className={`w-full justify-start flex-col items-start px-3 py-2 h-auto text-left rounded-lg transition-colors group ${
-                    activeNav === 'liked' && searchQuery === pl.name
+                    activeNav === 'library' && selectedPlaylistId === pl.id && !isSearchActive
                       ? 'bg-surface-active text-text-primary'
                       : 'text-text-secondary hover:text-text-primary'
                   }`}
@@ -342,15 +502,11 @@ export default function HomePage() {
                     <Text size="xs" weight="medium" className="truncate flex-1">
                       {pl.name}
                     </Text>
-                    {pl.pinned && (
-                      <Heart
-                        size={12}
-                        className="text-emerald-400 fill-emerald-400 shrink-0 ml-1.5"
-                      />
-                    )}
                   </Flex>
                   <Text size="xs" className="text-text-tertiary truncate">
-                    {pl.subtitle}
+                    {typeof pl.trackCount === 'number'
+                      ? `${pl.trackCount} ${pl.trackCount === 1 ? 'song' : 'songs'}`
+                      : 'Playlist'}
                   </Text>
                 </Button>
               ))}
@@ -457,6 +613,12 @@ export default function HomePage() {
           isExpanded={isFullPlayerOpen}
           isShuffle={isShuffle}
           repeatMode={repeatMode}
+          isLiked={currentTrack ? isLiked(currentTrack.videoId || currentTrack.id) : false}
+          onToggleLike={() => {
+            if (currentTrack) {
+              toggleLike(currentTrack);
+            }
+          }}
           onPlayPause={togglePlay}
           onPrevious={previous}
           onNext={next}
@@ -481,7 +643,7 @@ export default function HomePage() {
     >
       {isFullPlayerOpen ? (
         <FullPlayerView
-          track={currentTrack ? toTrackData(currentTrack) : null}
+          track={currentTrack ? getTrackDataWithLiked(currentTrack) : null}
           isPlaying={isCurrentlyPlaying}
           currentTime={currentTime}
           duration={duration}
@@ -490,9 +652,14 @@ export default function HomePage() {
           onClose={() => setIsFullPlayerOpen(false)}
           activeTab={fullPlayerTab}
           onTabChange={setFullPlayerTab}
-          queue={queue.map(toTrackData)}
+          queue={queue.map(getTrackDataWithLiked)}
           lyrics={lyrics || undefined}
           isLyricsLoading={isLyricsLoading}
+          onLikeToggle={() => {
+            if (currentTrack) {
+              toggleLike(currentTrack);
+            }
+          }}
           onSelectTrack={(t) => {
             const matched = queue.find((x) => (x.id || x.videoId) === t.id);
             if (matched) {
@@ -524,8 +691,8 @@ export default function HomePage() {
         />
       ) : (
         <>
-          {/* 1. REAL LIVE INNER_TUBE MOOD & ACTIVITY CHIPS STRIP */}
-          {moodChips.length > 0 && (
+          {/* 1. REAL LIVE INNER_TUBE MOOD & ACTIVITY CHIPS STRIP (shown on home feed) */}
+          {moodChips.length > 0 && activeNav === 'home' && !isSearchActive && (
             <Box className="mb-8 select-none">
               <MoodChipBar
                 chips={moodChips}
@@ -536,162 +703,301 @@ export default function HomePage() {
             </Box>
           )}
 
-      {/* 2. DYNAMIC CONTENT: SEARCH RESULTS OR YOUTUBE MUSIC LIVE HOME FEED */}
-      {isSearchActive ? (
-        <Stack gap="6">
-          <Flex justify="between" align="center">
-            <Stack gap="1">
-              <Text variant="kicker" size="xs">
-                YouTube Music Engine
-              </Text>
-              <Heading level={1} size="h1">
-                {searchQuery.trim() ? `Results for "${searchQuery}"` : 'Search'}
-              </Heading>
-            </Stack>
-            {isSearching && (
-              <Badge variant="accent">Searching InnerTube...</Badge>
-            )}
-          </Flex>
-
-          <TrackTable
-            tracks={searchResults.map(toTrackData)}
-            currentTrackId={currentTrack?.id || currentTrack?.videoId}
-            isPlaying={isCurrentlyPlaying}
-            onTrackSelect={(t) => {
-              const matched = searchResults.find((x) => (x.id || x.videoId) === t.id);
-              if (matched) handlePlayTrackWithRadio(matched);
-            }}
-            onTrackPlay={(t) => {
-              const matched = searchResults.find((x) => (x.id || x.videoId) === t.id);
-              if (matched) handlePlayTrackWithRadio(matched);
-            }}
-            onTrackPause={pause}
-            emptyMessage={
-              isSearching
-                ? 'Searching YouTube Music audio streams...'
-                : 'No tracks found. Try searching for an artist, track title, or genre.'
-            }
-          />
-        </Stack>
-      ) : (
-        <Stack gap="12">
-          {/* Feed Loading Skeleton */}
-          {isLoadingFeed && quickPicks.length === 0 && shelves.length === 0 && (
-            <Stack gap="8">
-              <Stack gap="3">
-                <Skeleton className="h-6 w-48" />
-                <Grid cols={4} gap="4">
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full rounded-xl" />
-                  ))}
-                </Grid>
-              </Stack>
-              <Stack gap="3">
-                <Skeleton className="h-6 w-36" />
-                <Flex gap="4" className="overflow-hidden">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-44 w-44 rounded-2xl shrink-0" />
-                  ))}
-                </Flex>
-              </Stack>
-            </Stack>
-          )}
-
-          {/* SECTION 1: REAL LIVE QUICK PICKS (4-Song Clusters) */}
-          {quickPicks.length > 0 && (
-            <Stack gap="4">
-              <Flex justify="between" align="end">
+          {/* 2. DYNAMIC CONTENT: SEARCH RESULTS OR DEDICATED LIBRARY VIEW OR HOME FEED */}
+          {isSearchActive ? (
+            <Stack gap="6">
+              <Flex justify="between" align="center">
                 <Stack gap="1">
                   <Text variant="kicker" size="xs">
-                    START RADIO FROM A SONG
+                    YouTube Music Engine
                   </Text>
-                  <Heading level={2} size="h2" className="tracking-tight">
-                    Quick picks
+                  <Heading level={1} size="h1">
+                    {searchQuery.trim() ? `Results for "${searchQuery}"` : 'Search'}
                   </Heading>
                 </Stack>
-
-                <Flex gap="2" align="center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs font-semibold rounded-full"
-                    onClick={() => {
-                      if (quickPicks[0]) {
-                        handlePlayTrackWithRadio(quickPicks[0]);
-                      }
-                    }}
-                  >
-                    Play all
-                  </Button>
-                </Flex>
+                {isSearching && (
+                  <Badge variant="accent">Searching InnerTube...</Badge>
+                )}
               </Flex>
 
-              <QuickPicksGrid columns={4}>
-                {quickPickClusters.map((cluster, colIdx) => (
-                  <QuickPicksColumn key={colIdx}>
-                    {cluster.map((track) => {
-                      const trackKey = track.id || track.videoId;
-                      const isActive =
-                        (currentTrack?.id || currentTrack?.videoId) === trackKey;
-                      return (
-                        <QuickPickRow
-                          key={trackKey}
-                          track={toTrackData(track)}
-                          isActive={isActive}
-                          isPlaying={isActive && isCurrentlyPlaying}
-                          onPlay={() => handlePlayTrackWithRadio(track)}
-                          onPause={pause}
-                          onSelect={() => handlePlayTrackWithRadio(track)}
-                          onQueue={() => addToQueue(track)}
+              <TrackTable
+                tracks={searchResults.map(getTrackDataWithLiked)}
+                currentTrackId={currentTrack?.id || currentTrack?.videoId}
+                isPlaying={isCurrentlyPlaying}
+                onTrackSelect={(t) => {
+                  const matched = searchResults.find((x) => (x.id || x.videoId) === t.id);
+                  if (matched) handlePlayTrackWithRadio(matched);
+                }}
+                onTrackPlay={(t) => {
+                  const matched = searchResults.find((x) => (x.id || x.videoId) === t.id);
+                  if (matched) handlePlayTrackWithRadio(matched);
+                }}
+                onTrackPause={pause}
+                onLikeToggle={(trackData) => {
+                  const matched = searchResults.find((x) => (x.id || x.videoId) === trackData.id);
+                  if (matched) toggleLike(matched);
+                }}
+                onActionClick={(trackData) => {
+                  const matched = searchResults.find((x) => (x.id || x.videoId) === trackData.id);
+                  if (matched) {
+                    setTrackToAddToPlaylist(matched);
+                    setIsAddToPlaylistOpen(true);
+                  }
+                }}
+                emptyMessage={
+                  isSearching
+                    ? 'Searching YouTube Music audio streams...'
+                    : 'No tracks found. Try searching for an artist, track title, or genre.'
+                }
+              />
+            </Stack>
+          ) : activeNav === 'library' ? (
+            /* DEDICATED LIBRARY & PLAYLIST VIEW */
+            <Stack gap="8">
+              {/* Playlist Header Banner */}
+              <Flex gap="6" align="end" className="flex-col sm:flex-row pb-4 border-b border-border-subtle">
+                {/* Artwork Tile */}
+                {selectedPlaylistId === 'liked' ? (
+                  <Box className="w-44 h-44 rounded-2xl bg-gradient-to-br from-emerald-600/50 via-emerald-800/30 to-surface flex items-center justify-center shadow-2xl border border-emerald-500/20 shrink-0">
+                    <Heart size={64} className="text-emerald-400 fill-emerald-400" />
+                  </Box>
+                ) : (
+                  <Box className="w-44 h-44 rounded-2xl bg-gradient-to-br from-surface-active to-surface flex items-center justify-center shadow-2xl border border-border-subtle shrink-0 text-text-tertiary">
+                    <ListMusic size={64} />
+                  </Box>
+                )}
+
+                {/* Playlist Info & Action Buttons */}
+                <Stack gap="3" className="flex-1 min-w-0">
+                  <Text variant="kicker" size="xs">
+                    {selectedPlaylistId === 'liked' ? 'AUTO PLAYLIST' : 'PLAYLIST'}
+                  </Text>
+                  <Heading level={1} size="h1" className="truncate">
+                    {selectedPlaylistId === 'liked'
+                      ? 'Liked music'
+                      : currentCustomPlaylist?.name || 'Playlist'}
+                  </Heading>
+                  <Text size="sm" className="text-text-secondary">
+                    {selectedPlaylistId === 'liked'
+                      ? `${likedTracks.length} ${likedTracks.length === 1 ? 'song' : 'songs'} • Saved to your library`
+                      : `${currentLibraryTracks.length} ${currentLibraryTracks.length === 1 ? 'song' : 'songs'} • Created by you`}
+                  </Text>
+
+                  {/* Play & Shuffle Actions */}
+                  <Flex gap="3" align="center" className="pt-2">
+                    <Button
+                      variant="primary"
+                      size="md"
+                      leftIcon={<Play size={16} className="fill-current" />}
+                      disabled={currentLibraryTracks.length === 0}
+                      onClick={() => handlePlayAll(currentLibraryTracks)}
+                    >
+                      Play
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="md"
+                      leftIcon={<Shuffle size={16} />}
+                      disabled={currentLibraryTracks.length === 0}
+                      onClick={() => handleShuffleAll(currentLibraryTracks)}
+                    >
+                      Shuffle
+                    </Button>
+
+                    {selectedPlaylistId !== 'liked' && currentCustomPlaylist && (
+                      <IconButton
+                        aria-label="Delete playlist"
+                        variant="ghost"
+                        size="md"
+                        icon={<Trash2 size={18} className="text-status-error" />}
+                        onClick={() => handleDeletePlaylist(currentCustomPlaylist.id)}
+                      />
+                    )}
+                  </Flex>
+                </Stack>
+              </Flex>
+
+              {/* Playlist Tracks Table */}
+              {isLoadingPlaylistTracks ? (
+                <Stack gap="3">
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                </Stack>
+              ) : (
+                <TrackTable
+                  tracks={currentLibraryTracks.map(getTrackDataWithLiked)}
+                  currentTrackId={currentTrack?.id || currentTrack?.videoId}
+                  isPlaying={isCurrentlyPlaying}
+                  onTrackSelect={(t) => {
+                    const matched = currentLibraryTracks.find((x) => (x.id || x.videoId) === t.id);
+                    if (matched) handlePlayTrackWithRadio(matched);
+                  }}
+                  onTrackPlay={(t) => {
+                    const matched = currentLibraryTracks.find((x) => (x.id || x.videoId) === t.id);
+                    if (matched) handlePlayTrackWithRadio(matched);
+                  }}
+                  onTrackPause={pause}
+                  onLikeToggle={(trackData) => {
+                    const matched = currentLibraryTracks.find((x) => (x.id || x.videoId) === trackData.id);
+                    if (matched) toggleLike(matched);
+                  }}
+                  onActionClick={(trackData) => {
+                    const matched = currentLibraryTracks.find((x) => (x.id || x.videoId) === trackData.id);
+                    if (matched) {
+                      setTrackToAddToPlaylist(matched);
+                      setIsAddToPlaylistOpen(true);
+                    }
+                  }}
+                  emptyMessage={
+                    selectedPlaylistId === 'liked'
+                      ? 'No liked songs yet. Like songs while listening to see them in your collection!'
+                      : 'This playlist is empty. Add songs to get started!'
+                  }
+                />
+              )}
+            </Stack>
+          ) : (
+            <Stack gap="12">
+              {/* Feed Loading Skeleton */}
+              {isLoadingFeed && quickPicks.length === 0 && shelves.length === 0 && (
+                <Stack gap="8">
+                  <Stack gap="3">
+                    <Skeleton className="h-6 w-48" />
+                    <Grid cols={4} gap="4">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                      ))}
+                    </Grid>
+                  </Stack>
+                  <Stack gap="3">
+                    <Skeleton className="h-6 w-36" />
+                    <Flex gap="4" className="overflow-hidden">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Skeleton key={i} className="h-44 w-44 rounded-2xl shrink-0" />
+                      ))}
+                    </Flex>
+                  </Stack>
+                </Stack>
+              )}
+
+              {/* SECTION 1: REAL LIVE QUICK PICKS (4-Song Clusters) */}
+              {quickPicks.length > 0 && (
+                <Stack gap="4">
+                  <Flex justify="between" align="end">
+                    <Stack gap="1">
+                      <Text variant="kicker" size="xs">
+                        START RADIO FROM A SONG
+                      </Text>
+                      <Heading level={2} size="h2" className="tracking-tight">
+                        Quick picks
+                      </Heading>
+                    </Stack>
+
+                    <Flex gap="2" align="center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs font-semibold rounded-full"
+                        onClick={() => {
+                          if (quickPicks[0]) {
+                            handlePlayTrackWithRadio(quickPicks[0]);
+                          }
+                        }}
+                      >
+                        Play all
+                      </Button>
+                    </Flex>
+                  </Flex>
+
+                  <QuickPicksGrid columns={4}>
+                    {quickPickClusters.map((cluster, colIdx) => (
+                      <QuickPicksColumn key={colIdx}>
+                        {cluster.map((track) => {
+                          const trackKey = track.id || track.videoId;
+                          const isActive =
+                            (currentTrack?.id || currentTrack?.videoId) === trackKey;
+                          return (
+                            <QuickPickRow
+                              key={trackKey}
+                              track={getTrackDataWithLiked(track)}
+                              isActive={isActive}
+                              isPlaying={isActive && isCurrentlyPlaying}
+                              onPlay={() => handlePlayTrackWithRadio(track)}
+                              onPause={pause}
+                              onSelect={() => handlePlayTrackWithRadio(track)}
+                              onQueue={() => addToQueue(track)}
+                              onActionClick={() => {
+                                setTrackToAddToPlaylist(track);
+                                setIsAddToPlaylistOpen(true);
+                              }}
+                            />
+                          );
+                        })}
+                      </QuickPicksColumn>
+                    ))}
+                  </QuickPicksGrid>
+                </Stack>
+              )}
+
+              {/* SECTION 2: DYNAMIC LIVE INNER_TUBE SHELVES */}
+              {shelves.map((shelf) => {
+                if (!shelf.items || shelf.items.length === 0) return null;
+                return (
+                  <Box key={shelf.id} className="space-y-4">
+                    <MediaShelf title={shelf.title}>
+                      {shelf.items.map((item) => (
+                        <MediaCard
+                          key={item.id}
+                          title={item.title}
+                          subtitle={item.subtitle}
+                          imageUrl={item.thumbnail}
+                          aspect={
+                            shelf.title.toLowerCase().includes('video') ||
+                            shelf.title.toLowerCase().includes('listen again')
+                              ? 'video'
+                              : 'square'
+                          }
+                          onPlay={() => {
+                            if (item.videoId) {
+                              handlePlayTrackWithRadio({
+                                id: item.videoId,
+                                videoId: item.videoId,
+                                title: item.title,
+                                artist: item.subtitle,
+                                duration: 0,
+                                thumbnail: item.thumbnail,
+                              });
+                            }
+                          }}
                         />
-                      );
-                    })}
-                  </QuickPicksColumn>
-                ))}
-              </QuickPicksGrid>
+                      ))}
+                    </MediaShelf>
+                  </Box>
+                );
+              })}
             </Stack>
           )}
-
-          {/* SECTION 2: DYNAMIC LIVE INNER_TUBE SHELVES */}
-          {shelves.map((shelf) => {
-            if (!shelf.items || shelf.items.length === 0) return null;
-            return (
-              <Box key={shelf.id} className="space-y-4">
-                <MediaShelf title={shelf.title}>
-                  {shelf.items.map((item) => (
-                    <MediaCard
-                      key={item.id}
-                      title={item.title}
-                      subtitle={item.subtitle}
-                      imageUrl={item.thumbnail}
-                      aspect={
-                        shelf.title.toLowerCase().includes('video') ||
-                        shelf.title.toLowerCase().includes('listen again')
-                          ? 'video'
-                          : 'square'
-                      }
-                      onPlay={() => {
-                        if (item.videoId) {
-                          handlePlayTrackWithRadio({
-                            id: item.videoId,
-                            videoId: item.videoId,
-                            title: item.title,
-                            artist: item.subtitle,
-                            duration: 0,
-                            thumbnail: item.thumbnail,
-                          });
-                        }
-                      }}
-                    />
-                  ))}
-                </MediaShelf>
-              </Box>
-            );
-          })}
-        </Stack>
-      )}
         </>
       )}
+
+      {/* Dynamic Create Playlist Dialog */}
+      <CreatePlaylistDialog
+        open={isCreatePlaylistOpen}
+        onOpenChange={setIsCreatePlaylistOpen}
+        onPlaylistCreated={(newPl) => {
+          setSelectedPlaylistId(newPl.id);
+          setActiveNav('library');
+        }}
+      />
+
+      {/* Dynamic Add to Playlist Modal */}
+      <AddToPlaylistModal
+        open={isAddToPlaylistOpen}
+        onOpenChange={setIsAddToPlaylistOpen}
+        track={trackToAddToPlaylist}
+        onCreateNewPlaylist={() => setIsCreatePlaylistOpen(true)}
+      />
 
       {/* Dynamic Account & Profile Management Modal */}
       <AccountModal
