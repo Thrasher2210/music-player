@@ -7,10 +7,10 @@ import {
 import { InnerTubeClient } from '../innertube/client';
 
 export const CLIENT_WALK_PRIORITY: readonly InnerTubeClientName[] = [
-  'IOS',
   'VISIONOS',
   'WEB_REMIX',
   'WEB',
+  'IOS',
   'MWEB',
 ] as const;
 

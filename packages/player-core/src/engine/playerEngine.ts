@@ -128,6 +128,11 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     });
 
     this.audioDriver.on('error', (err) => {
+      // If error occurred mid-stream, bench active client immediately so walk falls back to the next client
+      if (this.activeClient) {
+        this.verdictCache.bench(this.activeClient, `mid-stream chunk stall: ${err.message}`);
+      }
+      this.playbackState = 'error';
       this.emit('error', err);
     });
   }
@@ -263,9 +268,10 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       if (index < 0 || index >= this.queue.length) return;
       this.currentIndex = index;
     } else {
-      // Fast-path: if audio driver is paused on the current track, resume instantly without re-loading
+      // Fast-path: ONLY if healthy and paused (never if driver or state is in error)
       if (
-        (this.playbackState === 'paused' || this.audioDriver.getState() === 'paused') &&
+        this.playbackState === 'paused' &&
+        this.audioDriver.getState() === 'paused' &&
         this.getCurrentTrack()
       ) {
         this.playbackState = 'playing';

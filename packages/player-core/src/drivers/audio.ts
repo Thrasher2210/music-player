@@ -217,6 +217,16 @@ export class ShakaMseAudioDriver implements AudioDriver {
       throw new Error('[ShakaMseAudioDriver] Player is not initialized');
     }
 
+    // If recovering from a stream/network error, re-attach mediaElement to clear broken MediaSource
+    if (this.state === 'error' && this.player && this.mediaElement) {
+      try {
+        await (this.player as any).detach();
+        await (this.player as any).attach(this.mediaElement);
+      } catch {
+        // Fallback: continue loading
+      }
+    }
+
     // Clean up previous blob URL if needed
     if (this.activeBlobUrl && this.activeBlobUrl.startsWith('blob:') && typeof URL !== 'undefined') {
       try {
