@@ -509,11 +509,20 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   },
 
   setQueue: (tracks: Track[], startIndex = 0, autoPlay = true) => {
-    const engine = get().engine;
+    let engine = get().engine;
+    if (!engine) {
+      get().initialize();
+      engine = sharedEngine;
+    }
     if (engine) {
       engine.setQueue(tracks, startIndex, autoPlay);
     }
-    set({ queue: [...tracks], currentIndex: startIndex });
+    const current = tracks[startIndex] || null;
+    set({
+      queue: [...tracks],
+      currentIndex: startIndex,
+      ...(autoPlay && current ? { currentTrack: current, playbackState: 'playing' } : {}),
+    });
   },
 
   addToQueue: (track: Track) => {

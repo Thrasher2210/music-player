@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Play, Shuffle, Users, Music2 } from 'lucide-react';
+import { Play, Pause, Shuffle, Users, Music2 } from 'lucide-react';
 import {
   Container,
   Box,
@@ -40,10 +40,16 @@ export default function ArtistPage() {
     playbackState,
     playTrack,
     setQueue,
+    play,
+    pause,
     togglePlay,
   } = usePlayerStore();
 
+  const isArtistActive = Boolean(
+    artist && currentTrack && artist.topSongs.some((t) => (t.videoId || t.id) === (currentTrack.videoId || currentTrack.id))
+  );
   const isPlaying = playbackState === 'playing';
+  const isThisArtistPlaying = isArtistActive && isPlaying;
 
   useEffect(() => {
     if (!artistId) return;
@@ -74,6 +80,16 @@ export default function ArtistPage() {
   const handlePlayAll = (shuffle = false) => {
     if (!artist || artist.topSongs.length === 0) return;
 
+    if (isThisArtistPlaying && !shuffle) {
+      pause();
+      return;
+    }
+
+    if (isArtistActive && playbackState === 'paused' && !shuffle) {
+      play();
+      return;
+    }
+
     const songs = [...artist.topSongs];
     if (shuffle) {
       for (let i = songs.length - 1; i > 0; i--) {
@@ -82,13 +98,13 @@ export default function ArtistPage() {
       }
     }
 
-    setQueue(songs, 0);
+    setQueue(songs, 0, false);
     playTrack(songs[0]);
   };
 
   const handleTrackSelect = (track: Track, index: number) => {
     if (!artist) return;
-    setQueue(artist.topSongs, index);
+    setQueue(artist.topSongs, index, false);
     playTrack(track);
   };
 
@@ -173,8 +189,17 @@ export default function ArtistPage() {
               className="rounded-full shadow-xl shadow-white/10"
               onClick={() => handlePlayAll(false)}
             >
-              <Play size={18} className="fill-current mr-2" />
-              Play All
+              {isThisArtistPlaying ? (
+                <>
+                  <Pause size={18} className="fill-current mr-2" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play size={18} className="fill-current mr-2" />
+                  Play All
+                </>
+              )}
             </Button>
             <IconButton
               aria-label="Shuffle play"

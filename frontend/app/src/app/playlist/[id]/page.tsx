@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Play, Heart, ListMusic, Clock } from 'lucide-react';
+import { Play, Pause, Shuffle, Heart, ListMusic, Clock } from 'lucide-react';
 import {
   Container,
   Box,
@@ -12,6 +12,7 @@ import {
   Text,
   Badge,
   Button,
+  IconButton,
   TrackRow,
   Skeleton,
   EmptyState,
@@ -42,6 +43,8 @@ export default function PlaylistPage() {
     playbackState,
     playTrack,
     setQueue,
+    play,
+    pause,
     togglePlay,
   } = usePlayerStore();
 
@@ -52,7 +55,11 @@ export default function PlaylistPage() {
     playlists,
   } = useLibraryStore();
 
+  const isPlaylistActive = Boolean(
+    currentTrack && tracks.some((t) => (t.videoId || t.id) === (currentTrack.videoId || currentTrack.id))
+  );
   const isPlaying = playbackState === 'playing';
+  const isThisPlaylistPlaying = isPlaylistActive && isPlaying;
 
   useEffect(() => {
     if (!playlistId) return;
@@ -112,14 +119,33 @@ export default function PlaylistPage() {
     };
   }, [playlistId, fetchLibrary, fetchPlaylistTracks, getPlaylist, likedTracks, playlists]);
 
-  const handlePlayAll = () => {
+  const handlePlayAll = (shuffle = false) => {
     if (tracks.length === 0) return;
-    setQueue(tracks, 0);
-    playTrack(tracks[0]);
+
+    if (isThisPlaylistPlaying && !shuffle) {
+      pause();
+      return;
+    }
+
+    if (isPlaylistActive && playbackState === 'paused' && !shuffle) {
+      play();
+      return;
+    }
+
+    const playlistTracks = [...tracks];
+    if (shuffle) {
+      for (let i = playlistTracks.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [playlistTracks[i], playlistTracks[j]] = [playlistTracks[j], playlistTracks[i]];
+      }
+    }
+
+    setQueue(playlistTracks, 0, false);
+    playTrack(playlistTracks[0]);
   };
 
   const handleTrackSelect = (track: Track, index: number) => {
-    setQueue(tracks, index);
+    setQueue(tracks, index, false);
     playTrack(track);
   };
 
@@ -211,17 +237,34 @@ export default function PlaylistPage() {
           </Flex>
 
           {tracks.length > 0 && (
-            <Box className="pt-2">
+            <Flex align="center" gap="3" className="pt-2 justify-center sm:justify-start">
               <Button
                 variant="primary"
                 size="lg"
                 className="rounded-full shadow-lg shadow-white/10"
-                onClick={handlePlayAll}
+                onClick={() => handlePlayAll(false)}
               >
-                <Play size={18} className="fill-current mr-2" />
-                Play All
+                {isThisPlaylistPlaying ? (
+                  <>
+                    <Pause size={18} className="fill-current mr-2" />
+                    Pause
+                  </>
+                ) : (
+                  <>
+                    <Play size={18} className="fill-current mr-2" />
+                    Play All
+                  </>
+                )}
               </Button>
-            </Box>
+              <IconButton
+                aria-label="Shuffle playlist"
+                variant="secondary"
+                size="md"
+                className="rounded-full"
+                icon={<Shuffle size={18} />}
+                onClick={() => handlePlayAll(true)}
+              />
+            </Flex>
           )}
         </Stack>
       </Flex>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Play, Disc3, Clock } from 'lucide-react';
+import { Play, Pause, Shuffle, Disc3, Clock } from 'lucide-react';
 import {
   Container,
   Box,
@@ -11,6 +11,7 @@ import {
   Heading,
   Badge,
   Button,
+  IconButton,
   TrackRow,
   Skeleton,
   EmptyState,
@@ -36,10 +37,16 @@ export default function AlbumPage() {
     playbackState,
     playTrack,
     setQueue,
+    play,
+    pause,
     togglePlay,
   } = usePlayerStore();
 
+  const isAlbumActive = Boolean(
+    album && currentTrack && album.tracks.some((t) => (t.videoId || t.id) === (currentTrack.videoId || currentTrack.id))
+  );
   const isPlaying = playbackState === 'playing';
+  const isThisAlbumPlaying = isAlbumActive && isPlaying;
 
   useEffect(() => {
     if (!albumId) return;
@@ -67,15 +74,34 @@ export default function AlbumPage() {
     };
   }, [albumId, getAlbum]);
 
-  const handlePlayAlbum = () => {
+  const handlePlayAlbum = (shuffle = false) => {
     if (!album || album.tracks.length === 0) return;
-    setQueue(album.tracks, 0);
-    playTrack(album.tracks[0]);
+
+    if (isThisAlbumPlaying && !shuffle) {
+      pause();
+      return;
+    }
+
+    if (isAlbumActive && playbackState === 'paused' && !shuffle) {
+      play();
+      return;
+    }
+
+    const albumTracks = [...album.tracks];
+    if (shuffle) {
+      for (let i = albumTracks.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [albumTracks[i], albumTracks[j]] = [albumTracks[j], albumTracks[i]];
+      }
+    }
+
+    setQueue(albumTracks, 0, false);
+    playTrack(albumTracks[0]);
   };
 
   const handleTrackSelect = (track: Track, index: number) => {
     if (!album) return;
-    setQueue(album.tracks, index);
+    setQueue(album.tracks, index, false);
     playTrack(track);
   };
 
@@ -164,17 +190,34 @@ export default function AlbumPage() {
             <span>• {album.tracks.length} songs</span>
           </Flex>
 
-          <Box className="pt-2">
+          <Flex align="center" gap="3" className="pt-2 justify-center sm:justify-start">
             <Button
               variant="primary"
               size="lg"
               className="rounded-full shadow-lg shadow-white/10"
-              onClick={handlePlayAlbum}
+              onClick={() => handlePlayAlbum(false)}
             >
-              <Play size={18} className="fill-current mr-2" />
-              Play Album
+              {isThisAlbumPlaying ? (
+                <>
+                  <Pause size={18} className="fill-current mr-2" />
+                  Pause
+                </>
+              ) : (
+                <>
+                  <Play size={18} className="fill-current mr-2" />
+                  Play Album
+                </>
+              )}
             </Button>
-          </Box>
+            <IconButton
+              aria-label="Shuffle album"
+              variant="secondary"
+              size="md"
+              className="rounded-full"
+              icon={<Shuffle size={18} />}
+              onClick={() => handlePlayAlbum(true)}
+            />
+          </Flex>
         </Stack>
       </Flex>
 
