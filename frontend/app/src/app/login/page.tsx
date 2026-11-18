@@ -25,7 +25,6 @@ import {
   CardContent,
   CardFooter,
   Button,
-  ButtonGroup,
   Input,
   FormField,
   Badge,
@@ -33,6 +32,7 @@ import {
   Separator,
   Stack,
   Flex,
+  Grid,
   Box,
   Text,
 } from '@mp/dying';
@@ -87,38 +87,38 @@ function LoginForm() {
   };
 
   return (
-    <Box className="relative min-h-screen w-full flex items-center justify-center p-4 overflow-hidden bg-canvas select-none">
-      {/* Background Ambient Aura using Dying Obsidian Tone Variables */}
+    <Box className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-hidden bg-canvas select-none">
+      {/* Background Subtle Ambient Aura: Deep Emerald Tone with Low Intensity */}
       <AmbientAura
-        primaryColor="#10b981"
-        secondaryColor="#1e1e24"
-        tertiaryColor="#0a0a0c"
-        blur={120}
-        intensity={0.5}
+        primaryColor="#064e3b"
+        secondaryColor="#18181b"
+        tertiaryColor="#09090b"
+        blur={140}
+        intensity={0.25}
         className="fixed inset-0 pointer-events-none"
       />
 
-      {/* Top Navigation: Return to Player */}
-      <Box className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20">
+      {/* Top Navigation: Return to Player with generous margin */}
+      <Box className="absolute top-6 left-6 sm:top-8 sm:left-8 z-20">
         <Button
-          variant="ghost"
+          variant="glass"
           size="sm"
-          leftIcon={<ArrowLeft size={16} />}
+          leftIcon={<ArrowLeft size={15} />}
           onClick={() => router.push('/')}
         >
           Back to GaneGan
         </Button>
       </Box>
 
-      {/* Centered Login Card strictly built from Dying Card primitives */}
+      {/* Centered Obsidian Glass Card */}
       <Card
         variant="glass"
-        className="relative z-10 w-full max-w-md backdrop-blur-3xl"
+        className="relative z-10 w-full max-w-[420px] p-6 sm:p-7 backdrop-blur-3xl shadow-2xl rounded-2xl border-white/[0.1] bg-surface/90"
       >
-        <CardHeader className="text-center items-center pb-4">
+        <CardHeader className="text-center items-center pb-3">
           <Flex align="center" gap="2" justify="center" className="mb-1">
             <Box className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface-active border border-border-subtle text-text-primary shadow-inner">
-              <Music2 size={22} />
+              <Music2 size={20} />
             </Box>
             <CardTitle className="text-2xl font-extrabold tracking-tight">
               GaneGan
@@ -127,106 +127,108 @@ function LoginForm() {
 
           <Flex align="center" gap="2" justify="center">
             <Badge variant="glass" size="sm">
-              <Sparkles size={12} className="mr-1 text-text-secondary" />
+              <Sparkles size={11} className="mr-1 text-text-secondary" />
               Ad-Free InnerTube Streaming
             </Badge>
           </Flex>
 
-          <CardDescription className="text-xs text-text-secondary mt-2">
+          <CardDescription className="text-xs text-text-secondary mt-1.5">
             {mode === 'login'
-              ? 'Sign in to access synchronized playlists, radio mixes, and synced lyrics.'
-              : 'Create an account to save custom equalizer presets and pinned mixes.'}
+              ? 'Sign in to sync your playlists and radio mixes.'
+              : 'Create an account to save equalizer presets & favorites.'}
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-5">
-          {/* Dying Mode Switcher Tabs */}
-          <ButtonGroup attached className="w-full">
-            <Button
-              variant={mode === 'login' ? 'primary' : 'ghost'}
-              size="sm"
-              leftIcon={<LogIn size={14} />}
-              fullWidth
-              onClick={() => {
-                setMode('login');
-                setStatusMessage(null);
-              }}
-            >
-              Sign In
-            </Button>
-            <Button
-              variant={mode === 'register' ? 'primary' : 'ghost'}
-              size="sm"
-              leftIcon={<UserPlus size={14} />}
-              fullWidth
-              onClick={() => {
-                setMode('register');
-                setStatusMessage(null);
-              }}
-            >
-              Create Account
-            </Button>
-          </ButtonGroup>
+        <CardContent className="space-y-4">
+          {/* Segmented Mode Switcher */}
+          <Box className="p-1 rounded-xl bg-surface-active/80 border border-border-subtle">
+            <Flex gap="1">
+              <Button
+                variant={mode === 'login' ? 'primary' : 'ghost'}
+                size="sm"
+                fullWidth
+                leftIcon={<LogIn size={14} />}
+                onClick={() => {
+                  setMode('login');
+                  setStatusMessage(null);
+                }}
+                className={mode === 'login' ? 'shadow-sm' : 'text-text-secondary hover:text-text-primary'}
+              >
+                Sign In
+              </Button>
+              <Button
+                variant={mode === 'register' ? 'primary' : 'ghost'}
+                size="sm"
+                fullWidth
+                leftIcon={<UserPlus size={14} />}
+                onClick={() => {
+                  setMode('register');
+                  setStatusMessage(null);
+                }}
+                className={mode === 'register' ? 'shadow-sm' : 'text-text-secondary hover:text-text-primary'}
+              >
+                Create Account
+              </Button>
+            </Flex>
+          </Box>
 
-          {/* Dying Alert Feedback */}
+          {/* Feedback Alert */}
           {statusMessage && (
             <Alert
               variant="success"
-              icon={<Check size={16} />}
-              className="text-xs"
+              icon={<Check size={15} />}
+              className="text-xs py-2.5"
             >
               {statusMessage}
             </Alert>
           )}
 
-          {/* Social / OAuth Providers */}
-          <Stack gap="2">
+          {/* Symmetrical 2x2 OAuth Providers Grid */}
+          <Grid cols={2} gap="2">
             <Button
               type="button"
               variant="outline"
-              size="md"
+              size="sm"
               fullWidth
-              leftIcon={<Globe size={16} />}
+              leftIcon={<Globe size={15} />}
               onClick={() => handleProviderLogin('google', 'Google')}
             >
-              Continue with Google
+              Google
             </Button>
 
             <Button
               type="button"
               variant="outline"
-              size="md"
+              size="sm"
               fullWidth
-              leftIcon={<Github size={16} />}
+              leftIcon={<Github size={15} />}
               onClick={() => handleProviderLogin('github', 'GitHub')}
             >
-              Continue with GitHub
+              GitHub
             </Button>
 
-            <Flex gap="2">
-              <Button
-                type="button"
-                variant="outline"
-                size="md"
-                fullWidth
-                leftIcon={<Music2 size={16} />}
-                onClick={() => handleProviderLogin('apple', 'Apple ID')}
-              >
-                Apple ID
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              fullWidth
+              leftIcon={<Music2 size={15} />}
+              onClick={() => handleProviderLogin('apple', 'Apple ID')}
+            >
+              Apple ID
+            </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="md"
-                fullWidth
-                leftIcon={<Disc size={16} />}
-                onClick={() => handleProviderLogin('discord', 'Discord')}
-              >
-                Discord
-              </Button>
-            </Flex>
-          </Stack>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              fullWidth
+              leftIcon={<Disc size={15} />}
+              onClick={() => handleProviderLogin('discord', 'Discord')}
+            >
+              Discord
+            </Button>
+          </Grid>
 
           {/* Accessible Separator */}
           <Flex align="center" gap="3">
@@ -237,13 +239,15 @@ function LoginForm() {
             <Separator className="flex-1" />
           </Flex>
 
-          {/* Form using Dying FormField & Input */}
+          {/* Credentials Form */}
           <form onSubmit={handleSubmit}>
             <Stack gap="3">
               {mode === 'register' && (
                 <FormField label="Your Name" id="name-input" required>
                   <Input
                     id="name-input"
+                    name="name"
+                    autoComplete="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Alex"
@@ -256,7 +260,9 @@ function LoginForm() {
               <FormField label="Email Address" id="email-input" required>
                 <Input
                   id="email-input"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
@@ -268,7 +274,9 @@ function LoginForm() {
               <FormField label="Password" id="password-input" required>
                 <Input
                   id="password-input"
+                  name="password"
                   type="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -282,7 +290,7 @@ function LoginForm() {
                 variant="primary"
                 size="md"
                 fullWidth
-                className="mt-2"
+                className="mt-1"
               >
                 {mode === 'login' ? 'Sign In with Email' : 'Create GaneGan Account'}
               </Button>
@@ -290,17 +298,18 @@ function LoginForm() {
           </form>
         </CardContent>
 
-        <CardFooter className="flex-col gap-2 pt-2 text-center">
+        <CardFooter className="flex-col gap-1.5 pt-1 text-center">
           <Button
             type="button"
             variant="ghost"
             size="xs"
             onClick={handleGuestLogin}
+            className="text-text-secondary hover:text-text-primary"
           >
             Continue as Guest (Instant Playback)
           </Button>
-          <Text variant="secondary" size="xs" className="text-[11px]">
-            Protected by GaneGan Obsidian audio engine.
+          <Text variant="secondary" size="xs" className="text-[10px]">
+            Protected by GaneGan clean InnerTube audio engine.
           </Text>
         </CardFooter>
       </Card>
