@@ -16,6 +16,7 @@ import {
   Stack,
 } from '@mp/dying';
 import { usePlayerStore, toTrackData } from '@/stores/playerStore';
+import { useYouTubeAuthStore } from '@/stores/youtubeAuthStore';
 import { type HomeFeedData, type Track } from '@mp/player-core';
 
 export default function ExplorePage() {
@@ -28,20 +29,23 @@ export default function ExplorePage() {
 
   const {
     getHomeFeed,
+    getExploreFeed,
     currentTrack,
     playbackState,
     playTrack,
     setQueue,
     togglePlay,
+    networkAdapterType,
   } = usePlayerStore();
 
+  const isYouTubeAuthenticated = useYouTubeAuthStore((s) => s.isYouTubeAuthenticated);
   const isPlaying = playbackState === 'playing';
 
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
 
-    getHomeFeed()
+    getExploreFeed()
       .then((data) => {
         if (isMounted) {
           setFeed(data);
@@ -56,7 +60,7 @@ export default function ExplorePage() {
     return () => {
       isMounted = false;
     };
-  }, [getHomeFeed]);
+  }, [getExploreFeed, isYouTubeAuthenticated, networkAdapterType]);
 
   const handleChipSelect = async (chipId: string) => {
     setActiveChipId(chipId);

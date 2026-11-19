@@ -9,6 +9,7 @@ import { likesRoutes } from "./routes/likes.js";
 import { historyRoutes } from "./routes/history.js";
 import { lyricsRoutes } from "./routes/lyrics.js";
 import { importRoutes } from "./routes/import.js";
+import { closeDb } from "@mp/db";
 
 export async function buildServer(opts?: { logger?: boolean }): Promise<FastifyInstance> {
   const app = Fastify({
@@ -42,6 +43,10 @@ export async function buildServer(opts?: { logger?: boolean }): Promise<FastifyI
   await app.register(historyRoutes, { prefix: "/api/history" });
   await app.register(lyricsRoutes, { prefix: "/api/lyrics" });
   await app.register(importRoutes, { prefix: "/api/import" });
+
+  app.addHook("onClose", async () => {
+    await closeDb();
+  });
 
   return app;
 }

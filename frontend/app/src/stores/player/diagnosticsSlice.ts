@@ -119,6 +119,16 @@ export const createDiagnosticsSlice = (set: StoreSet, get: StoreGet) => ({
     return engine.getHomeFeed(moodParam);
   },
 
+  getExploreFeed: async (): Promise<HomeFeedData> => {
+    let engine = get().engine;
+    if (!engine) {
+      get().initialize();
+      engine = getSharedEngine();
+    }
+    if (!engine) return { chips: [], quickPicks: [], shelves: [] };
+    return engine.getExploreFeed();
+  },
+
   getNextRadio: async (videoId: string, playlistId?: string): Promise<NextRadioData> => {
     let engine = get().engine;
     if (!engine) {

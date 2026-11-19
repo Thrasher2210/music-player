@@ -102,6 +102,7 @@ export interface PlayerStoreState {
   setNetworkAdapterType: (type: NetworkAdapterType) => void;
   getDiagnosticInfo: () => DiagnosticInfo;
   getHomeFeed: (moodParam?: string) => Promise<HomeFeedData>;
+  getExploreFeed: () => Promise<HomeFeedData>;
   getNextRadio: (videoId: string, playlistId?: string) => Promise<NextRadioData>;
   getArtist: (browseId: string) => Promise<ArtistDetails>;
   getAlbum: (browseId: string) => Promise<AlbumDetails>;

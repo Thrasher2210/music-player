@@ -14,6 +14,7 @@ import {
 } from '@mp/dying';
 import { usePlayerStore, type Track } from '../stores/playerStore';
 import { useLibraryStore } from '../stores/libraryStore';
+import { useYouTubeAuthStore } from '../stores/youtubeAuthStore';
 import { type MediaShelfData } from '@mp/player-core';
 import { HomeQuickPicks } from '../components/home/HomeQuickPicks';
 import { HomeShelves } from '../components/home/HomeShelves';
@@ -28,8 +29,10 @@ export default function HomePage() {
     addToQueue,
     getHomeFeed,
     getNextRadio,
+    networkAdapterType,
   } = usePlayerStore();
 
+  const isYouTubeAuthenticated = useYouTubeAuthStore((s) => s.isYouTubeAuthenticated);
   const { isLiked } = useLibraryStore();
 
   const [moodChips, setMoodChips] = useState<MoodChipData[]>([]);
@@ -62,7 +65,7 @@ export default function HomePage() {
     return () => {
       isMounted = false;
     };
-  }, [getHomeFeed]);
+  }, [getHomeFeed, isYouTubeAuthenticated, networkAdapterType]);
 
   const handleSelectMoodChip = async (chipId: string) => {
     const nextActive = activeMoodChipId === chipId ? null : chipId;

@@ -280,6 +280,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
 
   search(query: string, clientName?: InnerTubeClientName): Promise<Track[]> { return this.innerTube.search(query, clientName); }
   getHomeFeed(moodParam?: string): Promise<HomeFeedData> { return this.innerTube.getHomeFeed(moodParam); }
+  getExploreFeed(): Promise<HomeFeedData> { return this.innerTube.getExploreFeed(); }
   getNextRadio(videoId: string, playlistId?: string): Promise<NextRadioData> { return this.innerTube.getNextRadio(videoId, playlistId); }
   getArtist(browseId: string): Promise<ArtistDetails> { return this.innerTube.getArtist(browseId); }
   getAlbum(browseId: string): Promise<AlbumDetails> { return this.innerTube.getAlbum(browseId); }

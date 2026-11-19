@@ -11,7 +11,7 @@ import {
 import { usePlayerStore, type Track } from '../../stores/playerStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useLibraryStore } from '../../stores/libraryStore';
-import { useMediaSession, useKeyboardShortcuts, useUrlSync } from '../../hooks';
+import { useMediaSession, useKeyboardShortcuts, useUrlSync, useYouTubeSyncInit } from '../../hooks';
 import { ShellHeader } from './ShellHeader';
 import { ShellSidebar } from './ShellSidebar';
 import { ShellModals } from './ShellModals';
@@ -84,6 +84,7 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
   });
 
   useMediaSession();
+  useYouTubeSyncInit();
 
   const handleToggleLyrics = useCallback(() => {
     if (isFullPlayerOpen && fullPlayerTab === 'lyrics') {

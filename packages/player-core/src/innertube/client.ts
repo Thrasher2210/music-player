@@ -120,6 +120,15 @@ export class InnerTubeClient {
   }
 
   /**
+   * Fetch YouTube Music Explore feed (new releases, charts, moods & genres)
+   */
+  async getExploreFeed(): Promise<HomeFeedData> {
+    const browseId = 'FEmusic_explore';
+    const data = await this.browseAuthenticated(browseId);
+    return this.parseHomeFeed(data);
+  }
+
+  /**
    * Fetch Up Next radio queue and related content for a given videoId
    */
   async getNextRadio(
@@ -197,7 +206,7 @@ export class InnerTubeClient {
   async getPlaylist(playlistId: string): Promise<RemotePlaylistDetails> {
     const cleanId = playlistId.replace(/^VL/, '');
     const browseId = `VL${cleanId}`;
-    const data = await this.browse(browseId);
+    const data = await this.browseAuthenticated(browseId);
     return parsePlaylistDetails(playlistId, data, (d) => this.parseSearchResults(d));
   }
 

@@ -56,4 +56,12 @@ export function getDbMode(): DbMode {
   return mode ?? (process.env.DATABASE_URL ? "postgres" : "pglite");
 }
 
+export async function closeDb(): Promise<void> {
+  if (pool) {
+    await pool.end();
+    pool = undefined;
+    mode = undefined;
+  }
+}
+
 export { schema };

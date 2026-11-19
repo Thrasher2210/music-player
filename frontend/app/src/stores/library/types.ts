@@ -5,6 +5,8 @@ export interface Playlist {
   name: string;
   source: string;
   trackCount?: number;
+  coverArt?: string;
+  ytPlaylistId?: string;
   createdAt: string;
 }
 
