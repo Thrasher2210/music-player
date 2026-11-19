@@ -9,6 +9,7 @@
 ### 1. Prohibited Practices in Application Code
 
 Unless explicitly justified and documented in a PR, **DO NOT**:
+
 - Use raw arbitrary Tailwind utility class strings (e.g. `bg-[#1e1e22]`, `text-[#86868b]`, `border-white/[0.08]`). Always use semantic tokens (`bg-surface`, `bg-canvas`, `text-text-primary`, `text-text-secondary`, `border-border-subtle`).
 - Write arbitrary CSS classes or inline styles (`style={{ ... }}`).
 - Use raw HTML elements (`<button>`, `<input>`, `<textarea>`, `<select>`, `<dialog>`) when an equivalent Dying component exists.
@@ -22,7 +23,7 @@ Unless explicitly justified and documented in a PR, **DO NOT**:
 ### 2. Component Usage Enforcement Matrix
 
 | Instead of | Must Use from `@mp/dying` |
-|---|---|
+| --- | --- |
 | Raw `<button>` | `Button` or `IconButton` |
 | Raw `<input>` | `Input` (or `FormField` + `Input`) |
 | Raw `<textarea>` | `Textarea` |
@@ -57,6 +58,7 @@ Unless explicitly justified and documented in a PR, **DO NOT**:
 ### 4. Mandatory Pre-Completion Verification Checklist
 
 Before completing ANY frontend task, the agent must verify:
+
 1. All newly introduced or modified UI elements consume `@mp/dying`.
 2. No arbitrary hex classes (`bg-[#...]`, `text-[#...]`) were introduced.
 3. Interactive elements have `:focus-visible` styling and accessible labels.

@@ -71,7 +71,7 @@ export const StageExtensionMissing: React.FC<StageExtensionMissingProps> = ({
                 3. Load Unpacked
               </Text>
               <Text size="xs" variant="secondary">
-                Select `frontend/extension/.output/chrome-mv3` to activate the bridge.
+                Select `frontend/extension/dist` (or press Ctrl+H to view `.output/chrome-mv3`).
               </Text>
             </Stack>
           </Flex>

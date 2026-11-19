@@ -240,8 +240,7 @@ export class WebExtensionAdapter implements NetworkAdapter {
         if (event.source !== window || !event.data) return;
         const data = event.data;
         if (
-          (data.type === 'MP_EXT_AUTHENTICATED_FETCH_RESPONSE' ||
-            data.type === 'MP_EXT_AUTHENTICATED_FETCH') &&
+          data.type === 'MP_EXT_AUTHENTICATED_FETCH_RESPONSE' &&
           data.requestId === requestId
         ) {
           settled = true;
@@ -250,6 +249,15 @@ export class WebExtensionAdapter implements NetworkAdapter {
 
           if (data.error) {
             reject(new Error(`[WebExtensionAdapter] ${data.error}`));
+            return;
+          }
+
+          if (data.ok === false) {
+            reject(
+              new Error(
+                `[WebExtensionAdapter] HTTP ${data.status || 500}: ${data.statusText || 'Fetch failed'}`
+              )
+            );
             return;
           }
 

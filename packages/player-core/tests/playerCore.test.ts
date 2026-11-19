@@ -160,6 +160,33 @@ describe('PlayerCore - Library & Authenticated InnerTube Methods', () => {
     assert.equal(authStatus.hasCookie, true);
     assert.equal(authStatus.account?.name, 'Test User');
 
+    fakeWindow.postMessage = (msg: any) => {
+      // Simulate browser firing message event back to window for outgoing request
+      for (const fn of [...listeners]) {
+        fn({ source: fakeWindow, data: msg });
+      }
+      // Then simulate extension content script responding with RESPONSE
+      setTimeout(() => {
+        if (msg.type === 'MP_EXT_AUTHENTICATED_FETCH') {
+          for (const fn of [...listeners]) {
+            fn({
+              source: fakeWindow,
+              data: {
+                type: 'MP_EXT_AUTHENTICATED_FETCH_RESPONSE',
+                requestId: msg.requestId,
+                ok: true,
+                status: 200,
+                data: { contents: [{ title: 'Synced Song' }] },
+              },
+            });
+          }
+        }
+      }, 10);
+    };
+
+    const fetchResult = await adapter.fetchAuthenticated('/youtubei/v1/browse', { browseId: 'FEmusic_liked_videos' });
+    assert.deepEqual(fetchResult, { contents: [{ title: 'Synced Song' }] });
+
     delete (globalThis as any).window;
   });
 });
