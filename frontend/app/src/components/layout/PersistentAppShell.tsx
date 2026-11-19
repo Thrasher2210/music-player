@@ -172,66 +172,68 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
     <>
       <AppShell
         sidebar={
-          <ShellSidebar
-            playlists={playlists}
-            pathname={pathname}
-            onNavigate={(path) => router.push(path)}
-            onCreatePlaylist={() => setIsCreatePlaylistOpen(true)}
-          />
+          isFullPlayerOpen ? null : (
+            <ShellSidebar
+              playlists={playlists}
+              pathname={pathname}
+              onNavigate={(path) => router.push(path)}
+              onCreatePlaylist={() => setIsCreatePlaylistOpen(true)}
+            />
+          )
         }
         header={
-          <ShellHeader
-            searchQuery={searchQuery}
-            onSearchChange={handleSearchChange}
-            onClearSearch={handleClearSearch}
-            hasMounted={hasMounted}
-            isAuthenticated={isAuthenticated}
-            user={user}
-            onOpenAccountModal={() => setIsAccountModalOpen(true)}
-          />
+          isFullPlayerOpen ? null : (
+            <ShellHeader
+              searchQuery={searchQuery}
+              onSearchChange={handleSearchChange}
+              onClearSearch={handleClearSearch}
+              hasMounted={hasMounted}
+              isAuthenticated={isAuthenticated}
+              user={user}
+              onOpenAccountModal={() => setIsAccountModalOpen(true)}
+            />
+          )
         }
-        playerDockVariant="floating"
+        playerDockVariant={isFullPlayerOpen ? "docked" : "floating"}
         isFullBleed={isFullPlayerOpen}
         playerDock={
-          <FloatingPlayerPill
-            title={currentTrack?.title || 'Not Playing'}
-            artist={currentTrack?.artist || 'Select a song or explore quick picks'}
-            album={currentTrack?.album}
-            artworkUrl={currentTrack?.thumbnail}
-            isPlaying={isCurrentlyPlaying}
-            currentTime={currentTime}
-            duration={duration}
-            buffered={bufferedPercent}
-            volume={volume}
-            isMuted={isMuted}
-            isLyricsOpen={isFullPlayerOpen && fullPlayerTab === 'lyrics'}
-            isExpanded={isFullPlayerOpen}
-            isShuffle={isShuffle}
-            repeatMode={repeatMode}
-            isLiked={currentTrack ? isLiked(currentTrack.videoId || currentTrack.id) : false}
-            onToggleLike={() => {
-              if (currentTrack) {
-                toggleLike(currentTrack);
-              }
-            }}
-            onPlayPause={togglePlay}
-            onPrevious={previous}
-            onNext={next}
-            onSeek={seek}
-            onVolumeChange={setVolume}
-            onToggleMute={toggleMute}
-            onToggleLyrics={handleToggleLyrics}
-            onToggleExpand={() => setIsFullPlayerOpen(!isFullPlayerOpen)}
-            onExpandNowPlaying={() => setIsFullPlayerOpen(!isFullPlayerOpen)}
-            onArtistClick={() => {
-              if (currentTrack?.artistId) {
-                startTransition(() => router.push(`/artist/${currentTrack.artistId}`));
-              }
-            }}
-            onToggleShuffle={toggleShuffle}
-            onToggleRepeat={toggleRepeat}
-            onMoreOptions={() => setIsPlaybackOptionsOpen(true)}
-          />
+          currentTrack ? (
+            <FloatingPlayerPill
+              title={currentTrack.title}
+              artist={currentTrack.artist}
+              album={currentTrack.album}
+              artworkUrl={currentTrack.thumbnail}
+              isPlaying={isCurrentlyPlaying}
+              currentTime={currentTime}
+              duration={duration}
+              buffered={bufferedPercent}
+              volume={volume}
+              isMuted={isMuted}
+              isLyricsOpen={isFullPlayerOpen && fullPlayerTab === 'lyrics'}
+              isExpanded={isFullPlayerOpen}
+              isShuffle={isShuffle}
+              repeatMode={repeatMode}
+              isLiked={isLiked(currentTrack.videoId || currentTrack.id)}
+              onToggleLike={() => toggleLike(currentTrack)}
+              onPlayPause={togglePlay}
+              onPrevious={previous}
+              onNext={next}
+              onSeek={seek}
+              onVolumeChange={setVolume}
+              onToggleMute={toggleMute}
+              onToggleLyrics={handleToggleLyrics}
+              onToggleExpand={() => setIsFullPlayerOpen(!isFullPlayerOpen)}
+              onExpandNowPlaying={() => setIsFullPlayerOpen(!isFullPlayerOpen)}
+              onArtistClick={() => {
+                if (currentTrack?.artistId) {
+                  startTransition(() => router.push(`/artist/${currentTrack.artistId}`));
+                }
+              }}
+              onToggleShuffle={toggleShuffle}
+              onToggleRepeat={toggleRepeat}
+              onMoreOptions={() => setIsPlaybackOptionsOpen(true)}
+            />
+          ) : null
         }
         overlay={null}
       >

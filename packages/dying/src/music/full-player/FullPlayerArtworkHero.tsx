@@ -1,5 +1,5 @@
-import React from "react";
-import { ChevronDown, Music2, Headphones, Video, Heart } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ChevronDown, Music2, Headphones, Video, Heart, Maximize2, Minimize2 } from "lucide-react";
 import { TrackData } from "../TrackRow";
 import { AmbientAura } from "../../effects/AmbientAura";
 import { cn } from "../../utils/cn";
@@ -23,6 +23,25 @@ export const FullPlayerArtworkHero: React.FC<FullPlayerArtworkHeroProps> = ({
   liked,
   onLikeClick,
 }) => {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const handleToggleFullscreen = () => {
+    if (typeof document === "undefined") return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
   return (
     <div className="lg:col-span-6 flex flex-col items-center justify-between h-full min-h-0 max-w-xl mx-auto w-full">
       {/* Top Collapse Button & Title */}
@@ -39,7 +58,15 @@ export const FullPlayerArtworkHero: React.FC<FullPlayerArtworkHeroProps> = ({
         <span className="text-xs font-semibold uppercase tracking-widest text-text-tertiary">
           Now Playing
         </span>
-        <div className="w-20" />
+        <button
+          type="button"
+          onClick={handleToggleFullscreen}
+          aria-label={isFullscreen ? "Exit full screen" : "Full screen"}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface hover:bg-surface-hover text-text-secondary hover:text-white border border-border-subtle transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+        >
+          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          <span className="hidden sm:inline">{isFullscreen ? "Exit Full" : "Full Screen"}</span>
+        </button>
       </div>
 
       {/* Large Square Artwork Container */}

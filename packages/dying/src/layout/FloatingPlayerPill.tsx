@@ -4,6 +4,8 @@ import {
   ChevronDown,
   Mic2,
   MoreHorizontal,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { ScrubSlider } from "../primitives/ScrubSlider";
 import { SpringButton } from "../primitives/SpringButton";
@@ -115,11 +117,11 @@ export const FloatingPlayerPill = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "pointer-events-auto relative w-full max-w-2xl sm:max-w-3xl",
-          "rounded-2xl border border-border-subtle bg-glass-frosted p-2.5 sm:p-3",
-          "shadow-2xl shadow-black/80 backdrop-blur-2xl backdrop-saturate-150",
+          "pointer-events-auto relative w-full transition-all duration-300 select-none",
+          isExpanded
+            ? "max-w-none rounded-none border-x-0 border-b-0 border-t border-border-subtle px-4 sm:px-8 py-3 bg-canvas/95 backdrop-blur-3xl shadow-2xl"
+            : "max-w-2xl sm:max-w-3xl rounded-2xl border border-border-subtle bg-glass-frosted p-2.5 sm:p-3 shadow-2xl shadow-black/80 backdrop-blur-2xl backdrop-saturate-150",
           "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/[0.18] before:to-transparent",
-          "transition-all duration-300 select-none",
           className
         )}
         {...props}
@@ -188,18 +190,18 @@ export const FloatingPlayerPill = React.forwardRef<
                   onVolumeChange={onVolumeChange}
                 />
 
-                {/* Expand / Minimize toggle chevron */}
+                {/* Fullscreen / Expand toggle button */}
                 <SpringButton
                   variant="ghost"
                   size="sm"
                   onClick={onToggleExpand || onExpandNowPlaying}
-                  aria-label={isExpanded ? "Minimize player" : "Expand player"}
+                  aria-label={isExpanded ? "Exit full screen" : "Full screen"}
                   className="text-text-secondary hover:text-white"
                 >
                   {isExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
+                    <Minimize2 className="h-4 w-4" />
                   ) : (
-                    <ChevronUp className="h-4 w-4" />
+                    <Maximize2 className="h-4 w-4" />
                   )}
                 </SpringButton>
               </>

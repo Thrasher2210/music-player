@@ -21,6 +21,12 @@ import {
   parseArtistDetails,
   parsePlaylistDetails,
 } from './browseParsers';
+import {
+  parseLikedVideos,
+  parseLibraryPlaylists,
+  requestAuthenticatedBrowse,
+  requestLikeStatus,
+} from './libraryParsers';
 
 export * from './contexts';
 export * from './parsers';
@@ -28,6 +34,7 @@ export * from './shelfParsers';
 export * from './searchParsers';
 export * from './feedParsers';
 export * from './browseParsers';
+export * from './libraryParsers';
 
 export class InnerTubeClient {
   private network: NetworkAdapter;
@@ -195,7 +202,47 @@ export class InnerTubeClient {
   }
 
   /**
-   * Parse YouTube Music Home feed browse response into chips, quick picks, and shelves
+   * Helper to perform authenticated browse or fall back to standard/proxy browse
+   */
+  async browseAuthenticated(
+    browseId: string,
+    params?: string,
+    clientName: InnerTubeClientName = 'WEB_REMIX'
+  ): Promise<any> {
+    return requestAuthenticatedBrowse(this.network, this.baseUrl, browseId, params, clientName);
+  }
+
+  /**
+   * Fetch authenticated user's liked videos (or fallback to dev proxy if unauthenticated)
+   */
+  async getLikedVideos(clientName: InnerTubeClientName = 'WEB_REMIX'): Promise<Track[]> {
+    const data = await this.browseAuthenticated('FEmusic_liked_videos', undefined, clientName);
+    return this.parseLikedVideos(data);
+  }
+
+  /**
+   * Fetch authenticated user's library playlists (or fallback to dev proxy if unauthenticated)
+   */
+  async getLibraryPlaylists(
+    clientName: InnerTubeClientName = 'WEB_REMIX'
+  ): Promise<RemotePlaylistDetails[]> {
+    const data = await this.browseAuthenticated('FEmusic_library_landing', undefined, clientName);
+    return this.parseLibraryPlaylists(data);
+  }
+
+  /**
+   * Update like status for a video ('LIKE' or 'INDIFFERENT')
+   */
+  async setLikeStatus(
+    videoId: string,
+    status: 'LIKE' | 'INDIFFERENT',
+    clientName: InnerTubeClientName = 'WEB_REMIX'
+  ): Promise<boolean> {
+    return requestLikeStatus(this.network, this.baseUrl, videoId, status, clientName);
+  }
+
+  /**
+   * Parse YouTube Music browse response into chips, quick picks, and shelves
    */
   parseHomeFeed(data: any): HomeFeedData {
     return parseHomeFeed(data);
@@ -213,5 +260,19 @@ export class InnerTubeClient {
    */
   parseSearchResults(data: any): Track[] {
     return parseSearchResults(data);
+  }
+
+  /**
+   * Parse YouTube Music browse response for liked videos
+   */
+  parseLikedVideos(data: any): Track[] {
+    return parseLikedVideos(data);
+  }
+
+  /**
+   * Parse YouTube Music browse response for library playlists
+   */
+  parseLibraryPlaylists(data: any): RemotePlaylistDetails[] {
+    return parseLibraryPlaylists(data);
   }
 }

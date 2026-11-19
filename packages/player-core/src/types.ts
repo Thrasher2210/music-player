@@ -195,3 +195,18 @@ export interface RemotePlaylistDetails {
   tracks: Track[];
 }
 
+export type LikeStatus = 'LIKE' | 'INDIFFERENT';
+
+export interface YouTubeAccountInfo {
+  name?: string;
+  avatar?: string;
+  handle?: string;
+}
+
+export interface YouTubeAuthStatus {
+  connected: boolean;
+  hasCookie: boolean;
+  account?: YouTubeAccountInfo;
+}
+
+

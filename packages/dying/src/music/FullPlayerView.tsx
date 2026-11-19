@@ -188,7 +188,7 @@ export const FullPlayerView: React.FC<FullPlayerViewProps> = ({
       </div>
 
       {/* Main 2-Column Split: Left Canvas Artwork | Right Tabs & Queue */}
-      <div className="relative z-10 flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 px-6 sm:px-10 lg:px-14 pt-3 pb-28 sm:pb-36 overflow-hidden">
+      <div className="relative z-10 flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 px-6 sm:px-10 lg:px-14 pt-3 pb-28 sm:pb-36 overflow-hidden max-w-[1700px] mx-auto w-full">
         {/* LEFT COLUMN: Large Square Album Artwork with Ambient Glow + Audio/Video Switcher */}
         <FullPlayerArtworkHero
           track={track}
