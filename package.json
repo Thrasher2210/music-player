@@ -19,6 +19,7 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "check:lines": "python3 scripts/check_file_length.py --max-lines 300",
+    "deploy": "bash scripts/deploy.sh",
     "test": "pnpm -r test"
   }
 }
