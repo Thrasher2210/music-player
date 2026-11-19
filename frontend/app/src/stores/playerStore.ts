@@ -760,7 +760,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
       const durationSec = track.duration || 0;
-      const url = `${apiUrl}/api/lyrics?videoId=${track.videoId}&title=${encodeURIComponent(track.title || '')}&artist=${encodeURIComponent(track.artist || '')}&durationSec=${durationSec}`;
+      const url = `${apiUrl}/api/lyrics?videoId=${encodeURIComponent(track.videoId)}&title=${encodeURIComponent(track.title || '')}&artist=${encodeURIComponent(track.artist || '')}&durationSec=${durationSec}`;
 
       const res = await fetch(url);
       if (!res.ok) {
