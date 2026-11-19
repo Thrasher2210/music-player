@@ -58,14 +58,19 @@ export async function POST(
       headerClientVersion = clientVersion || '2.20240101.01.00';
     }
 
+    const isMobileClient = isIos || isVision || clientName.toUpperCase().startsWith('ANDROID');
+
     const forwardHeaders: Record<string, string> = {
       'Content-Type': req.headers.get('content-type') || 'text/plain',
       'User-Agent': userAgent,
-      Origin: 'https://music.youtube.com',
-      Referer: 'https://music.youtube.com/',
       'X-YouTube-Client-Name': req.headers.get('x-youtube-client-name') || headerClientName,
       'X-YouTube-Client-Version': req.headers.get('x-youtube-client-version') || headerClientVersion,
     };
+
+    if (!isMobileClient) {
+      forwardHeaders['Origin'] = 'https://music.youtube.com';
+      forwardHeaders['Referer'] = 'https://music.youtube.com/';
+    }
 
     const visitorData = req.headers.get('x-goog-visitor-id');
     if (visitorData) {

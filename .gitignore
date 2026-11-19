@@ -34,3 +34,6 @@ playwright-report/
 
 # local agent definitions and skills
 .agents/
+
+# keys
+*.pem
