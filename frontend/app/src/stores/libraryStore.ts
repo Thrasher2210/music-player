@@ -1,7 +1,8 @@
 'use client';
 
 import { create } from 'zustand';
-import { type Track } from '@mp/player-core';
+import { type Track, WebExtensionAdapter, InnerTubeClient } from '@mp/player-core';
+import { useYouTubeAuthStore } from './youtubeAuthStore';
 import {
   type Playlist,
   type PlayHistoryItem,
@@ -70,6 +71,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
           const rollbackIds = new Set(get().likedVideoIds);
           rollbackIds.add(vid);
           set({ likedVideoIds: rollbackIds, likedTracks: currentTracks });
+        } else if (useYouTubeAuthStore.getState().isYouTubeAuthenticated) {
+          try {
+            const client = new InnerTubeClient({ networkAdapter: new WebExtensionAdapter() });
+            client.setLikeStatus(vid, 'INDIFFERENT').catch(() => {});
+          } catch {
+            // Ignore background sync errors
+          }
         }
       } catch (err) {
         console.warn('Failed to unlike track:', err);
@@ -88,6 +96,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
           const rollbackIds = new Set(get().likedVideoIds);
           rollbackIds.delete(vid);
           set({ likedVideoIds: rollbackIds, likedTracks: currentTracks });
+        } else if (useYouTubeAuthStore.getState().isYouTubeAuthenticated) {
+          try {
+            const client = new InnerTubeClient({ networkAdapter: new WebExtensionAdapter() });
+            client.setLikeStatus(vid, 'LIKE').catch(() => {});
+          } catch {
+            // Ignore background sync errors
+          }
         }
       } catch (err) {
         console.warn('Failed to like track:', err);

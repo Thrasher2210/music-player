@@ -15,6 +15,7 @@ import {
 } from '@mp/dying';
 import { usePlayerStore, toTrackData } from '@/stores/playerStore';
 import { useLibraryStore } from '@/stores/libraryStore';
+import { useYouTubeAuthStore } from '@/stores/youtubeAuthStore';
 import { type Track } from '@mp/player-core';
 import { PlaylistHeader } from '../components/PlaylistHeader';
 
@@ -46,10 +47,8 @@ export default function PlaylistPage() {
   } = usePlayerStore();
 
   const {
-    likedTracks,
     fetchLibrary,
     fetchPlaylistTracks,
-    playlists,
   } = useLibraryStore();
 
   const isPlaylistActive = Boolean(
@@ -67,13 +66,36 @@ export default function PlaylistPage() {
 
     const loadData = async () => {
       try {
-        if (playlistId === 'liked') {
+        if (playlistId === 'liked' || playlistId.startsWith('LM')) {
           await fetchLibrary();
+          const libState = useLibraryStore.getState();
+          const ytState = useYouTubeAuthStore.getState();
+          const combined = [
+            ...libState.likedTracks,
+            ...ytState.syncedLikedTracks.filter(
+              (yt) => !libState.likedTracks.some((lt) => (lt.videoId || lt.id) === (yt.videoId || yt.id))
+            ),
+          ];
+
           if (isMounted) {
             setTitle('Liked Music');
             setDescription('Auto playlist of tracks you have liked');
             setAuthor('You');
-            setTracks(likedTracks);
+            setCoverUrl(combined[0]?.thumbnail || undefined);
+            setTracks(combined);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        const syncedMatch = useYouTubeAuthStore.getState().syncedPlaylists.find((p) => p.id === playlistId);
+        if (syncedMatch && syncedMatch.tracks && syncedMatch.tracks.length > 0) {
+          if (isMounted) {
+            setTitle(syncedMatch.title);
+            setDescription(syncedMatch.description);
+            setAuthor(syncedMatch.author || 'You');
+            setCoverUrl(syncedMatch.coverUrl);
+            setTracks(syncedMatch.tracks);
             setIsLoading(false);
           }
           return;
@@ -94,7 +116,7 @@ export default function PlaylistPage() {
 
         // Custom local/backend playlist
         const pTracks = await fetchPlaylistTracks(playlistId);
-        const meta = playlists.find((p) => p.id === playlistId);
+        const meta = useLibraryStore.getState().playlists.find((p) => p.id === playlistId);
         if (isMounted) {
           setTitle(meta?.name || 'Playlist');
           setAuthor('You');
@@ -114,7 +136,7 @@ export default function PlaylistPage() {
     return () => {
       isMounted = false;
     };
-  }, [playlistId, fetchLibrary, fetchPlaylistTracks, getPlaylist, likedTracks, playlists]);
+  }, [playlistId]);
 
   const handlePlayAll = (shuffle = false) => {
     if (tracks.length === 0) return;

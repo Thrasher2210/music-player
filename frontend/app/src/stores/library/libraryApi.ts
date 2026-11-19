@@ -86,13 +86,16 @@ export async function unlikeTrackApi(videoId: string): Promise<boolean> {
   return res.ok || res.status === 401;
 }
 
-export async function createPlaylistApi(name: string): Promise<Playlist | null> {
+export async function createPlaylistApi(
+  name: string,
+  extra?: { source?: 'local' | 'youtube'; ytPlaylistId?: string; coverArt?: string }
+): Promise<Playlist | null> {
   if (!name.trim()) return null;
   const res = await fetch('/api/playlists', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ name: name.trim() }),
+    body: JSON.stringify({ name: name.trim(), ...extra }),
   });
   if (!res.ok) return null;
   const data = await res.json();

@@ -28,13 +28,26 @@ export const playlistsRoutes: FastifyPluginAsync = async (app) => {
 
   app.post("/", async (req, reply) => {
     const userId = await requireUser(req);
-    const body = (req.body ?? {}) as { name?: string };
+    const body = (req.body ?? {}) as {
+      name?: string;
+      source?: "local" | "spotify" | "youtube";
+      ytPlaylistId?: string;
+      coverArt?: string;
+      description?: string;
+    };
     if (!body.name?.trim()) {
       return reply.status(400).send({ error: "name_required" });
     }
     const [row] = await db
       .insert(schema.playlists)
-      .values({ userId, name: body.name.trim(), source: "local" })
+      .values({
+        userId,
+        name: body.name.trim(),
+        source: body.source === "youtube" ? "youtube" : "local",
+        ytPlaylistId: body.ytPlaylistId,
+        coverArt: body.coverArt,
+        description: body.description,
+      })
       .returning();
     return reply.status(201).send({ playlist: row });
   });

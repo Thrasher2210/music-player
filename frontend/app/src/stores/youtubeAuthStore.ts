@@ -7,6 +7,12 @@ import {
   WebExtensionAdapter,
   InnerTubeClient,
 } from '@mp/player-core';
+import {
+  likeTrackApi,
+  createPlaylistApi,
+  addTracksToPlaylistApi,
+} from './library/libraryApi';
+import { useLibraryStore } from './libraryStore';
 
 export interface YouTubeAccount {
   name?: string;
@@ -122,6 +128,40 @@ export const useYouTubeAuthStore = create<YouTubeAuthState>((set) => ({
         syncedLikedTracks: Array.isArray(likedTracks) ? likedTracks : [],
         syncedPlaylists: Array.isArray(playlists) ? playlists : [],
       });
+
+      // Persist synced items into backend database (PostgreSQL/PGlite)
+      try {
+        if (Array.isArray(likedTracks) && likedTracks.length > 0) {
+          await Promise.allSettled(likedTracks.map((t) => likeTrackApi(t)));
+        }
+
+        if (Array.isArray(playlists) && playlists.length > 0) {
+          const currentLibPlaylists = useLibraryStore.getState().playlists;
+          for (const pl of playlists) {
+            const plName = pl.title || pl.name;
+            const plId = pl.id || pl.playlistId;
+            if (!plName) continue;
+            const alreadyExists = currentLibPlaylists.some(
+              (p) => p.name === plName || p.id === plId
+            );
+            if (!alreadyExists) {
+              const created = await createPlaylistApi(plName, {
+                source: 'youtube',
+                ytPlaylistId: plId,
+                coverArt: pl.coverUrl,
+              });
+              if (created && Array.isArray(pl.tracks) && pl.tracks.length > 0) {
+                await addTracksToPlaylistApi(created.id, pl.tracks);
+              }
+            }
+          }
+        }
+
+        // Re-fetch library data so all screens display the persisted data
+        await useLibraryStore.getState().fetchLibrary();
+      } catch (persistErr) {
+        console.warn('[youtubeAuthStore] Persistence to backend DB error:', persistErr);
+      }
     } catch (err) {
       console.warn('[youtubeAuthStore] syncLibrary failed:', err);
     } finally {

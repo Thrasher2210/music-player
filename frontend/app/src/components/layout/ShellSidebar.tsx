@@ -9,6 +9,7 @@ import {
   SidebarNavItem,
   SidebarFooter,
   IconButton,
+  Badge,
 } from '@mp/dying';
 import {
   Home,
@@ -17,8 +18,10 @@ import {
   Plus,
   Heart,
   Sparkles,
+  Youtube,
 } from 'lucide-react';
 import { type Playlist } from '../../stores/libraryStore';
+import { useYouTubeAuthStore } from '../../stores/youtubeAuthStore';
 
 export interface ShellSidebarProps {
   playlists: Playlist[];
@@ -33,6 +36,19 @@ export function ShellSidebar({
   onNavigate,
   onCreatePlaylist,
 }: ShellSidebarProps) {
+  const syncedPlaylists = useYouTubeAuthStore((s) => s.syncedPlaylists);
+  const allPlaylists: Playlist[] = [
+    ...playlists,
+    ...syncedPlaylists
+      .filter((sp) => !playlists.some((p) => p.id === sp.id))
+      .map((sp): Playlist => ({
+        id: sp.id,
+        name: sp.title || sp.name || 'YouTube Playlist',
+        source: 'youtube',
+        trackCount: sp.trackCount || 0,
+        createdAt: new Date().toISOString(),
+      })),
+  ];
   return (
     <Sidebar>
       <div className="cursor-pointer" onClick={() => onNavigate('/')}>
@@ -84,11 +100,24 @@ export function ShellSidebar({
             onClick={() => onNavigate('/playlist/liked')}
           />
 
-          {playlists.map((pl) => (
+          {allPlaylists.map((pl) => (
             <SidebarNavItem
               key={pl.id}
-              icon={<Library className="h-4 w-4" />}
+              icon={
+                pl.source === 'youtube' ? (
+                  <Youtube className="h-4 w-4 text-red-500" />
+                ) : (
+                  <Library className="h-4 w-4" />
+                )
+              }
               label={pl.name}
+              badge={
+                pl.source === 'youtube' ? (
+                  <Badge variant="glass" size="xs">
+                    YT
+                  </Badge>
+                ) : undefined
+              }
               active={pathname === `/playlist/${pl.id}`}
               onClick={() => onNavigate(`/playlist/${pl.id}`)}
             />

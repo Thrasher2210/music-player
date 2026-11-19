@@ -15,6 +15,7 @@ import {
 } from '@mp/dying';
 import { Search, Cast, LogIn, X } from 'lucide-react';
 import { type UserProfile } from '../../stores/authStore';
+import { useYouTubeAuthStore } from '../../stores/youtubeAuthStore';
 
 export interface ShellHeaderProps {
   searchQuery: string;
@@ -36,6 +37,9 @@ export function ShellHeader({
   onOpenAccountModal,
 }: ShellHeaderProps) {
   const router = useRouter();
+  const ytAccount = useYouTubeAuthStore((s) => s.youtubeAccount);
+  const avatarSrc = user?.image || (user as any)?.avatarUrl || (ytAccount as any)?.avatarUrl || ytAccount?.avatar || undefined;
+  const displayName = user?.name || ytAccount?.name || 'User';
 
   return (
     <Flex justify="between" align="center" className="h-16 px-4 md:px-8 gap-4 select-none">
@@ -83,12 +87,13 @@ export function ShellHeader({
           <ThemeSwitcher size="sm" />
         </Tooltip>
 
-        {hasMounted && isAuthenticated ? (
-          <Tooltip content={`Account: ${user?.name || 'User'}`}>
+        {hasMounted && (isAuthenticated || ytAccount?.name) ? (
+          <Tooltip content={`Account: ${displayName}`}>
             <Avatar
-              fallback={(user?.name || 'U')[0].toUpperCase()}
+              src={avatarSrc}
+              fallback={(displayName || 'U')[0].toUpperCase()}
               size="sm"
-              aria-label={`User Account: ${user?.name || 'User'}`}
+              aria-label={`User Account: ${displayName}`}
               onClick={onOpenAccountModal}
               className="cursor-pointer select-none"
             />

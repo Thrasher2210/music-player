@@ -115,7 +115,7 @@ export class InnerTubeClient {
    */
   async getHomeFeed(moodParam?: string): Promise<HomeFeedData> {
     const browseId = 'FEmusic_home';
-    const data = await this.browse(browseId, moodParam);
+    const data = await this.browseAuthenticated(browseId, moodParam);
     return this.parseHomeFeed(data);
   }
 
