@@ -110,15 +110,9 @@ export const PlayerBar: React.FC<PlayerBarProps> = ({
               className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-border-subtle bg-surface cursor-pointer group shadow-lg"
             >
               {currentTrack.thumbnailUrl ? (
-                <img
-                  src={currentTrack.thumbnailUrl}
-                  alt={currentTrack.title}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
+                <img src={currentTrack.thumbnailUrl} alt={currentTrack.title} referrerPolicy="no-referrer" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-text-tertiary">
-                  ♪
-                </div>
+                <div className="flex h-full w-full items-center justify-center text-xs text-text-tertiary">♪</div>
               )}
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <Maximize2 size={16} className="text-white" />

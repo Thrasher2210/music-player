@@ -163,6 +163,7 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
               <img
                 src={track.thumbnailUrl || track.thumbnail}
                 alt={track.title}
+                referrerPolicy="no-referrer"
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 loading="lazy"
               />

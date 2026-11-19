@@ -71,9 +71,10 @@ export async function loadPlaylistData(
     (p) => p.id === playlistId || p.ytPlaylistId === playlistId || (Boolean(meta?.name) && p.title === meta?.name)
   );
 
-  // Find valid YouTube playlist ID (excluding UUIDs that contain hyphens)
+  // Find valid YouTube playlist ID (excluding database UUIDs)
   const candidateId = meta?.ytPlaylistId || syncedMeta?.ytPlaylistId || syncedMeta?.id;
-  const ytId = candidateId && !candidateId.includes('-') ? candidateId : null;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(candidateId || '');
+  const ytId = candidateId && !isUuid ? candidateId : null;
 
   if (pTracks.length === 0 && ytId) {
     try {
@@ -88,7 +89,7 @@ export async function loadPlaylistData(
           title: remote.title || meta?.name || 'Playlist',
           description: remote.description,
           author: remote.author || 'You',
-          coverUrl: remote.coverUrl || meta?.coverArt,
+          coverUrl: remote.coverUrl || meta?.coverArt || remote.tracks[0]?.thumbnail,
           tracks: pTracks,
         };
       }
@@ -100,7 +101,7 @@ export async function loadPlaylistData(
   return {
     title: meta?.name || 'Playlist',
     author: 'You',
-    coverUrl: meta?.coverArt,
+    coverUrl: meta?.coverArt || pTracks[0]?.thumbnail,
     tracks: pTracks,
   };
 }

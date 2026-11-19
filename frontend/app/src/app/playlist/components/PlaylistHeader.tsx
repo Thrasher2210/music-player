@@ -34,6 +34,8 @@ export function PlaylistHeader({
   isThisPlaylistPlaying,
   onPlayAll,
 }: PlaylistHeaderProps) {
+  const [imgError, setImgError] = React.useState(false);
+
   return (
     <Flex
       gap="6"
@@ -41,10 +43,12 @@ export function PlaylistHeader({
     >
       {/* Cover Art / Icon */}
       <Box className="relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-2xl overflow-hidden border border-border-subtle bg-surface shrink-0 shadow-2xl flex items-center justify-center">
-        {coverUrl ? (
+        {coverUrl && !imgError ? (
           <img
             src={coverUrl}
             alt={title}
+            referrerPolicy="no-referrer"
+            onError={() => setImgError(true)}
             className="w-full h-full object-cover"
           />
         ) : isLikedPlaylist ? (

@@ -11,6 +11,7 @@ export const metadata: Metadata = {
     template: "%s · GaneGan",
   },
   description: "Ad-free music streaming with Apple Music aesthetics and your personal library.",
+  referrer: 'no-referrer',
 };
 
 export const viewport: Viewport = {

@@ -149,9 +149,10 @@ export function parseAlbumDetails(
   }
 
   const coverThumbs = header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
-  const coverUrl = coverThumbs.length > 0 ? coverThumbs[coverThumbs.length - 1].url : undefined;
-
   const tracks = parseSearchResults(data);
+  const coverUrl =
+    (coverThumbs.length > 0 ? coverThumbs[coverThumbs.length - 1].url : undefined) ||
+    tracks[0]?.thumbnail;
   for (const t of tracks) {
     if (!t.artist || t.artist === 'Unknown Artist') t.artist = artist;
     if (!t.artistId && artistBrowseId) t.artistId = artistBrowseId;
@@ -205,9 +206,10 @@ export function parsePlaylistDetails(
     undefined;
 
   const coverThumbs = header?.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
-  const coverUrl = coverThumbs.length > 0 ? coverThumbs[coverThumbs.length - 1].url : undefined;
-
   const tracks = parseSearchResults(data);
+  const coverUrl =
+    (coverThumbs.length > 0 ? coverThumbs[coverThumbs.length - 1].url : undefined) ||
+    tracks[0]?.thumbnail;
   return {
     id: playlistId,
     title,

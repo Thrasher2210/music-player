@@ -95,46 +95,75 @@ export const LibraryPlaylistsSection: React.FC<LibraryPlaylistsSectionProps> = (
         />
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {displayedLocalPlaylists.map((playlist) => (
-            <Card
-              key={playlist.id}
-              className="group p-4 rounded-2xl border border-border-subtle bg-surface hover:bg-surface-hover/80 transition-all cursor-pointer shadow-md"
-              onClick={() => router.push(`/playlist/${playlist.id}`)}
-            >
-              <Box className="aspect-square w-full rounded-xl bg-surface-active/60 border border-border-subtle flex items-center justify-center mb-3">
-                <ListMusic size={32} className="text-text-tertiary" />
-              </Box>
-              <Heading level={4} className="text-sm font-semibold text-text-primary truncate">
-                {playlist.name}
-              </Heading>
-              <Text size="xs" className="text-text-secondary mt-0.5">
-                Local {playlist.trackCount ? `• ${playlist.trackCount} songs` : ''}
-              </Text>
-            </Card>
-          ))}
+          {displayedLocalPlaylists.map((playlist) => {
+            const cover = playlist.coverArt;
+            return (
+              <Card
+                key={playlist.id}
+                className="group p-4 rounded-2xl border border-border-subtle bg-surface hover:bg-surface-hover/80 transition-all cursor-pointer shadow-md"
+                onClick={() => router.push(`/playlist/${playlist.id}`)}
+              >
+                <Box className="aspect-square w-full rounded-xl bg-surface-active/60 border border-border-subtle flex items-center justify-center mb-3 relative overflow-hidden">
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt={playlist.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <ListMusic size={32} className="text-text-tertiary" />
+                  )}
+                  {playlist.source === 'youtube' && (
+                    <Badge variant="accent" size="xs" className="absolute top-2 right-2">
+                      YT
+                    </Badge>
+                  )}
+                </Box>
+                <Heading level={4} className="text-sm font-semibold text-text-primary truncate">
+                  {playlist.name}
+                </Heading>
+                <Text size="xs" className="text-text-secondary mt-0.5">
+                  {playlist.source === 'youtube' ? 'YouTube' : 'Local'} {playlist.trackCount ? `• ${playlist.trackCount} songs` : ''}
+                </Text>
+              </Card>
+            );
+          })}
 
-          {displayedYouTubePlaylists.map((playlist: any) => (
-            <Card
-              key={playlist.id || playlist.browseId}
-              className="group p-4 rounded-2xl border border-border-subtle bg-surface hover:bg-surface-hover/80 transition-all cursor-pointer shadow-md"
-              onClick={() => {
-                if (playlist.id) {
-                  router.push(`/playlist/${playlist.id}`);
-                }
-              }}
-            >
-              <Box className="aspect-square w-full rounded-xl bg-red-950/20 border border-border-subtle flex items-center justify-center mb-3 relative overflow-hidden">
-                <Youtube size={32} className="text-red-400" />
-                <Badge variant="accent" size="xs" className="absolute top-2 right-2">YT</Badge>
-              </Box>
-              <Heading level={4} className="text-sm font-semibold text-text-primary truncate">
-                {playlist.title || playlist.name}
-              </Heading>
-              <Text size="xs" className="text-text-secondary mt-0.5 truncate">
-                YouTube {playlist.trackCount ? `• ${playlist.trackCount} songs` : ''}
-              </Text>
-            </Card>
-          ))}
+          {displayedYouTubePlaylists.map((playlist: any) => {
+            const cover = playlist.coverUrl;
+            return (
+              <Card
+                key={playlist.id || playlist.browseId}
+                className="group p-4 rounded-2xl border border-border-subtle bg-surface hover:bg-surface-hover/80 transition-all cursor-pointer shadow-md"
+                onClick={() => {
+                  if (playlist.id) {
+                    router.push(`/playlist/${playlist.id}`);
+                  }
+                }}
+              >
+                <Box className="aspect-square w-full rounded-xl bg-surface-active/60 border border-border-subtle flex items-center justify-center mb-3 relative overflow-hidden">
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt={playlist.title || playlist.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <Youtube size={32} className="text-red-400" />
+                  )}
+                  <Badge variant="accent" size="xs" className="absolute top-2 right-2">YT</Badge>
+                </Box>
+                <Heading level={4} className="text-sm font-semibold text-text-primary truncate">
+                  {playlist.title || playlist.name}
+                </Heading>
+                <Text size="xs" className="text-text-secondary mt-0.5 truncate">
+                  YouTube {playlist.trackCount ? `• ${playlist.trackCount} songs` : ''}
+                </Text>
+              </Card>
+            );
+          })}
         </div>
       )}
     </Box>
