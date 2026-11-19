@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { usePlayerStore, Track } from '../stores/playerStore';
 
 export interface UseUrlSyncOptions {
-  isFullPlayerOpen: boolean;
+  isFullPlayerOpen?: boolean;
   setIsFullPlayerOpen: (open: boolean) => void;
 }
 
@@ -15,8 +15,7 @@ export interface UseUrlSyncOptions {
  * - Synchronizes the full-screen visualizer / lyrics view with /watch?v=videoId.
  * - Handles cold URL loads with browser autoplay policy fallback (cues track ready for 1-click play).
  */
-export function useUrlSync({ isFullPlayerOpen, setIsFullPlayerOpen }: UseUrlSyncOptions): void {
-  const router = useRouter();
+export function useUrlSync({ setIsFullPlayerOpen }: UseUrlSyncOptions): void {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -25,7 +24,6 @@ export function useUrlSync({ isFullPlayerOpen, setIsFullPlayerOpen }: UseUrlSync
   const isInitialized = usePlayerStore((s) => s.isInitialized);
   const initialize = usePlayerStore((s) => s.initialize);
 
-  const previousPathRef = useRef<string | null>(null);
   const isInitialSyncRef = useRef(false);
 
   // 1. Initial cold-load sync: Parse ?v= from URL on first mount
