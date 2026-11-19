@@ -1,23 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Play } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   AmbientAura,
   Flex,
   Box,
-  Text,
-  Heading,
-  Button,
   Grid,
   Stack,
   Skeleton,
-  QuickPicksGrid,
-  QuickPicksColumn,
-  QuickPickRow,
-  MediaShelf,
-  MediaCard,
   MoodChipBar,
   type MoodChipData,
   type TrackData,
@@ -25,10 +15,10 @@ import {
 import { usePlayerStore, type Track } from '../stores/playerStore';
 import { useLibraryStore } from '../stores/libraryStore';
 import { type MediaShelfData } from '@mp/player-core';
+import { HomeQuickPicks } from '../components/home/HomeQuickPicks';
+import { HomeShelves } from '../components/home/HomeShelves';
 
 export default function HomePage() {
-  const router = useRouter();
-
   const {
     currentTrack,
     playbackState,
@@ -120,24 +110,11 @@ export default function HomePage() {
     [isLiked]
   );
 
-  // Split quickPicks into 4 columns of up to 4 tracks each
-  const quickPickClusters = useMemo(() => {
-    const clusters: Track[][] = [];
-    const clusterSize = 4;
-    for (let i = 0; i < quickPicks.length && clusters.length < 4; i += clusterSize) {
-      clusters.push(quickPicks.slice(i, i + clusterSize));
-    }
-    return clusters;
-  }, [quickPicks]);
-
   const isCurrentlyPlaying = playbackState === 'playing';
 
   return (
     <Box className="relative">
-      <AmbientAura
-        intensity={0.2}
-        animated={isCurrentlyPlaying}
-      />
+      <AmbientAura intensity={0.2} animated={isCurrentlyPlaying} />
 
       <Box className="relative z-10 p-6 md:p-8 max-w-7xl mx-auto space-y-10">
         {/* Mood Chips Strip */}
@@ -175,129 +152,21 @@ export default function HomePage() {
         )}
 
         {/* Quick Picks */}
-        {quickPicks.length > 0 && (
-          <Stack gap="4">
-            <Flex justify="between" align="end">
-              <Stack gap="1">
-                <Text variant="kicker" size="xs">
-                  START RADIO FROM A SONG
-                </Text>
-                <Heading level={2} size="h2" className="tracking-tight">
-                  Quick picks
-                </Heading>
-              </Stack>
-
-              <Button
-                variant="secondary"
-                size="sm"
-                className="rounded-full text-xs font-semibold px-4 hover:scale-105 active:scale-95 transition-all shadow-sm"
-                leftIcon={<Play size={12} className="fill-current" />}
-                onClick={() => {
-                  if (quickPicks[0]) {
-                    handlePlayTrackWithRadio(quickPicks[0]);
-                  }
-                }}
-              >
-                Play all
-              </Button>
-            </Flex>
-
-            <QuickPicksGrid columns={4}>
-              {quickPickClusters.map((cluster, colIdx) => (
-                <QuickPicksColumn key={colIdx}>
-                  {cluster.map((track) => {
-                    const trackKey = track.id || track.videoId;
-                    const isActive = (currentTrack?.id || currentTrack?.videoId) === trackKey;
-                    return (
-                      <QuickPickRow
-                        key={trackKey}
-                        track={getTrackDataWithLiked(track)}
-                        isActive={isActive}
-                        isPlaying={isActive && isCurrentlyPlaying}
-                        onPlay={() => handlePlayTrackWithRadio(track)}
-                        onPause={pause}
-                        onSelect={() => handlePlayTrackWithRadio(track)}
-                        onQueue={() => addToQueue(track)}
-                        onArtistClick={(_artist, artistId) => {
-                          if (artistId) {
-                            router.push(`/artist/${artistId}`);
-                          }
-                        }}
-                        onAlbumClick={(_album, albumId) => {
-                          if (albumId) {
-                            router.push(`/album/${albumId}`);
-                          }
-                        }}
-                      />
-                    );
-                  })}
-                </QuickPicksColumn>
-              ))}
-            </QuickPicksGrid>
-          </Stack>
-        )}
+        <HomeQuickPicks
+          quickPicks={quickPicks}
+          currentTrack={currentTrack}
+          isCurrentlyPlaying={isCurrentlyPlaying}
+          getTrackDataWithLiked={getTrackDataWithLiked}
+          onPlayTrack={handlePlayTrackWithRadio}
+          onPause={pause}
+          onAddToQueue={addToQueue}
+        />
 
         {/* Dynamic Shelves */}
-        {shelves.map((shelf) => {
-          if (!shelf.items || shelf.items.length === 0) return null;
-          return (
-            <Box key={shelf.id} className="space-y-4">
-              <MediaShelf title={shelf.title}>
-                {shelf.items.map((item: any) => (
-                  <MediaCard
-                    key={item.id}
-                    title={item.title}
-                    subtitle={item.subtitle}
-                    imageUrl={item.thumbnail || item.imageUrl}
-                    aspect="square"
-                    onPlay={() => {
-                      if (item.videoId) {
-                        const trackItem: Track = {
-                          id: item.videoId,
-                          videoId: item.videoId,
-                          title: item.title,
-                          artist: item.subtitle || '',
-                          duration: 0,
-                          thumbnail: item.thumbnail || (item as any).imageUrl,
-                        };
-                        handlePlayTrackWithRadio(trackItem);
-                      } else if (item.browseId) {
-                        if (item.browseId.startsWith('UC')) {
-                          router.push(`/artist/${item.browseId}`);
-                        } else if (item.browseId.startsWith('MPREb_')) {
-                          router.push(`/album/${item.browseId}`);
-                        } else if (item.browseId.startsWith('VL') || item.browseId.startsWith('PL') || item.browseId.startsWith('RD')) {
-                          router.push(`/playlist/${item.browseId}`);
-                        }
-                      }
-                    }}
-                    onClick={() => {
-                      if (item.browseId) {
-                        if (item.browseId.startsWith('UC')) {
-                          router.push(`/artist/${item.browseId}`);
-                        } else if (item.browseId.startsWith('MPREb_')) {
-                          router.push(`/album/${item.browseId}`);
-                        } else if (item.browseId.startsWith('VL') || item.browseId.startsWith('PL') || item.browseId.startsWith('RD')) {
-                          router.push(`/playlist/${item.browseId}`);
-                        }
-                      } else if (item.videoId) {
-                        const trackItem: Track = {
-                          id: item.videoId,
-                          videoId: item.videoId,
-                          title: item.title,
-                          artist: item.subtitle || '',
-                          duration: 0,
-                          thumbnail: item.thumbnail || (item as any).imageUrl,
-                        };
-                        handlePlayTrackWithRadio(trackItem);
-                      }
-                    }}
-                  />
-                ))}
-              </MediaShelf>
-            </Box>
-          );
-        })}
+        <HomeShelves
+          shelves={shelves}
+          onPlayTrack={handlePlayTrackWithRadio}
+        />
       </Box>
     </Box>
   );

@@ -1,0 +1,108 @@
+'use client';
+
+import React from 'react';
+import {
+  Sidebar,
+  SidebarBrand,
+  BrandLogo,
+  SidebarNav,
+  SidebarNavItem,
+  SidebarFooter,
+  IconButton,
+} from '@mp/dying';
+import {
+  Home,
+  Compass,
+  Library,
+  Plus,
+  Heart,
+  Sparkles,
+} from 'lucide-react';
+import { type Playlist } from '../../stores/libraryStore';
+
+export interface ShellSidebarProps {
+  playlists: Playlist[];
+  pathname: string;
+  onNavigate: (path: string) => void;
+  onCreatePlaylist: () => void;
+}
+
+export function ShellSidebar({
+  playlists,
+  pathname,
+  onNavigate,
+  onCreatePlaylist,
+}: ShellSidebarProps) {
+  return (
+    <Sidebar>
+      <div className="cursor-pointer" onClick={() => onNavigate('/')}>
+        <SidebarBrand
+          logo={<BrandLogo variant="app-icon" size={28} />}
+          title={<BrandLogo variant="wordmark" size="sm" />}
+          subtitle="Streaming"
+        />
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <SidebarNav title="Menu">
+          <SidebarNavItem
+            icon={<Home className="h-4 w-4" />}
+            label="Home"
+            active={pathname === '/'}
+            onClick={() => onNavigate('/')}
+          />
+          <SidebarNavItem
+            icon={<Compass className="h-4 w-4" />}
+            label="Explore"
+            active={pathname === '/explore'}
+            onClick={() => onNavigate('/explore')}
+          />
+          <SidebarNavItem
+            icon={<Library className="h-4 w-4" />}
+            label="Library"
+            active={pathname === '/library'}
+            onClick={() => onNavigate('/library')}
+          />
+        </SidebarNav>
+
+        <SidebarNav
+          title="Playlists"
+          action={
+            <IconButton
+              aria-label="Create new playlist"
+              variant="ghost"
+              size="xs"
+              icon={<Plus size={14} />}
+              onClick={onCreatePlaylist}
+            />
+          }
+        >
+          <SidebarNavItem
+            icon={<Heart className="h-4 w-4 text-emerald-400" />}
+            label="Liked music"
+            active={pathname === '/playlist/liked'}
+            onClick={() => onNavigate('/playlist/liked')}
+          />
+
+          {playlists.map((pl) => (
+            <SidebarNavItem
+              key={pl.id}
+              icon={<Library className="h-4 w-4" />}
+              label={pl.name}
+              active={pathname === `/playlist/${pl.id}`}
+              onClick={() => onNavigate(`/playlist/${pl.id}`)}
+            />
+          ))}
+        </SidebarNav>
+      </div>
+
+      <SidebarFooter>
+        <SidebarNavItem
+          icon={<Sparkles className="h-4 w-4 text-emerald-400" />}
+          label="Dying 2.0 Design System"
+          onClick={() => onNavigate('/dying')}
+        />
+      </SidebarFooter>
+    </Sidebar>
+  );
+}

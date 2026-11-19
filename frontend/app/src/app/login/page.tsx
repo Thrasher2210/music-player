@@ -2,42 +2,23 @@
 
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  ArrowLeft,
-  Mail,
-  Lock,
-  User,
-  Sparkles,
-  Check,
-  Github,
-  Music2,
-  LogIn,
-  UserPlus,
-  Globe,
-  Disc,
-} from 'lucide-react';
+import { ArrowLeft, LogIn, UserPlus } from 'lucide-react';
 import {
   AmbientAura,
-  BrandLogo,
   Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
   CardContent,
   CardFooter,
   Button,
-  Input,
-  FormField,
-  Badge,
-  Alert,
   Separator,
-  Stack,
   Flex,
-  Grid,
   Box,
   Text,
 } from '@mp/dying';
 import { useAuthStore } from '../../stores/authStore';
+import { OAuthButtons } from './components/OAuthButtons';
+import { AuthHeroFeatures } from './components/AuthHeroFeatures';
+import { AuthAlerts } from './components/AuthAlerts';
+import { EmailCredentialsForm } from './components/EmailCredentialsForm';
 
 function LoginForm() {
   const router = useRouter();
@@ -118,9 +99,7 @@ function LoginForm() {
         setErrorMessage(res.error || 'Failed to create account.');
       } else {
         setStatusMessage('Account created successfully! Redirecting...');
-        setTimeout(() => {
-          router.push('/');
-        }, 400);
+        setTimeout(() => router.push('/'), 400);
       }
     } else {
       const res = await login(email, password);
@@ -129,9 +108,7 @@ function LoginForm() {
         setErrorMessage(res.error || 'Invalid email or password.');
       } else {
         setStatusMessage('Signed in successfully! Redirecting...');
-        setTimeout(() => {
-          router.push('/');
-        }, 400);
+        setTimeout(() => router.push('/'), 400);
       }
     }
   };
@@ -139,14 +116,11 @@ function LoginForm() {
   const handleGuestLogin = () => {
     setStatusMessage('Continuing as Guest...');
     loginAsGuest();
-    setTimeout(() => {
-      router.push('/');
-    }, 300);
+    setTimeout(() => router.push('/'), 300);
   };
 
   return (
     <Box className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-hidden bg-canvas select-none">
-      {/* Background Subtle Ambient Aura */}
       <AmbientAura
         primaryColor="#064e3b"
         secondaryColor="#18181b"
@@ -156,7 +130,6 @@ function LoginForm() {
         className="fixed inset-0 pointer-events-none"
       />
 
-      {/* Top Navigation: Return to Player */}
       <Box className="absolute top-6 left-6 sm:top-8 sm:left-8 z-20">
         <Button
           variant="glass"
@@ -168,35 +141,13 @@ function LoginForm() {
         </Button>
       </Box>
 
-      {/* Centered Obsidian Glass Card */}
       <Card
         variant="glass"
         className="relative z-10 w-full max-w-[420px] p-6 sm:p-7 backdrop-blur-3xl shadow-2xl rounded-2xl border-border-subtle bg-surface/90"
       >
-        <CardHeader className="text-center items-center pb-3">
-          <Flex align="center" gap="2" justify="center" className="mb-1">
-            <BrandLogo variant="app-icon" size={36} />
-            <CardTitle className="text-2xl font-extrabold tracking-tight">
-              <BrandLogo variant="wordmark" size="lg" />
-            </CardTitle>
-          </Flex>
-
-          <Flex align="center" gap="2" justify="center">
-            <Badge variant="glass" size="sm">
-              <Sparkles size={11} className="mr-1 text-text-secondary" />
-              Ad-Free InnerTube Streaming
-            </Badge>
-          </Flex>
-
-          <CardDescription className="text-xs text-text-secondary mt-1.5">
-            {mode === 'login'
-              ? 'Sign in to sync your playlists and radio mixes.'
-              : 'Create an account to save equalizer presets & favorites.'}
-          </CardDescription>
-        </CardHeader>
+        <AuthHeroFeatures mode={mode} />
 
         <CardContent className="space-y-4">
-          {/* Segmented Mode Switcher */}
           <Box className="p-1 rounded-xl bg-surface-active/80 border border-border-subtle">
             <Flex gap="1">
               <Button
@@ -232,109 +183,21 @@ function LoginForm() {
             </Flex>
           </Box>
 
-          {/* Real Server Error Alert */}
-          {errorMessage && (
-            <Alert
-              variant="error"
-              title="Authentication Failed"
-              onClose={() => setErrorMessage(null)}
-              className="text-xs py-2.5"
-            >
-              {errorMessage}
-            </Alert>
-          )}
+          <AuthAlerts
+            errorMessage={errorMessage}
+            onClearError={() => setErrorMessage(null)}
+            oauthWarning={oauthWarning}
+            onClearWarning={() => setOauthWarning(null)}
+            onCreateDemoAccount={handleCreateDemoAccount}
+            statusMessage={statusMessage}
+            isLoading={isLoading}
+          />
 
-          {/* Social OAuth Fallback / Notice with 1-Click Demo Creation */}
-          {oauthWarning && (
-            <Alert
-              variant="warning"
-              title={`${oauthWarning.provider} OAuth Unavailable`}
-              onClose={() => setOauthWarning(null)}
-              className="text-xs py-2.5"
-            >
-              <Stack gap="2">
-                <Text size="xs" color="secondary">
-                  {oauthWarning.message}
-                </Text>
-                <Box>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="xs"
-                    leftIcon={<Sparkles size={13} />}
-                    onClick={handleCreateDemoAccount}
-                    disabled={isLoading}
-                  >
-                    Create Demo Account (1-Click)
-                  </Button>
-                </Box>
-              </Stack>
-            </Alert>
-          )}
+          <OAuthButtons
+            isLoading={isLoading}
+            onProviderLogin={handleProviderLogin}
+          />
 
-          {/* Success Status Alert */}
-          {statusMessage && (
-            <Alert
-              variant="success"
-              icon={<Check size={15} />}
-              className="text-xs py-2.5"
-            >
-              {statusMessage}
-            </Alert>
-          )}
-
-          {/* Symmetrical 2x2 OAuth Providers Grid */}
-          <Grid cols={2} gap="2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              fullWidth
-              leftIcon={<Globe size={15} />}
-              disabled={isLoading}
-              onClick={() => handleProviderLogin('google', 'Google')}
-            >
-              Google
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              fullWidth
-              leftIcon={<Github size={15} />}
-              disabled={isLoading}
-              onClick={() => handleProviderLogin('github', 'GitHub')}
-            >
-              GitHub
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              fullWidth
-              leftIcon={<Music2 size={15} />}
-              disabled={isLoading}
-              onClick={() => handleProviderLogin('apple', 'Apple ID')}
-            >
-              Apple ID
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              fullWidth
-              leftIcon={<Disc size={15} />}
-              disabled={isLoading}
-              onClick={() => handleProviderLogin('discord', 'Discord')}
-            >
-              Discord
-            </Button>
-          </Grid>
-
-          {/* Accessible Separator */}
           <Flex align="center" gap="3">
             <Separator className="flex-1" />
             <Text variant="kicker" size="xs">
@@ -343,68 +206,17 @@ function LoginForm() {
             <Separator className="flex-1" />
           </Flex>
 
-          {/* Credentials Form */}
-          <form onSubmit={handleSubmit}>
-            <Stack gap="3">
-              {mode === 'register' && (
-                <FormField label="Your Name" id="name-input" required>
-                  <Input
-                    id="name-input"
-                    name="name"
-                    autoComplete="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Alex"
-                    leftIcon={<User size={15} />}
-                    required={mode === 'register'}
-                  />
-                </FormField>
-              )}
-
-              <FormField label="Email Address" id="email-input" required>
-                <Input
-                  id="email-input"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  leftIcon={<Mail size={15} />}
-                  required
-                />
-              </FormField>
-
-              <FormField label="Password" id="password-input" required>
-                <Input
-                  id="password-input"
-                  name="password"
-                  type="password"
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  leftIcon={<Lock size={15} />}
-                  required
-                />
-              </FormField>
-
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                fullWidth
-                disabled={isLoading}
-                className="mt-1"
-              >
-                {isLoading
-                  ? 'Processing...'
-                  : mode === 'login'
-                  ? 'Sign In with Email'
-                  : 'Create GaneGan Account'}
-              </Button>
-            </Stack>
-          </form>
+          <EmailCredentialsForm
+            mode={mode}
+            name={name}
+            setName={setName}
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            isLoading={isLoading}
+            onSubmit={handleSubmit}
+          />
         </CardContent>
 
         <CardFooter className="flex-col gap-1.5 pt-1 text-center">

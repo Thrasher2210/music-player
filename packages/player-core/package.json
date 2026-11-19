@@ -11,7 +11,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit",
-    "test": "tsx --test tests/playerCore.test.ts"
+    "test": "tsx --test tests/**/*.test.ts"
   },
   "dependencies": {
     "bgutils-js": "^4.0.3",

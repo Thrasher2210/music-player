@@ -42,32 +42,11 @@ import {
   GlassPanel,
   GlassCard,
   OledBase,
-  ScrubSlider,
-  SpringButton,
-  PageHeader,
-  HeroBannerCard,
-  HeroCarousel,
-  MediaShelf,
-  MediaCard,
-  MoodChip,
-  MoodChipBar,
-  QuickPicksGrid,
-  QuickPicksColumn,
-  QuickPickRow,
-  TrackRow,
-  TrackTable,
-  SyncedLyricsView,
-  FullImmersionLyrics,
-  FullPlayerView,
-  FloatingPlayerPill,
-  PlayerBar,
-  AmbientAura,
-  SoundWave,
   ThemeProvider,
   useTheme,
 } from "../src/index";
 
-describe("Dying Design System — Enterprise Quality Suite", () => {
+describe("Dying Design System — Tokens & Primitives Suite", () => {
   describe("1. Design Tokens & DTCG Standard Compliance", () => {
     test("verifies DTCG schema and top-level token groups", () => {
       assert.ok(dyingTokens, "dyingTokens must be defined");
@@ -157,7 +136,7 @@ describe("Dying Design System — Enterprise Quality Suite", () => {
     });
   });
 
-  describe("3. Component Library Public API Verification", () => {
+  describe("3. Foundational Primitives & UI Verification", () => {
     test("verifies all foundational primitives are valid React components", () => {
       const primitives = [
         Box,
@@ -209,33 +188,6 @@ describe("Dying Design System — Enterprise Quality Suite", () => {
         assert.ok(Component, "Component must be defined");
       });
     });
-
-    test("verifies media and music streaming domain components", () => {
-      const domainComponents = [
-        PageHeader,
-        HeroBannerCard,
-        HeroCarousel,
-        MediaShelf,
-        MediaCard,
-        MoodChip,
-        MoodChipBar,
-        QuickPicksGrid,
-        QuickPicksColumn,
-        QuickPickRow,
-        TrackRow,
-        TrackTable,
-        SyncedLyricsView,
-        FullImmersionLyrics,
-        FullPlayerView,
-        FloatingPlayerPill,
-        PlayerBar,
-        AmbientAura,
-        SoundWave,
-      ];
-      domainComponents.forEach((Component) => {
-        assert.ok(Component, "Domain component must be defined");
-      });
-    });
   });
 
   describe("4. Accessibility & Theming Standards", () => {
@@ -252,47 +204,7 @@ describe("Dying Design System — Enterprise Quality Suite", () => {
     });
   });
 
-  describe("5. Synced and Unsynced Lyrics System Verification", () => {
-    test("verifies Badge supports size='xs' with variant='glass'", () => {
-      const badgeElem = React.createElement(Badge, { variant: "glass", size: "xs" }, "LRCLIB");
-      assert.ok(React.isValidElement(badgeElem));
-    });
-
-    test("verifies SyncedLyricsView accepts dual mode props (synced, plainLyrics, source)", () => {
-      // Synced mode element
-      const syncedElem = React.createElement(SyncedLyricsView, {
-        lyrics: [{ time: 10, text: "Glow line test" }],
-        currentTime: 10,
-        synced: true,
-        source: "LRCLIB",
-      });
-      assert.ok(React.isValidElement(syncedElem));
-
-      // Unsynced mode element
-      const unsyncedElem = React.createElement(SyncedLyricsView, {
-        synced: false,
-        plainLyrics: "First line of unsynced lyrics\nSecond line",
-        source: "kugou",
-      });
-      assert.ok(React.isValidElement(unsyncedElem));
-    });
-
-    test("verifies FullPlayerView accepts enhanced lyrics props and loading state", () => {
-      const playerElem = React.createElement(FullPlayerView, {
-        track: { id: "test", title: "Test Track", artist: "Artist", duration: 180 },
-        onClose: () => {},
-        activeTab: "lyrics",
-        lyrics: [{ time: 5, text: "Lyrics row" }],
-        synced: true,
-        plainLyrics: "Plain text lyrics",
-        source: "lrclib",
-        isLyricsLoading: true,
-      });
-      assert.ok(React.isValidElement(playerElem));
-    });
-  });
-
-  describe("6. Brand Identity & Logo System (GaneGan)", () => {
+  describe("5. Brand Identity & Logo System (GaneGan)", () => {
     test("verifies BrandLogo renders mark, wordmark, full lockup, and tiles", () => {
       const mark = React.createElement(BrandLogo, { variant: "mark", size: "sm" });
       assert.ok(React.isValidElement(mark));

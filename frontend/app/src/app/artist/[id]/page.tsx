@@ -2,17 +2,14 @@
 
 import React, { useEffect, useState, useTransition } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Play, Pause, Shuffle, Users, Music2 } from 'lucide-react';
+import { Music2 } from 'lucide-react';
 import {
   Container,
   Box,
   Flex,
   Stack,
   Heading,
-  Text,
-  Badge,
   Button,
-  IconButton,
   TrackRow,
   MediaShelf,
   MediaCard,
@@ -21,6 +18,7 @@ import {
 } from '@mp/dying';
 import { usePlayerStore, toTrackData } from '@/stores/playerStore';
 import { type ArtistDetails, type Track } from '@mp/player-core';
+import { ArtistHeader } from '../components/ArtistHeader';
 
 export default function ArtistPage() {
   const params = useParams();
@@ -141,77 +139,14 @@ export default function ArtistPage() {
     );
   }
 
-  const heroImage = artist.bannerUrl || artist.avatarUrl || '';
-
   return (
     <Container size="xl" className="py-6 px-4 sm:px-6 pb-24">
       {/* Artist Hero Header */}
-      <Box className="relative h-64 sm:h-80 md:h-96 rounded-3xl overflow-hidden border border-border-subtle bg-surface mb-10 shadow-2xl">
-        {heroImage && (
-          <img
-            src={heroImage}
-            alt={artist.name}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
-
-        <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 md:p-10 flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-          <Stack gap="2" className="max-w-2xl">
-            <Flex align="center" gap="2">
-              <Badge variant="glass" className="border-white/20 text-white/90">
-                ARTIST
-              </Badge>
-              {artist.subscribers && (
-                <Flex align="center" gap="1" className="text-xs text-white/70">
-                  <Users size={13} />
-                  <span>{artist.subscribers} subscribers</span>
-                </Flex>
-              )}
-            </Flex>
-
-            <Heading level={1} className="text-3xl sm:text-5xl md:text-6xl font-black text-white tracking-tight">
-              {artist.name}
-            </Heading>
-
-            {artist.description && (
-              <Text size="sm" className="text-white/80 line-clamp-2 max-w-xl text-xs sm:text-sm mt-1">
-                {artist.description}
-              </Text>
-            )}
-          </Stack>
-
-          <Flex align="center" gap="3" className="shrink-0">
-            <Button
-              variant="primary"
-              size="lg"
-              className="rounded-full shadow-xl shadow-white/10"
-              onClick={() => handlePlayAll(false)}
-            >
-              {isThisArtistPlaying ? (
-                <>
-                  <Pause size={18} className="fill-current mr-2" />
-                  Pause
-                </>
-              ) : (
-                <>
-                  <Play size={18} className="fill-current mr-2" />
-                  Play All
-                </>
-              )}
-            </Button>
-            <IconButton
-              aria-label="Shuffle play"
-              variant="secondary"
-              size="md"
-              className="rounded-full"
-              icon={<Shuffle size={18} />}
-              onClick={() => handlePlayAll(true)}
-            />
-          </Flex>
-        </div>
-      </Box>
+      <ArtistHeader
+        artist={artist}
+        isThisArtistPlaying={isThisArtistPlaying}
+        onPlayAll={handlePlayAll}
+      />
 
       {/* Top Songs */}
       {artist.topSongs.length > 0 && (

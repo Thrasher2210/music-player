@@ -64,3 +64,15 @@ Before completing ANY frontend task, the agent must verify:
 5. `pnpm test` passes with zero failures.
 6. `pnpm build` succeeds for production.
 7. Documentation in `docs/dying/` is updated if any public component APIs changed.
+8. `pnpm check:lines` passes with zero files exceeding 300 lines.
+
+---
+
+## 300-Line Limit Rule (MANDATORY FOR ALL FILES)
+
+- **Every source file must be <= 300 lines**: All `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, and `.css` files across the codebase must never exceed 300 total lines (including blanks and comments).
+- **Multi-layer Automated Enforcement**:
+  1. Git pre-commit hook (`scripts/pre-commit.sh` via `.git/hooks/pre-commit`) blocks any staged file exceeding 300 lines.
+  2. ESLint rule (`max-lines: ["error", { max: 300, skipBlankLines: false, skipComments: false }]`) enforces this in `frontend/app`.
+  3. Pre-merge check script (`python3 scripts/check_file_length.py --max-lines 300` / `pnpm check:lines`) validates all files across the repository.
+- **Decomposition Guidelines**: When a file approaches 250-300 lines, decompose it into modular sub-components, sub-routers, services, or helper modules.

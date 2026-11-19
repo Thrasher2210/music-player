@@ -1,23 +1,31 @@
 import React from "react";
 import {
-  SkipBack,
-  SkipForward,
-  Shuffle,
-  Repeat,
-  Volume2,
-  VolumeX,
-  Volume1,
-  Maximize2,
-  Mic2,
-  Music2,
   ChevronUp,
   ChevronDown,
-  Heart,
+  Mic2,
   MoreHorizontal,
 } from "lucide-react";
 import { ScrubSlider } from "../primitives/ScrubSlider";
 import { SpringButton } from "../primitives/SpringButton";
 import { cn } from "../utils/cn";
+import { PillTrackInfo, type PillTrackInfoProps } from "./pill/PillTrackInfo";
+import {
+  PillPlaybackControls,
+  type PillPlaybackControlsProps,
+} from "./pill/PillPlaybackControls";
+import {
+  PillVolumeControls,
+  type PillVolumeControlsProps,
+} from "./pill/PillVolumeControls";
+
+export {
+  PillTrackInfo,
+  type PillTrackInfoProps,
+  PillPlaybackControls,
+  type PillPlaybackControlsProps,
+  PillVolumeControls,
+  type PillVolumeControlsProps,
+};
 
 export interface FloatingPlayerPillProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "onVolumeChange"> {
@@ -103,17 +111,6 @@ export const FloatingPlayerPill = React.forwardRef<
     },
     ref
   ) => {
-    const effectiveVolume = isMuted ? 0 : volume;
-
-    const VolumeIcon =
-      effectiveVolume === 0
-        ? VolumeX
-        : effectiveVolume < 0.5
-        ? Volume1
-        : Volume2;
-
-    const hasTrack = title && title !== "Not Playing";
-
     return (
       <div
         ref={ref}
@@ -130,150 +127,27 @@ export const FloatingPlayerPill = React.forwardRef<
         {/* Upper row: Track info | Transport Controls | Actions */}
         <div className="flex items-center justify-between gap-2 sm:gap-4">
           {/* Left: Artwork & Metadata */}
-          <div className="flex items-center gap-2.5 min-w-0 flex-1 max-w-[200px] sm:max-w-[240px]">
-            {hasTrack ? (
-              <>
-                <div
-                  onClick={onExpandNowPlaying}
-                  className="group/art relative h-10 w-10 sm:h-12 sm:w-12 shrink-0 cursor-pointer overflow-hidden rounded-xl border border-border-subtle bg-surface shadow-md"
-                >
-                  {artworkUrl ? (
-                    <img
-                      src={artworkUrl}
-                      alt={title}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover/art:scale-105"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-white/[0.04] text-xs text-text-tertiary">
-                      <Music2 size={18} />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover/art:opacity-100">
-                    <Maximize2 size={14} className="text-white" />
-                  </div>
-                </div>
-
-                <div className="flex flex-col min-w-0">
-                  <span
-                    onClick={onExpandNowPlaying}
-                    className="truncate text-xs sm:text-sm font-semibold text-text-primary hover:underline cursor-pointer"
-                    title={title}
-                  >
-                    {title}
-                  </span>
-                  <span
-                    onClick={onArtistClick}
-                    className={cn(
-                      "truncate text-[11px] sm:text-xs text-text-secondary",
-                      onArtistClick && "hover:underline hover:text-white cursor-pointer"
-                    )}
-                    title={artist}
-                  >
-                    {artist}
-                  </span>
-                </div>
-
-                {onToggleLike && (
-                  <SpringButton
-                    variant="ghost"
-                    size="xs"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleLike();
-                    }}
-                    aria-label={isLiked ? "Unlike" : "Like"}
-                    className={cn(
-                      "shrink-0 ml-1 transition-colors",
-                      isLiked
-                        ? "text-emerald-400"
-                        : "text-text-tertiary hover:text-text-primary"
-                    )}
-                  >
-                    <Heart size={16} className={isLiked ? "fill-emerald-400" : ""} />
-                  </SpringButton>
-                )}
-              </>
-            ) : (
-              <>
-                <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-surface text-text-tertiary">
-                  <Music2 size={18} />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="truncate text-xs sm:text-sm font-medium text-text-secondary">
-                    {title}
-                  </span>
-                  <span
-                    className="truncate text-[11px] sm:text-xs text-text-tertiary"
-                    title={artist}
-                  >
-                    {artist}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
+          <PillTrackInfo
+            title={title}
+            artist={artist}
+            artworkUrl={artworkUrl}
+            isLiked={isLiked}
+            onExpandNowPlaying={onExpandNowPlaying}
+            onArtistClick={onArtistClick}
+            onToggleLike={onToggleLike}
+          />
 
           {/* Center: Transport Controls */}
-          <div className="flex items-center gap-1 sm:gap-2 justify-center shrink-0">
-            {onToggleShuffle && (
-              <SpringButton
-                variant="ghost"
-                size="xs"
-                onClick={onToggleShuffle}
-                aria-label="Shuffle"
-                className={cn(
-                  "hidden md:inline-flex text-text-tertiary hover:text-white",
-                  isShuffle && "text-white"
-                )}
-              >
-                <Shuffle className="h-3.5 w-3.5" />
-              </SpringButton>
-            )}
-
-            <SpringButton
-              variant="ghost"
-              size="xs"
-              onClick={onPrevious}
-              aria-label="Previous track"
-              className="text-text-secondary hover:text-white"
-            >
-              <SkipBack className="h-4 w-4 fill-current" />
-            </SpringButton>
-
-            <SpringButton
-              variant="playPause"
-              size="sm"
-              isPlaying={isPlaying}
-              onClick={onPlayPause}
-              aria-label={isPlaying ? "Pause" : "Play"}
-            />
-
-            <SpringButton
-              variant="ghost"
-              size="xs"
-              onClick={onNext}
-              aria-label="Next track"
-              className="text-text-secondary hover:text-white"
-            >
-              <SkipForward className="h-4 w-4 fill-current" />
-            </SpringButton>
-
-            {onToggleRepeat && (
-              <SpringButton
-                variant="ghost"
-                size="xs"
-                onClick={onToggleRepeat}
-                aria-label="Repeat mode"
-                className={cn(
-                  "hidden md:inline-flex text-text-tertiary hover:text-white",
-                  repeatMode !== "off" && "text-white"
-                )}
-              >
-                <Repeat className="h-3.5 w-3.5" />
-              </SpringButton>
-            )}
-          </div>
+          <PillPlaybackControls
+            isPlaying={isPlaying}
+            isShuffle={isShuffle}
+            repeatMode={repeatMode}
+            onToggleShuffle={onToggleShuffle}
+            onPrevious={onPrevious}
+            onPlayPause={onPlayPause}
+            onNext={onNext}
+            onToggleRepeat={onToggleRepeat}
+          />
 
           {/* Right: Lyrics & Volume Utilities */}
           <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 sm:min-w-[120px] sm:max-w-[210px] shrink-0">
@@ -307,27 +181,12 @@ export const FloatingPlayerPill = React.forwardRef<
                 </SpringButton>
 
                 {/* Volume slider & mute */}
-                <div className="hidden sm:flex items-center gap-1.5 w-20 sm:w-28">
-                  <button
-                    type="button"
-                    onClick={onToggleMute}
-                    aria-label={isMuted ? "Unmute" : "Mute"}
-                    className="text-text-secondary hover:text-white transition-colors p-1 rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-focus"
-                  >
-                    <VolumeIcon className="h-3.5 w-3.5" />
-                  </button>
-                  <div className="flex-1">
-                    <ScrubSlider
-                      size="sm"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={effectiveVolume}
-                      onValueChange={(val) => onVolumeChange?.(val)}
-                      tooltipFormatter={(val) => `${Math.round(val * 100)}%`}
-                    />
-                  </div>
-                </div>
+                <PillVolumeControls
+                  volume={volume}
+                  isMuted={isMuted}
+                  onToggleMute={onToggleMute}
+                  onVolumeChange={onVolumeChange}
+                />
 
                 {/* Expand / Minimize toggle chevron */}
                 <SpringButton

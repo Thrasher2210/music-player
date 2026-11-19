@@ -1,0 +1,85 @@
+import { PlayerEngine } from '@mp/player-core';
+import { type StoreSet, type StoreGet } from './types';
+import {
+  getSharedMediaElement,
+  updateBufferStatus,
+  ITAG_METADATA,
+  lyricsCache,
+  debouncedFetchLyrics,
+} from './engineContext';
+
+export function bindEngineEvents(engine: PlayerEngine, set: StoreSet, get: StoreGet) {
+  engine.on('stateChange', (state) => {
+    set({ playbackState: state, error: state === 'error' ? get().error : null });
+    if (get().sleepTimerMode === 'end_of_track' && (state === 'idle' || state === 'ended')) {
+      get().pause().catch(() => {});
+      set({ sleepTimerMode: 'off', sleepTimerRemaining: null });
+    }
+  });
+
+  if (typeof (engine as any).on === 'function') {
+    (engine as any).on('playbackRateChange', (rate: number) => set({ playbackRate: rate }));
+  }
+
+  engine.on('trackChange', (track, index) => {
+    const prev = get().currentTrack;
+    const isSameVideo = Boolean(prev?.videoId && track?.videoId && prev.videoId === track.videoId);
+    const cached = track?.videoId ? lyricsCache.get(track.videoId) : null;
+    set({
+      currentTrack: track ? { ...track } : null,
+      currentIndex: index,
+      ...(isSameVideo ? {} : { currentTime: 0, bufferedAheadSeconds: 0, bufferedPercent: 0 }),
+      lyrics: cached || null,
+      isLyricsLoading: track ? !cached : false,
+      lyricsError: null,
+    });
+
+    const curRate = get().playbackRate;
+    if (typeof (engine as any).setPlaybackRate === 'function') {
+      (engine as any).setPlaybackRate(curRate);
+    }
+    const driver = engine.getAudioDriver() as any;
+    const mediaEl = getSharedMediaElement() || driver?.mediaElement;
+    if (mediaEl && mediaEl.playbackRate !== curRate) {
+      mediaEl.playbackRate = curRate;
+    }
+
+    if (track && (!isSameVideo || !get().lyrics)) {
+      debouncedFetchLyrics(track, get().fetchLyrics);
+    }
+  });
+
+  engine.on('timeUpdate', (time) => {
+    set({ currentTime: time });
+    const driver = engine.getAudioDriver() as any;
+    const mediaEl = getSharedMediaElement() || driver?.mediaElement;
+    updateBufferStatus(mediaEl, time, get().duration, set);
+  });
+
+  engine.on('durationChange', (dur) => set({ duration: dur }));
+  engine.on('volumeChange', (vol) => set({ volume: vol, isMuted: vol === 0 }));
+  engine.on('queueChange', (q) => set({ queue: [...q] }));
+
+  engine.on('walkVerdict', (verdicts, selectedClient) => {
+    const isOpus = selectedClient !== 'MWEB';
+    const itag = isOpus ? 251 : 140;
+    const meta = ITAG_METADATA[itag];
+    set({
+      verdicts: [...verdicts],
+      activeClient: selectedClient,
+      activeItag: itag,
+      codec: isOpus ? 'Opus 48kHz (itag 251)' : 'AAC 44.1kHz (itag 140)',
+      bitrate: meta?.bitrate ?? get().bitrate,
+      sampleRate: meta?.sampleRate ?? get().sampleRate,
+    });
+  });
+
+  engine.on('error', (err) => set({ error: err.message || 'Playback error occurred' }));
+  engine.on('ended', () => {
+    set({ playbackState: 'ended' });
+    if (get().sleepTimerMode === 'end_of_track') {
+      get().pause().catch(() => {});
+      set({ sleepTimerMode: 'off', sleepTimerRemaining: null });
+    }
+  });
+}

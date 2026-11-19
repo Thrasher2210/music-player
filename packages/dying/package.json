@@ -16,7 +16,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "tsx --test tests/dying.test.ts tests/enforcement.test.ts"
+    "test": "tsx --test tests/**/*.test.ts"
   },
   "peerDependencies": {
     "react": "^19.0.0",

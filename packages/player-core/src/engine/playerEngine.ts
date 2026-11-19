@@ -1,109 +1,45 @@
 import {
   AlbumDetails,
   ArtistDetails,
-  ClientVerdict,
   HomeFeedData,
   InnerTubeClientName,
   NextRadioData,
   PlaybackState,
   RemotePlaylistDetails,
   RepeatMode,
-  ShelfItemData,
   Track,
 } from '../types';
 import { NetworkAdapter, NativeHttpAdapter } from '../adapters/network';
 import { InnerTubeClient } from '../innertube/client';
-import {
-  executeClientWalk,
-  invalidateStreamCache,
-  isStreamCached,
-  prefetchAudioWarmup,
-  prefetchStream,
-  VerdictCache,
-} from '../walk/clientWalk';
-import { createDashBlobUrl, generateDashMpd } from '../manifest/dashGenerator';
+import { invalidateStreamCache, prefetchAudioWarmup, VerdictCache } from '../walk/clientWalk';
 import { AudioDriver, ShakaMseAudioDriver } from '../drivers/audio';
+import { TypedEventEmitter } from './emitter';
+import { QueueManager } from './queueManager';
+import { PlayerEngineEvents, PlayerEngineOptions } from './types';
+import { loadAndPlayPreparedTrack } from './streamHelper';
+import { attachDriverCoordinator } from './driverSubscriptions';
 
-export interface PlayerEngineEvents extends Record<string, (...args: any[]) => void> {
-  stateChange: (state: PlaybackState) => void;
-  trackChange: (track: Track | null, index: number) => void;
-  timeUpdate: (currentTime: number) => void;
-  durationChange: (duration: number) => void;
-  volumeChange: (volume: number) => void;
-  playbackRateChange: (rate: number) => void;
-  queueChange: (queue: Track[]) => void;
-  walkVerdict: (verdicts: ClientVerdict[], selectedClient: InnerTubeClientName) => void;
-  error: (error: Error) => void;
-  ended: () => void;
-}
+export * from './emitter';
+export * from './queueManager';
+export * from './types';
+export * from './streamHelper';
+export * from './driverSubscriptions';
 
-export interface PlayerEngineOptions {
-  networkAdapter?: NetworkAdapter;
-  audioDriver?: AudioDriver;
-  mediaElement?: HTMLMediaElement;
-}
-
-/**
- * Portable Typed EventEmitter for PlayerEngine
- */
-export class TypedEventEmitter<Events extends Record<string, (...args: any[]) => void>> {
-  private listeners: { [K in keyof Events]?: Set<Events[K]> } = {};
-
-  on<K extends keyof Events>(event: K, listener: Events[K]): () => void {
-    if (!this.listeners[event]) {
-      this.listeners[event] = new Set();
-    }
-    this.listeners[event]!.add(listener);
-    return () => this.off(event, listener);
-  }
-
-  off<K extends keyof Events>(event: K, listener: Events[K]): void {
-    this.listeners[event]?.delete(listener);
-  }
-
-  emit<K extends keyof Events>(event: K, ...args: Parameters<Events[K]>): void {
-    const handlers = this.listeners[event];
-    if (handlers) {
-      for (const handler of handlers) {
-        try {
-          handler(...args);
-        } catch (e) {
-          console.error(`[TypedEventEmitter] Error in listener for ${String(event)}:`, e);
-        }
-      }
-    }
-  }
-
-  removeAllListeners(): void {
-    this.listeners = {};
-  }
-}
-
-/**
- * PlayerEngine: Unified high-level orchestrator for @mp/player-core
- * Connects InnerTube metadata, Client Walk verdict benching, synthetic DASH generation,
- * and MSE audio streaming into an EventEmitter facade.
- */
 export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   private networkAdapter: NetworkAdapter;
   private innerTube: InnerTubeClient;
   private verdictCache: VerdictCache;
   private audioDriver: AudioDriver;
+  private queueManager = new QueueManager();
+  private driverCoordinator: { resetPrefetch: () => void; resetRecovery: () => void };
 
-  private queue: Track[] = [];
-  private currentIndex = -1;
   private playbackState: PlaybackState = 'idle';
   private currentTime = 0;
   private duration = 0;
   private volume = 1;
   private playbackRate = 1.0;
-  private prefetchedTrackId: string | null = null;
-  private repeatMode: RepeatMode = 'off';
-  private isShuffle = false;
   private activeClient: InnerTubeClientName | null = null;
   private playRequestId = 0;
-  private errorRecoveryAttempts = 0;
-  private readonly MAX_ERROR_RECOVERY_ATTEMPTS = 3;
 
   constructor(options: PlayerEngineOptions = {}) {
     super();
@@ -112,7 +48,38 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     this.verdictCache = new VerdictCache();
     this.audioDriver = options.audioDriver || new ShakaMseAudioDriver();
 
-    this.setupDriverSubscriptions();
+    this.driverCoordinator = attachDriverCoordinator({
+      audioDriver: this.audioDriver,
+      innerTube: this.innerTube,
+      verdictCache: this.verdictCache,
+      networkAdapter: this.networkAdapter,
+      queueManager: this.queueManager,
+      onStateChange: (state) => {
+        this.playbackState = state;
+        this.emit('stateChange', state);
+      },
+      onTimeUpdate: (time) => {
+        this.currentTime = time;
+        this.emit('timeUpdate', time);
+      },
+      onRateChange: (rate) => {
+        this.playbackRate = rate;
+        this.emit('playbackRateChange', rate);
+      },
+      onDurationChange: (dur) => {
+        this.duration = dur;
+        this.emit('durationChange', dur);
+      },
+      onEnded: () => this.emit('ended'),
+      onError: (err) => this.emit('error', err),
+      getActiveClient: () => this.activeClient,
+      getCurrentTime: () => this.currentTime,
+      getDuration: () => this.duration,
+      getPlaybackRate: () => this.playbackRate,
+      play: (idx, start) => this.play(idx, start),
+      seek: (sec) => this.seek(sec),
+      next: () => this.next(),
+    });
 
     if (options.mediaElement) {
       this.audioDriver.initialize(options.mediaElement).catch((err) => {
@@ -121,239 +88,82 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     }
   }
 
-  private setupDriverSubscriptions(): void {
-    this.audioDriver.on('stateChange', (state) => {
-      this.playbackState = state;
-      this.emit('stateChange', state);
-    });
-
-    this.audioDriver.on('timeUpdate', (time) => {
-      this.currentTime = time;
-      this.emit('timeUpdate', time);
-
-      // Near-end prefetch: when currentTime >= duration - 10, prefetch next track in queue if not already cached
-      if (this.duration > 0 && time >= this.duration - 10) {
-        const nextIndex = this.currentIndex + 1;
-        const nextTrack =
-          this.queue[nextIndex] ||
-          (this.repeatMode === 'all' && this.queue.length > 1 ? this.queue[0] : null);
-
-        if (nextTrack?.videoId && this.prefetchedTrackId !== nextTrack.videoId) {
-          if (!isStreamCached(nextTrack.videoId)) {
-            this.prefetchedTrackId = nextTrack.videoId;
-            prefetchStream(nextTrack.videoId, this.innerTube, this.verdictCache);
-            prefetchAudioWarmup(nextTrack, this.networkAdapter, this.verdictCache).catch(() => {});
-          }
-        }
-      }
-    });
-
-    if (typeof (this.audioDriver as any).on === 'function') {
-      this.audioDriver.on('rateChange', (rate) => {
-        if (typeof rate === 'number' && this.playbackRate !== rate) {
-          this.playbackRate = rate;
-          this.emit('playbackRateChange', rate);
-        }
-      });
-    }
-
-    this.audioDriver.on('durationChange', (dur) => {
-      this.duration = dur;
-      this.emit('durationChange', dur);
-    });
-
-    this.audioDriver.on('ended', () => {
-      this.emit('ended');
-      this.handleTrackEnded();
-    });
-
-    this.audioDriver.on('error', (err) => {
-      const currentTrack = this.getCurrentTrack();
-      const resumeTime = Math.max(0, this.currentTime);
-
-      // If error occurred mid-stream (chunk stall / 403 / media error),
-      // transparently bench failing persona so walk falls back to the next client
-      if (this.activeClient) {
-        this.verdictCache.bench(
-          this.activeClient,
-          `mid-stream chunk stall/403: ${err.message}`
-        );
-      }
-
-      // Refresh stream cache for current track
-      if (currentTrack?.videoId) {
-        invalidateStreamCache(currentTrack.videoId);
-      }
-
-      // Attempt transparent mid-stream recovery at currentTime
-      if (currentTrack?.videoId && this.errorRecoveryAttempts < this.MAX_ERROR_RECOVERY_ATTEMPTS) {
-        this.errorRecoveryAttempts++;
-        this.playbackState = 'buffering';
-        this.emit('stateChange', 'buffering');
-        this.play(undefined, resumeTime).catch((recoveryErr) => {
-          this.playbackState = 'error';
-          this.emit('stateChange', 'error');
-          this.emit('error', recoveryErr || err);
-        });
-        return;
-      }
-
-      if (this.errorRecoveryAttempts >= this.MAX_ERROR_RECOVERY_ATTEMPTS) {
-        console.error(
-          `[PlayerEngine] Max auto-recovery attempts (${this.MAX_ERROR_RECOVERY_ATTEMPTS}) reached for videoId "${currentTrack?.videoId}".`
-        );
-      }
-
-      this.playbackState = 'error';
-      this.emit('stateChange', 'error');
-      this.emit('error', err);
-    });
-  }
-
-  private handleTrackEnded(): void {
-    if (this.repeatMode === 'one') {
-      this.seek(0);
-      this.play().catch((err) => this.emit('error', err));
-      return;
-    }
-
-    if (this.hasNext()) {
-      this.next().catch((err) => this.emit('error', err));
-    } else if (this.repeatMode === 'all' && this.queue.length > 0) {
-      this.play(0).catch((err) => this.emit('error', err));
-    } else {
-      this.playbackState = 'ended';
-      this.emit('stateChange', 'ended');
-    }
-  }
-
-  /**
-   * Replace or update the current network adapter (e.g. switching to Extension Bridge or Dev Proxy)
-   */
   setNetworkAdapter(adapter: NetworkAdapter): void {
     this.networkAdapter = adapter;
     this.innerTube.setNetworkAdapter(adapter);
   }
 
-  getNetworkAdapter(): NetworkAdapter {
-    return this.networkAdapter;
-  }
+  getNetworkAdapter(): NetworkAdapter { return this.networkAdapter; }
+  getInnerTubeClient(): InnerTubeClient { return this.innerTube; }
+  getVerdictCache(): VerdictCache { return this.verdictCache; }
+  getAudioDriver(): AudioDriver { return this.audioDriver; }
 
-  getInnerTubeClient(): InnerTubeClient {
-    return this.innerTube;
-  }
-
-  getVerdictCache(): VerdictCache {
-    return this.verdictCache;
-  }
-
-  getAudioDriver(): AudioDriver {
-    return this.audioDriver;
-  }
-
-  // --- Queue Management ---
-
-  getQueue(): Track[] {
-    return [...this.queue];
-  }
-
-  getCurrentIndex(): number {
-    return this.currentIndex;
-  }
-
-  getCurrentTrack(): Track | null {
-    if (this.currentIndex >= 0 && this.currentIndex < this.queue.length) {
-      return this.queue[this.currentIndex];
-    }
-    return null;
-  }
+  getQueue(): Track[] { return this.queueManager.getQueue(); }
+  getCurrentIndex(): number { return this.queueManager.getCurrentIndex(); }
+  getCurrentTrack(): Track | null { return this.queueManager.getCurrentTrack(); }
 
   setQueue(tracks: Track[], startIndex = 0, autoPlay = true): void {
-    this.queue = [...tracks];
+    const { selectedIndex, selectedTrack } = this.queueManager.setQueue(tracks, startIndex);
     this.emit('queueChange', this.getQueue());
-
-    if (this.queue.length > 0) {
-      const idx = Math.max(0, Math.min(startIndex, this.queue.length - 1));
-      if (autoPlay) {
-        this.play(idx).catch((err) => this.emit('error', err));
-      } else {
-        this.currentIndex = idx;
-        this.emit('trackChange', this.getCurrentTrack(), this.currentIndex);
-      }
+    if (selectedTrack) {
+      if (autoPlay) this.play(selectedIndex).catch((err) => this.emit('error', err));
+      else this.emit('trackChange', selectedTrack, selectedIndex);
     } else {
-      this.currentIndex = -1;
       this.emit('trackChange', null, -1);
     }
   }
 
   addToQueue(track: Track): void {
-    this.queue.push(track);
+    const { isFirst } = this.queueManager.addToQueue(track);
     this.emit('queueChange', this.getQueue());
-    if (this.currentIndex === -1) {
-      this.currentIndex = 0;
-      this.emit('trackChange', track, 0);
-    }
+    if (isFirst) this.emit('trackChange', track, 0);
   }
 
   removeFromQueue(index: number): void {
-    if (index < 0 || index >= this.queue.length) return;
-    this.queue.splice(index, 1);
+    const { removed, nextAction, nextIndex } = this.queueManager.removeFromQueue(index);
+    if (!removed) return;
     this.emit('queueChange', this.getQueue());
 
-    if (index === this.currentIndex) {
-      if (this.queue.length === 0) {
-        this.currentIndex = -1;
-        this.pause();
-        this.emit('trackChange', null, -1);
-      } else {
-        const nextIndex = Math.min(index, this.queue.length - 1);
-        this.play(nextIndex).catch((err) => this.emit('error', err));
-      }
-    } else if (index < this.currentIndex) {
-      this.currentIndex--;
-      this.emit('trackChange', this.getCurrentTrack(), this.currentIndex);
+    if (nextAction === 'stop') {
+      this.pause();
+      this.emit('trackChange', null, -1);
+    } else if (nextAction === 'playNext') {
+      this.play(nextIndex).catch((err) => this.emit('error', err));
+    } else if (nextAction === 'shifted') {
+      this.emit('trackChange', this.getCurrentTrack(), nextIndex);
     }
   }
 
   clearQueue(): void {
     this.pause();
-    this.queue = [];
-    this.currentIndex = -1;
+    this.queueManager.clear();
     this.emit('queueChange', []);
     this.emit('trackChange', null, -1);
   }
 
-  // --- Playback Controls ---
-
   async playTrack(track: Track): Promise<void> {
-    const existingIndex = this.queue.findIndex((t) => t.videoId === track.videoId);
+    const existingIndex = this.queueManager.findIndexByVideoId(track.videoId);
     if (existingIndex !== -1) {
       await this.play(existingIndex);
     } else {
-      this.queue.splice(this.currentIndex + 1, 0, track);
+      const insertIdx = this.queueManager.insertAfterCurrent(track);
       this.emit('queueChange', this.getQueue());
-      await this.play(this.currentIndex + 1);
+      await this.play(insertIdx);
     }
   }
 
   async play(index?: number, startTime?: number): Promise<void> {
     if (typeof index === 'number') {
-      if (index < 0 || index >= this.queue.length) return;
-      this.currentIndex = index;
-      this.prefetchedTrackId = null;
-      this.errorRecoveryAttempts = 0;
+      if (index < 0 || index >= this.queueManager.getLength()) return;
+      this.queueManager.setCurrentIndex(index);
+      this.driverCoordinator.resetPrefetch();
+      this.driverCoordinator.resetRecovery();
     } else if (startTime === undefined) {
-      // Fast-path: ONLY if a stream has ALREADY been loaded into the driver and is currently paused
-      const isLoaded =
-        typeof (this.audioDriver as any).hasLoadedStream === 'function'
-          ? (this.audioDriver as any).hasLoadedStream()
-          : this.audioDriver.getState() === 'paused';
+      const isLoaded = typeof (this.audioDriver as any).hasLoadedStream === 'function'
+        ? (this.audioDriver as any).hasLoadedStream()
+        : this.audioDriver.getState() === 'paused';
 
-      if (
-        this.getCurrentTrack() &&
-        isLoaded &&
-        (this.audioDriver.isPaused() || this.playbackState === 'paused')
-      ) {
+      if (this.getCurrentTrack() && isLoaded && (this.audioDriver.isPaused() || this.playbackState === 'paused')) {
         this.playbackState = 'playing';
         this.emit('stateChange', 'playing');
         await this.audioDriver.play();
@@ -364,120 +174,38 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     const currentTrack = this.getCurrentTrack();
     if (!currentTrack) return;
 
-    // If recovering from an error or startTime is provided, resume at that timestamp instead of 0
-    const startSeek =
-      typeof startTime === 'number'
-        ? startTime
-        : this.playbackState === 'error'
-          ? Math.max(0, this.currentTime)
-          : 0;
+    const startSeek = typeof startTime === 'number'
+      ? startTime
+      : this.playbackState === 'error' ? Math.max(0, this.currentTime) : 0;
 
-    if (this.playbackState === 'error') {
-      invalidateStreamCache(currentTrack.videoId);
-    }
+    if (this.playbackState === 'error') invalidateStreamCache(currentTrack.videoId);
 
-    this.emit('trackChange', currentTrack, this.currentIndex);
-
+    this.emit('trackChange', currentTrack, this.getCurrentIndex());
     const currentRequestId = ++this.playRequestId;
     this.playbackState = 'loading';
     this.emit('stateChange', 'loading');
 
     try {
-      // 1. Resolve stream through client walk
-      const walkResult = await executeClientWalk(
-        currentTrack.videoId,
+      const prep = await loadAndPlayPreparedTrack(
+        currentTrack,
         this.innerTube,
-        this.verdictCache
+        this.verdictCache,
+        this.networkAdapter,
+        this.audioDriver,
+        startSeek
       );
-
-      // Stale request guard
       if (currentRequestId !== this.playRequestId) return;
 
-      this.activeClient = walkResult.client;
-      this.emit('walkVerdict', walkResult.verdicts, walkResult.client);
-
-      // Enrich currentTrack metadata if placeholder or missing details
-      const details = (walkResult.playerResponse as any)?.videoDetails;
-      if (details) {
-        let changed = false;
-        if (!currentTrack.title || currentTrack.title === 'Loading...') {
-          currentTrack.title = details.title || currentTrack.title;
-          changed = true;
-        }
-        if (!currentTrack.artist || currentTrack.artist === 'YouTube Music') {
-          currentTrack.artist = details.author || currentTrack.artist;
-          changed = true;
-        }
-        if (details.lengthSeconds) {
-          const sec = parseInt(details.lengthSeconds, 10);
-          if (!isNaN(sec) && sec > 0 && (!currentTrack.duration || currentTrack.duration === 180)) {
-            currentTrack.duration = sec;
-            this.duration = sec;
-            this.emit('durationChange', sec);
-            changed = true;
-          }
-        }
-        const thumbs = details.thumbnail?.thumbnails;
-        if (thumbs && thumbs.length > 0 && (!currentTrack.thumbnail || currentTrack.thumbnail === '')) {
-          currentTrack.thumbnail = thumbs[thumbs.length - 1].url;
-          currentTrack.thumbnails = thumbs;
-          changed = true;
-        }
-        if (changed) {
-          this.emit('trackChange', currentTrack, this.currentIndex);
-        }
+      this.activeClient = prep.client;
+      this.emit('walkVerdict', prep.verdicts, prep.client);
+      if (prep.updatedDuration) {
+        this.duration = prep.updatedDuration;
+        this.emit('durationChange', prep.updatedDuration);
       }
+      this.emit('trackChange', currentTrack, this.getCurrentIndex());
+      this.driverCoordinator.resetRecovery();
 
-      const serverAbrStreamingUrl =
-        walkResult.serverAbrStreamingUrl ||
-        walkResult.playerResponse.streamingData?.serverAbrStreamingUrl ||
-        (walkResult.playerResponse.streamingData as any)?.server_abr_streaming_url;
-
-      const isSabr = Boolean(
-        (walkResult.is_sabr || walkResult.isSabr) &&
-        serverAbrStreamingUrl &&
-        walkResult.audioFormats.some((f) => !f.url)
-      );
-
-      // Configure SABR on audioDriver if active
-      if (typeof (this.audioDriver as any).configureSabr === 'function' && isSabr) {
-        const ustreamerConfig =
-          (walkResult.playerResponse as any)?.playerConfig?.mediaCommonConfig?.mediaUstreamerRequestConfig?.videoPlaybackUstreamerConfig ||
-          (walkResult.playerResponse as any)?.videoPlaybackUstreamerConfig ||
-          'CAE=';
-
-        (this.audioDriver as any).configureSabr({
-          serverAbrStreamingUrl,
-          ustreamerConfig,
-          formats: walkResult.audioFormats,
-        });
-      }
-
-      // 2. Generate synthetic DASH MPD XML manifest
-      const mpdXml = generateDashMpd(walkResult.audioFormats, {
-        is_sabr: isSabr,
-        isSabr: isSabr,
-        durationMs: currentTrack.duration ? currentTrack.duration * 1000 : undefined,
-        urlTransformer: (url) =>
-          typeof this.networkAdapter.resolveStreamUrl === 'function'
-            ? this.networkAdapter.resolveStreamUrl(url, currentTrack.videoId)
-            : url,
-      });
-
-      // 3. Create blob URL for Shaka Player
-      const manifestUrl = createDashBlobUrl(mpdXml);
-
-      // 4. Load stream in audio driver
-      await this.audioDriver.load(manifestUrl, startSeek);
-
-      if (currentRequestId !== this.playRequestId) return;
-
-      // 5. Start playback
-      await this.audioDriver.play();
-      this.errorRecoveryAttempts = 0;
-
-      // 6. Prefetch stream and warmup audio for the next track in queue for instant <50ms track transitions
-      const nextTrack = this.queue[this.currentIndex + 1];
+      const nextTrack = this.queueManager.getTrackAt(this.getCurrentIndex() + 1);
       if (nextTrack?.videoId) {
         prefetchAudioWarmup(nextTrack, this.networkAdapter, this.verdictCache).catch(() => {});
       }
@@ -491,9 +219,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     }
   }
 
-  async pause(): Promise<void> {
-    await this.audioDriver.pause();
-  }
+  async pause(): Promise<void> { await this.audioDriver.pause(); }
 
   async togglePlay(): Promise<void> {
     if (this.playbackState === 'playing' || !this.audioDriver.isPaused()) {
@@ -515,9 +241,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     this.emit('volumeChange', this.volume);
   }
 
-  getVolume(): number {
-    return this.volume;
-  }
+  getVolume(): number { return this.volume; }
 
   setPlaybackRate(rate: number): void {
     this.playbackRate = rate;
@@ -525,54 +249,18 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     this.emit('playbackRateChange', rate);
   }
 
-  getPlaybackRate(): number {
-    return this.playbackRate;
-  }
+  getPlaybackRate(): number { return this.playbackRate; }
+  getCurrentTime(): number { return this.currentTime; }
+  getDuration(): number { return this.duration; }
+  getPlaybackState(): PlaybackState { return this.playbackState; }
+  getActiveClient(): InnerTubeClientName | null { return this.activeClient; }
 
-  getCurrentTime(): number {
-    return this.currentTime;
-  }
-
-  getDuration(): number {
-    return this.duration;
-  }
-
-  getPlaybackState(): PlaybackState {
-    return this.playbackState;
-  }
-
-  getActiveClient(): InnerTubeClientName | null {
-    return this.activeClient;
-  }
-
-  // --- Navigation & Modes ---
-
-  hasNext(): boolean {
-    if (this.isShuffle) return this.queue.length > 1;
-    return this.currentIndex < this.queue.length - 1;
-  }
-
-  hasPrevious(): boolean {
-    return this.currentIndex > 0;
-  }
+  hasNext(): boolean { return this.queueManager.hasNext(); }
+  hasPrevious(): boolean { return this.queueManager.hasPrevious(); }
 
   async next(): Promise<void> {
-    if (this.queue.length === 0) return;
-
-    if (this.isShuffle && this.queue.length > 1) {
-      let nextIdx = Math.floor(Math.random() * this.queue.length);
-      while (nextIdx === this.currentIndex && this.queue.length > 1) {
-        nextIdx = Math.floor(Math.random() * this.queue.length);
-      }
-      await this.play(nextIdx);
-      return;
-    }
-
-    if (this.currentIndex < this.queue.length - 1) {
-      await this.play(this.currentIndex + 1);
-    } else if (this.repeatMode === 'all') {
-      await this.play(0);
-    }
+    const nextIdx = this.queueManager.getNextIndex();
+    if (nextIdx !== null) await this.play(nextIdx);
   }
 
   async previous(): Promise<void> {
@@ -580,80 +268,23 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       await this.seek(0);
       return;
     }
-
-    if (this.currentIndex > 0) {
-      await this.play(this.currentIndex - 1);
-    } else if (this.repeatMode === 'all' && this.queue.length > 0) {
-      await this.play(this.queue.length - 1);
-    } else {
-      await this.seek(0);
-    }
+    const prevIdx = this.queueManager.getPreviousIndex();
+    if (prevIdx !== null) await this.play(prevIdx);
+    else await this.seek(0);
   }
 
-  setRepeatMode(mode: RepeatMode): void {
-    this.repeatMode = mode;
-  }
+  setRepeatMode(mode: RepeatMode): void { this.queueManager.setRepeatMode(mode); }
+  getRepeatMode(): RepeatMode { return this.queueManager.getRepeatMode(); }
+  setShuffle(shuffle: boolean): void { this.queueManager.setShuffle(shuffle); }
+  getShuffle(): boolean { return this.queueManager.getShuffle(); }
 
-  getRepeatMode(): RepeatMode {
-    return this.repeatMode;
-  }
-
-  setShuffle(shuffle: boolean): void {
-    this.isShuffle = shuffle;
-  }
-
-  getShuffle(): boolean {
-    return this.isShuffle;
-  }
-
-  /**
-   * Search YouTube / YouTube Music catalog
-   */
-  async search(query: string, clientName?: InnerTubeClientName): Promise<Track[]> {
-    return this.innerTube.search(query, clientName);
-  }
-
-  /**
-   * Fetch YouTube Music Home feed (mood chips, quick picks, shelves)
-   */
-  async getHomeFeed(moodParam?: string): Promise<HomeFeedData> {
-    return this.innerTube.getHomeFeed(moodParam);
-  }
-
-  /**
-   * Fetch Up Next radio queue and related content for videoId
-   */
-  async getNextRadio(videoId: string, playlistId?: string): Promise<NextRadioData> {
-    return this.innerTube.getNextRadio(videoId, playlistId);
-  }
-
-  /**
-   * Fetch full artist details including top songs, albums, and singles
-   */
-  async getArtist(browseId: string): Promise<ArtistDetails> {
-    return this.innerTube.getArtist(browseId);
-  }
-
-  /**
-   * Fetch full album details and tracklist
-   */
-  async getAlbum(browseId: string): Promise<AlbumDetails> {
-    return this.innerTube.getAlbum(browseId);
-  }
-
-  /**
-   * Fetch remote playlist details and tracklist
-   */
-  async getPlaylist(playlistId: string): Promise<RemotePlaylistDetails> {
-    return this.innerTube.getPlaylist(playlistId);
-  }
-
-  /**
-   * Raw browse request
-   */
-  async browse(browseId: string, params?: string): Promise<any> {
-    return this.innerTube.browse(browseId, params);
-  }
+  search(query: string, clientName?: InnerTubeClientName): Promise<Track[]> { return this.innerTube.search(query, clientName); }
+  getHomeFeed(moodParam?: string): Promise<HomeFeedData> { return this.innerTube.getHomeFeed(moodParam); }
+  getNextRadio(videoId: string, playlistId?: string): Promise<NextRadioData> { return this.innerTube.getNextRadio(videoId, playlistId); }
+  getArtist(browseId: string): Promise<ArtistDetails> { return this.innerTube.getArtist(browseId); }
+  getAlbum(browseId: string): Promise<AlbumDetails> { return this.innerTube.getAlbum(browseId); }
+  getPlaylist(playlistId: string): Promise<RemotePlaylistDetails> { return this.innerTube.getPlaylist(playlistId); }
+  browse(browseId: string, params?: string): Promise<any> { return this.innerTube.browse(browseId, params); }
 
   async destroy(): Promise<void> {
     this.removeAllListeners();
