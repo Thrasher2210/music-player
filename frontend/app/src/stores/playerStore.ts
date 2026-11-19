@@ -24,6 +24,7 @@ import { type LyricsResponse } from '@mp/api-contract';
 export type { Track };
 export type NetworkAdapterType = 'dev-proxy' | 'web-extension' | 'native-http';
 export type StreamingStatus = 'Direct CDN via Extension' | 'Edge Fallback Proxy';
+export type SleepTimerMode = 'off' | '15m' | '30m' | '45m' | '60m' | 'end_of_track';
 
 declare global {
   interface Window {
@@ -35,6 +36,8 @@ export interface DiagnosticInfo {
   activeClient: InnerTubeClientName | null;
   activeItag: number | null;
   codec: string;
+  bitrate: number | null;
+  sampleRate: number | null;
   bufferedAheadSeconds: number;
   bufferedPercent: number;
   playbackState: PlaybackState;
@@ -48,6 +51,7 @@ export interface PlayerStoreState {
   engine: PlayerEngine | null;
   isInitialized: boolean;
   playbackState: PlaybackState;
+  playbackRate: number;
   currentTrack: Track | null;
   currentIndex: number;
   currentTime: number;
@@ -58,10 +62,16 @@ export interface PlayerStoreState {
   isShuffle: boolean;
   queue: Track[];
 
+  // Sleep Timer
+  sleepTimerMode: SleepTimerMode;
+  sleepTimerRemaining: number | null;
+
   // Diagnostics & InnerTube
   activeClient: InnerTubeClientName | null;
   activeItag: number | null;
   codec: string;
+  bitrate: number | null;
+  sampleRate: number | null;
   bufferedAheadSeconds: number;
   bufferedPercent: number;
   networkAdapterType: NetworkAdapterType;
@@ -89,6 +99,8 @@ export interface PlayerStoreState {
   toggleRepeat: () => void;
   setShuffle: (shuffle: boolean) => void;
   toggleShuffle: () => void;
+  setPlaybackRate: (rate: number) => void;
+  setSleepTimer: (mode: SleepTimerMode) => void;
   setQueue: (tracks: Track[], startIndex?: number, autoPlay?: boolean) => void;
   addToQueue: (track: Track) => void;
   removeFromQueue: (index: number) => void;
@@ -164,6 +176,17 @@ function updateBufferStatus(
 const lyricsCache = new Map<string, LyricsResponse>();
 let lyricsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+const ITAG_METADATA: Record<number, { bitrate: number; sampleRate: number; codec: string }> = {
+  251: { bitrate: 160000, sampleRate: 48000, codec: 'Opus 48kHz (itag 251)' },
+  250: { bitrate: 70000, sampleRate: 48000, codec: 'Opus 48kHz (itag 250)' },
+  249: { bitrate: 50000, sampleRate: 48000, codec: 'Opus 48kHz (itag 249)' },
+  140: { bitrate: 128000, sampleRate: 44100, codec: 'AAC 44.1kHz (itag 140)' },
+  141: { bitrate: 256000, sampleRate: 44100, codec: 'AAC 44.1kHz (itag 141)' },
+  139: { bitrate: 48000, sampleRate: 44100, codec: 'AAC 44.1kHz (itag 139)' },
+};
+
+let sleepTimerInterval: ReturnType<typeof setInterval> | null = null;
+
 function debouncedFetchLyrics(
   track: Track | null,
   fetchFn: (track: Track) => Promise<LyricsResponse | null>,
@@ -189,6 +212,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   engine: null,
   isInitialized: false,
   playbackState: 'idle',
+  playbackRate: 1.0,
   currentTrack: null,
   currentIndex: -1,
   currentTime: 0,
@@ -199,9 +223,14 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   isShuffle: false,
   queue: [],
 
+  sleepTimerMode: 'off',
+  sleepTimerRemaining: null,
+
   activeClient: null,
   activeItag: 251, // default preferred itag (Opus 160k)
   codec: 'Opus 48kHz (itag 251)',
+  bitrate: 160000,
+  sampleRate: 48000,
   bufferedAheadSeconds: 0,
   bufferedPercent: 0,
   networkAdapterType: 'dev-proxy',
@@ -259,7 +288,17 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     // Bind engine event listeners
     engine.on('stateChange', (state) => {
       set({ playbackState: state, error: state === 'error' ? get().error : null });
+      if (get().sleepTimerMode === 'end_of_track' && (state === 'idle' || state === 'ended')) {
+        get().pause().catch(() => {});
+        set({ sleepTimerMode: 'off', sleepTimerRemaining: null });
+      }
     });
+
+    if (typeof (engine as any).on === 'function') {
+      (engine as any).on('playbackRateChange', (rate: number) => {
+        set({ playbackRate: rate });
+      });
+    }
 
     engine.on('trackChange', (track, index) => {
       const prev = get().currentTrack;
@@ -277,6 +316,18 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
         isLyricsLoading: track ? !cached : false,
         lyricsError: null,
       });
+
+      // Synchronize playbackRate on track change
+      const curRate = get().playbackRate;
+      if (typeof (engine as any).setPlaybackRate === 'function') {
+        (engine as any).setPlaybackRate(curRate);
+      }
+      const driver = engine.getAudioDriver() as any;
+      const mediaEl = sharedMediaElement || driver?.mediaElement;
+      if (mediaEl && mediaEl.playbackRate !== curRate) {
+        mediaEl.playbackRate = curRate;
+      }
+
       if (track && (!isSameVideo || !get().lyrics)) {
         debouncedFetchLyrics(track, get().fetchLyrics);
       }
@@ -305,11 +356,14 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       const isOpus = selectedClient !== 'MWEB';
       const itag = isOpus ? 251 : 140;
       const codec = isOpus ? 'Opus 48kHz (itag 251)' : 'AAC 44.1kHz (itag 140)';
+      const meta = ITAG_METADATA[itag];
       set({
         verdicts: [...verdicts],
         activeClient: selectedClient,
         activeItag: itag,
         codec,
+        bitrate: meta?.bitrate ?? get().bitrate,
+        sampleRate: meta?.sampleRate ?? get().sampleRate,
       });
     });
 
@@ -319,10 +373,17 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
     engine.on('ended', () => {
       set({ playbackState: 'ended' });
+      if (get().sleepTimerMode === 'end_of_track') {
+        get().pause().catch(() => {});
+        set({ sleepTimerMode: 'off', sleepTimerRemaining: null });
+      }
     });
 
     // Initial sync
     engine.setVolume(get().volume);
+    if (typeof (engine as any).setPlaybackRate === 'function') {
+      (engine as any).setPlaybackRate(get().playbackRate);
+    }
 
     set({
       engine,
@@ -549,6 +610,62 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     get().setShuffle(nextShuffle);
   },
 
+  setPlaybackRate: (rate: number) => {
+    const engine = get().engine || sharedEngine;
+    if (engine && typeof (engine as any).setPlaybackRate === 'function') {
+      (engine as any).setPlaybackRate(rate);
+    }
+    const driver = engine?.getAudioDriver?.() as any;
+    const mediaEl = sharedMediaElement || driver?.mediaElement;
+    if (mediaEl && mediaEl.playbackRate !== rate) {
+      mediaEl.playbackRate = rate;
+    }
+    set({ playbackRate: rate });
+  },
+
+  setSleepTimer: (mode: SleepTimerMode) => {
+    if (sleepTimerInterval) {
+      clearInterval(sleepTimerInterval);
+      sleepTimerInterval = null;
+    }
+
+    if (mode === 'off') {
+      set({ sleepTimerMode: 'off', sleepTimerRemaining: null });
+      return;
+    }
+
+    if (mode === 'end_of_track') {
+      set({ sleepTimerMode: 'end_of_track', sleepTimerRemaining: null });
+      return;
+    }
+
+    const durationMap: Record<SleepTimerMode, number> = {
+      off: 0,
+      '15m': 15 * 60,
+      '30m': 30 * 60,
+      '45m': 45 * 60,
+      '60m': 60 * 60,
+      end_of_track: 0,
+    };
+
+    const initialSeconds = durationMap[mode] || 0;
+    set({ sleepTimerMode: mode, sleepTimerRemaining: initialSeconds });
+
+    sleepTimerInterval = setInterval(() => {
+      const remaining = get().sleepTimerRemaining;
+      if (remaining === null || remaining <= 1) {
+        if (sleepTimerInterval) {
+          clearInterval(sleepTimerInterval);
+          sleepTimerInterval = null;
+        }
+        set({ sleepTimerMode: 'off', sleepTimerRemaining: null });
+        get().pause().catch(() => {});
+      } else {
+        set({ sleepTimerRemaining: remaining - 1 });
+      }
+    }, 1000);
+  },
+
   setQueue: (tracks: Track[], startIndex = 0, autoPlay = true) => {
     let engine = get().engine;
     if (!engine) {
@@ -730,10 +847,45 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       ? 'Direct CDN via Extension'
       : 'Edge Fallback Proxy';
 
+    let bitrate = s.bitrate ?? (s.activeItag ? ITAG_METADATA[s.activeItag]?.bitrate ?? null : null);
+    let sampleRate = s.sampleRate ?? (s.activeItag ? ITAG_METADATA[s.activeItag]?.sampleRate ?? null : null);
+    let codec = s.codec;
+
+    const engine = s.engine || sharedEngine;
+    if (engine) {
+      try {
+        const driver = engine.getAudioDriver?.() as any;
+        const shakaPlayer = driver?.player;
+        if (shakaPlayer) {
+          const tracks = shakaPlayer.getVariantTracks?.() || [];
+          const activeTrack = tracks.find((t: any) => t.active) || tracks[0];
+          if (activeTrack) {
+            if (typeof activeTrack.bandwidth === 'number' && activeTrack.bandwidth > 0) {
+              bitrate = activeTrack.bandwidth;
+            }
+            if (activeTrack.sampleRate || activeTrack.audioSamplingRate) {
+              sampleRate = activeTrack.sampleRate || activeTrack.audioSamplingRate;
+            }
+            if (activeTrack.codecs || activeTrack.audioCodec) {
+              codec = activeTrack.codecs || activeTrack.audioCodec;
+            }
+          }
+          const stats = shakaPlayer.getStats?.();
+          if (stats?.streamBandwidth && !bitrate) {
+            bitrate = stats.streamBandwidth;
+          }
+        }
+      } catch {
+        // Shaka player stats inspection failed silently
+      }
+    }
+
     return {
       activeClient: s.activeClient,
       activeItag: s.activeItag,
-      codec: s.codec,
+      codec,
+      bitrate,
+      sampleRate,
       bufferedAheadSeconds: s.bufferedAheadSeconds,
       bufferedPercent: s.bufferedPercent,
       playbackState: s.playbackState,

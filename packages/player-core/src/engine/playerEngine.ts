@@ -16,6 +16,7 @@ import { InnerTubeClient } from '../innertube/client';
 import {
   executeClientWalk,
   invalidateStreamCache,
+  isStreamCached,
   prefetchAudioWarmup,
   prefetchStream,
   VerdictCache,
@@ -29,6 +30,7 @@ export interface PlayerEngineEvents extends Record<string, (...args: any[]) => v
   timeUpdate: (currentTime: number) => void;
   durationChange: (duration: number) => void;
   volumeChange: (volume: number) => void;
+  playbackRateChange: (rate: number) => void;
   queueChange: (queue: Track[]) => void;
   walkVerdict: (verdicts: ClientVerdict[], selectedClient: InnerTubeClientName) => void;
   error: (error: Error) => void;
@@ -94,6 +96,8 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   private currentTime = 0;
   private duration = 0;
   private volume = 1;
+  private playbackRate = 1.0;
+  private prefetchedTrackId: string | null = null;
   private repeatMode: RepeatMode = 'off';
   private isShuffle = false;
   private activeClient: InnerTubeClientName | null = null;
@@ -126,7 +130,32 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     this.audioDriver.on('timeUpdate', (time) => {
       this.currentTime = time;
       this.emit('timeUpdate', time);
+
+      // Near-end prefetch: when currentTime >= duration - 10, prefetch next track in queue if not already cached
+      if (this.duration > 0 && time >= this.duration - 10) {
+        const nextIndex = this.currentIndex + 1;
+        const nextTrack =
+          this.queue[nextIndex] ||
+          (this.repeatMode === 'all' && this.queue.length > 1 ? this.queue[0] : null);
+
+        if (nextTrack?.videoId && this.prefetchedTrackId !== nextTrack.videoId) {
+          if (!isStreamCached(nextTrack.videoId)) {
+            this.prefetchedTrackId = nextTrack.videoId;
+            prefetchStream(nextTrack.videoId, this.innerTube, this.verdictCache);
+            prefetchAudioWarmup(nextTrack, this.networkAdapter, this.verdictCache).catch(() => {});
+          }
+        }
+      }
     });
+
+    if (typeof (this.audioDriver as any).on === 'function') {
+      this.audioDriver.on('rateChange', (rate) => {
+        if (typeof rate === 'number' && this.playbackRate !== rate) {
+          this.playbackRate = rate;
+          this.emit('playbackRateChange', rate);
+        }
+      });
+    }
 
     this.audioDriver.on('durationChange', (dur) => {
       this.duration = dur;
@@ -311,6 +340,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     if (typeof index === 'number') {
       if (index < 0 || index >= this.queue.length) return;
       this.currentIndex = index;
+      this.prefetchedTrackId = null;
       this.errorRecoveryAttempts = 0;
     } else if (startTime === undefined) {
       // Fast-path: ONLY if a stream has ALREADY been loaded into the driver and is currently paused
@@ -487,6 +517,16 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
 
   getVolume(): number {
     return this.volume;
+  }
+
+  setPlaybackRate(rate: number): void {
+    this.playbackRate = rate;
+    this.audioDriver.setPlaybackRate(rate);
+    this.emit('playbackRateChange', rate);
+  }
+
+  getPlaybackRate(): number {
+    return this.playbackRate;
   }
 
   getCurrentTime(): number {

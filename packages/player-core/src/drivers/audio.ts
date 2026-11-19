@@ -20,6 +20,7 @@ export interface AudioDriverEvents {
   timeUpdate: (time: number) => void;
   durationChange: (duration: number) => void;
   stateChange: (state: AudioPlaybackState) => void;
+  rateChange: (rate: number) => void;
   ended: () => void;
   error: (error: Error) => void;
 }
@@ -40,6 +41,8 @@ export interface AudioDriver {
   seek(time: number): Promise<void>;
   setVolume(volume: number): void;
   getVolume(): number;
+  setPlaybackRate(rate: number): void;
+  getPlaybackRate(): number;
   getCurrentTime(): number;
   getDuration(): number;
   isPaused(): boolean;
@@ -301,6 +304,7 @@ export class ShakaMseAudioDriver implements AudioDriver {
   private activeBlobUrl: string | null = null;
   private boundElementListeners: Array<{ type: string; listener: EventListener }> = [];
   private volume = 1;
+  private playbackRate = 1;
 
   private sabrAdapter: SabrStreamingAdapter | null = null;
   private sabrPlayerAdapter: ShakaPlayerAdapter | null = null;
@@ -326,6 +330,7 @@ export class ShakaMseAudioDriver implements AudioDriver {
     }
 
     this.mediaElement.volume = this.volume;
+    this.mediaElement.playbackRate = this.playbackRate;
 
     const shaka = await getShaka();
 
@@ -421,6 +426,13 @@ export class ShakaMseAudioDriver implements AudioDriver {
     addElListener('durationchange', () => {
       if (this.mediaElement) {
         this.emit('durationChange', this.mediaElement.duration || 0);
+      }
+    });
+
+    addElListener('ratechange', () => {
+      if (this.mediaElement) {
+        this.playbackRate = this.mediaElement.playbackRate;
+        this.emit('rateChange', this.playbackRate);
       }
     });
 
@@ -533,6 +545,9 @@ export class ShakaMseAudioDriver implements AudioDriver {
 
     try {
       await (this.player as any).load(src, startTime);
+      if (this.mediaElement) {
+        this.mediaElement.playbackRate = this.playbackRate;
+      }
       this.setState('paused');
     } catch (err: any) {
       this.setState('error');
@@ -577,6 +592,17 @@ export class ShakaMseAudioDriver implements AudioDriver {
 
   getVolume(): number {
     return this.volume;
+  }
+
+  setPlaybackRate(rate: number): void {
+    this.playbackRate = rate;
+    if (this.mediaElement) {
+      this.mediaElement.playbackRate = rate;
+    }
+  }
+
+  getPlaybackRate(): number {
+    return this.mediaElement ? this.mediaElement.playbackRate : this.playbackRate;
   }
 
   getCurrentTime(): number {

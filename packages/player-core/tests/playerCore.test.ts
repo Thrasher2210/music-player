@@ -19,6 +19,9 @@ import {
   buildSabrFormat,
   executeClientWalk,
   prefetchAudioWarmup,
+  prefetchStream,
+  isStreamCached,
+  invalidateStreamCache,
   NetworkAdapter,
 } from '../src/index';
 
@@ -1004,6 +1007,8 @@ describe('@mp/player-core unit tests', () => {
       seek: async () => {},
       setVolume: () => {},
       getVolume: () => 1,
+      setPlaybackRate: () => {},
+      getPlaybackRate: () => 1,
       getCurrentTime: () => 45,
       getDuration: () => 200,
       isPaused: () => driverState === 'paused',
@@ -1052,5 +1057,169 @@ describe('@mp/player-core unit tests', () => {
     assert.equal(engine.getVerdictCache().isBenched('VISIONOS'), true);
     assert.equal(engine.getActiveClient(), 'ANDROID_MUSIC');
     assert.equal(loadedStartTime, 45);
+  });
+
+  it('supports setPlaybackRate and getPlaybackRate on ShakaMseAudioDriver syncing with mediaElement', () => {
+    const driver = new ShakaMseAudioDriver();
+    assert.equal(driver.getPlaybackRate(), 1);
+
+    driver.setPlaybackRate(1.5);
+    assert.equal(driver.getPlaybackRate(), 1.5);
+
+    // Test synchronization with mediaElement
+    const mockMediaEl = {
+      playbackRate: 1.5,
+      volume: 1,
+    } as HTMLMediaElement;
+    (driver as any).mediaElement = mockMediaEl;
+
+    driver.setPlaybackRate(1.25);
+    assert.equal(mockMediaEl.playbackRate, 1.25);
+    assert.equal(driver.getPlaybackRate(), 1.25);
+
+    mockMediaEl.playbackRate = 0.75;
+    assert.equal(driver.getPlaybackRate(), 0.75);
+  });
+
+  it('manages playbackRate and emits playbackRateChange in PlayerEngine', () => {
+    let driverRate = 1.0;
+    const mockDriver: any = {
+      name: 'mock',
+      initialize: async () => {},
+      destroy: async () => {},
+      load: async () => {},
+      play: async () => {},
+      pause: async () => {},
+      seek: async () => {},
+      setVolume: () => {},
+      getVolume: () => 1,
+      setPlaybackRate: (rate: number) => {
+        driverRate = rate;
+      },
+      getPlaybackRate: () => driverRate,
+      getCurrentTime: () => 0,
+      getDuration: () => 0,
+      isPaused: () => true,
+      getState: () => 'idle',
+      on: () => () => {},
+      off: () => {},
+    };
+
+    const engine = new PlayerEngine({ audioDriver: mockDriver });
+    assert.equal(engine.getPlaybackRate(), 1.0);
+
+    let emittedRate = 0;
+    engine.on('playbackRateChange', (rate) => {
+      emittedRate = rate;
+    });
+
+    engine.setPlaybackRate(1.75);
+    assert.equal(engine.getPlaybackRate(), 1.75);
+    assert.equal(driverRate, 1.75);
+    assert.equal(emittedRate, 1.75);
+  });
+
+  it('triggers near-end prefetch when currentTime >= duration - 10 for upcoming track in queue', async () => {
+    const prefetchedVideoIds: string[] = [];
+
+    const mockAdapter: NetworkAdapter = {
+      name: 'mock',
+      fetch: async () => new Response('{}'),
+      postJson: async <T>(_url: string, body: any): Promise<T> => {
+        const videoId = body.videoId;
+        prefetchedVideoIds.push(videoId);
+        return {
+          playabilityStatus: { status: 'OK' },
+          streamingData: {
+            adaptiveFormats: [
+              {
+                itag: 251,
+                mimeType: 'audio/webm; codecs="opus"',
+                bitrate: 160000,
+                url: `https://googlevideo.com/videoplayback?itag=251&id=${videoId}`,
+              },
+            ],
+          },
+        } as T;
+      },
+    };
+
+    const listeners: Record<string, Function[]> = {};
+    let driverRate = 1.0;
+    const mockDriver: any = {
+      name: 'mock-driver',
+      initialize: async () => {},
+      destroy: async () => {},
+      load: async () => {},
+      play: async () => {},
+      pause: async () => {},
+      seek: async () => {},
+      setVolume: () => {},
+      getVolume: () => 1,
+      setPlaybackRate: (r: number) => {
+        driverRate = r;
+      },
+      getPlaybackRate: () => driverRate,
+      getCurrentTime: () => 0,
+      getDuration: () => 100,
+      isPaused: () => false,
+      getState: () => 'playing',
+      on: (event: string, fn: Function) => {
+        if (!listeners[event]) listeners[event] = [];
+        listeners[event].push(fn);
+        return () => {};
+      },
+      off: () => {},
+      emit: (event: string, ...args: any[]) => {
+        listeners[event]?.forEach((fn) => fn(...args));
+      },
+    };
+
+    const engine = new PlayerEngine({
+      networkAdapter: mockAdapter,
+      audioDriver: mockDriver,
+    });
+
+    const track1: Track = {
+      id: 'prefetch_t1',
+      videoId: 'prefetch_v1',
+      title: 'Prefetch Song 1',
+      artist: 'Prefetch Artist 1',
+      duration: 100,
+      thumbnail: 'https://example.com/1.jpg',
+    };
+    const track2: Track = {
+      id: 'prefetch_t2',
+      videoId: 'prefetch_v2',
+      title: 'Prefetch Song 2',
+      artist: 'Prefetch Artist 2',
+      duration: 120,
+      thumbnail: 'https://example.com/2.jpg',
+    };
+
+    invalidateStreamCache();
+    engine.setQueue([track1, track2], 0, false);
+    mockDriver.emit('durationChange', 100);
+
+    // At currentTime = 50, duration - 10 = 90, so prefetch shouldn't trigger yet
+    mockDriver.emit('timeUpdate', 50);
+    assert.equal(prefetchedVideoIds.includes('prefetch_v2'), false);
+    assert.equal(isStreamCached('prefetch_v2'), false);
+
+    // At currentTime = 90 (>= 100 - 10), prefetch triggers for next track in queue
+    mockDriver.emit('timeUpdate', 90);
+    // Allow async prefetch to execute
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    assert.equal(prefetchedVideoIds.includes('prefetch_v2'), true);
+    assert.equal(isStreamCached('prefetch_v2'), true);
+
+    // Further timeUpdates shouldn't re-trigger because it's already cached
+    const countBefore = prefetchedVideoIds.filter((id) => id === 'prefetch_v2').length;
+    mockDriver.emit('timeUpdate', 91);
+    mockDriver.emit('timeUpdate', 95);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const countAfter = prefetchedVideoIds.filter((id) => id === 'prefetch_v2').length;
+    assert.equal(countBefore, countAfter);
   });
 });

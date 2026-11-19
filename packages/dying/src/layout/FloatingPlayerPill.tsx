@@ -13,6 +13,7 @@ import {
   ChevronUp,
   ChevronDown,
   Heart,
+  MoreHorizontal,
 } from "lucide-react";
 import { ScrubSlider } from "../primitives/ScrubSlider";
 import { SpringButton } from "../primitives/SpringButton";
@@ -49,6 +50,7 @@ export interface FloatingPlayerPillProps
   onToggleLyrics?: () => void;
   onExpandNowPlaying?: () => void;
   onArtistClick?: () => void;
+  onMoreOptions?: () => void;
 
   trailingSlot?: React.ReactNode;
 }
@@ -95,6 +97,7 @@ export const FloatingPlayerPill = React.forwardRef<
       onToggleLyrics,
       onExpandNowPlaying,
       onArtistClick,
+      onMoreOptions,
       trailingSlot,
       ...props
     },
@@ -276,6 +279,19 @@ export const FloatingPlayerPill = React.forwardRef<
           <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 sm:min-w-[120px] sm:max-w-[210px] shrink-0">
             {trailingSlot ?? (
               <>
+                {/* More options (Speed, Sleep timer, Stats) */}
+                {onMoreOptions && (
+                  <SpringButton
+                    variant="ghost"
+                    size="xs"
+                    onClick={onMoreOptions}
+                    aria-label="Playback options"
+                    className="text-text-secondary hover:text-white transition-colors"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SpringButton>
+                )}
+
                 {/* Lyrics toggle */}
                 <SpringButton
                   variant="ghost"

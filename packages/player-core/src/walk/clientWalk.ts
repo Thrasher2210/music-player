@@ -135,6 +135,15 @@ interface CachedStreamEntry {
   result: ClientWalkResult;
 }
 const streamResultCache = new Map<string, CachedStreamEntry>();
+const inFlightPrefetches = new Set<string>();
+
+/**
+ * Check if a stream for videoId is already cached in-memory and valid
+ */
+export function isStreamCached(videoId: string): boolean {
+  const cached = streamResultCache.get(videoId);
+  return Boolean(cached && cached.expiresAt > Date.now());
+}
 
 /**
  * Invalidate in-memory stream cache for a specific videoId or all tracks
@@ -142,8 +151,10 @@ const streamResultCache = new Map<string, CachedStreamEntry>();
 export function invalidateStreamCache(videoId?: string): void {
   if (videoId) {
     streamResultCache.delete(videoId);
+    inFlightPrefetches.delete(videoId);
   } else {
     streamResultCache.clear();
+    inFlightPrefetches.clear();
   }
 }
 
@@ -228,9 +239,13 @@ export function prefetchStream(
   innerTubeClient: InnerTubeClient,
   cache: VerdictCache = new VerdictCache()
 ): void {
-  const cached = streamResultCache.get(videoId);
-  if (cached && cached.expiresAt > Date.now()) return;
-  executeClientWalk(videoId, innerTubeClient, cache).catch(() => {});
+  if (isStreamCached(videoId) || inFlightPrefetches.has(videoId)) return;
+  inFlightPrefetches.add(videoId);
+  executeClientWalk(videoId, innerTubeClient, cache)
+    .catch(() => {})
+    .finally(() => {
+      inFlightPrefetches.delete(videoId);
+    });
 }
 
 /**

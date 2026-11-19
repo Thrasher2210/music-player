@@ -121,6 +121,8 @@ export type PlaybackState =
   | 'ended'
   | 'error';
 
+export type PlaybackRate = number;
+
 export type RepeatMode = 'off' | 'all' | 'one';
 
 export interface MoodChipData {

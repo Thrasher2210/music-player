@@ -42,6 +42,7 @@ import { useMediaSession, useKeyboardShortcuts, useUrlSync } from '../../hooks';
 import { CreatePlaylistDialog } from '../CreatePlaylistDialog';
 import { AddToPlaylistModal } from '../AddToPlaylistModal';
 import { AccountModal } from '../AccountModal';
+import { PlaybackOptionsModal } from '../PlaybackOptionsModal';
 
 export interface PersistentAppShellProps {
   children: React.ReactNode;
@@ -60,6 +61,7 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
   const [isAddToPlaylistOpen, setIsAddToPlaylistOpen] = useState(false);
   const [trackToAddToPlaylist, setTrackToAddToPlaylist] = useState<Track | null>(null);
+  const [isPlaybackOptionsOpen, setIsPlaybackOptionsOpen] = useState(false);
 
   // Full Player Modal State
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
@@ -384,6 +386,7 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
             }}
             onToggleShuffle={toggleShuffle}
             onToggleRepeat={toggleRepeat}
+            onMoreOptions={() => setIsPlaybackOptionsOpen(true)}
           />
         }
         overlay={null}
@@ -451,6 +454,11 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
       <AccountModal
         open={isAccountModalOpen}
         onOpenChange={setIsAccountModalOpen}
+      />
+
+      <PlaybackOptionsModal
+        open={isPlaybackOptionsOpen}
+        onOpenChange={setIsPlaybackOptionsOpen}
       />
     </>
   );
