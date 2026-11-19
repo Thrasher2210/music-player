@@ -35,7 +35,7 @@ export interface YouTubeAuthState {
   resetSync: () => void;
 }
 
-export const useYouTubeAuthStore = create<YouTubeAuthState>((set) => ({
+export const useYouTubeAuthStore = create<YouTubeAuthState>((set, get) => ({
   isExtensionInstalled: false,
   isYouTubeAuthenticated: false,
   youtubeAccount: null,
@@ -46,6 +46,7 @@ export const useYouTubeAuthStore = create<YouTubeAuthState>((set) => ({
 
   checkStatus: async () => {
     if (typeof window === 'undefined') return;
+    if (get().isChecking) return;
     set({ isChecking: true });
 
     try {

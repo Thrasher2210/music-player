@@ -15,12 +15,9 @@ export function useYouTubeSyncInit() {
 
     window.addEventListener('mp-extension-active', handleActive);
 
-    // 3. Listen for extension message events
+    // 3. Listen for extension ready event only (never check-auth response to prevent loops)
     const handleMessage = (event: MessageEvent) => {
-      if (
-        event.data?.type === 'MP_EXTENSION_READY' ||
-        event.data?.type === 'MP_EXT_CHECK_AUTH_RESPONSE'
-      ) {
+      if (event.data?.type === 'MP_EXTENSION_READY') {
         useYouTubeAuthStore.getState().checkStatus();
       }
     };

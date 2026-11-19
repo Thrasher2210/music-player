@@ -43,6 +43,8 @@ export async function fetchLibraryData(): Promise<LibraryFetchResult> {
         name: p.name,
         source: p.source || 'local',
         trackCount: p.trackCount,
+        coverArt: p.coverArt,
+        ytPlaylistId: p.ytPlaylistId,
         createdAt: p.createdAt,
       }));
     }
@@ -105,6 +107,8 @@ export async function createPlaylistApi(
       name: data.playlist.name,
       source: data.playlist.source || 'local',
       trackCount: 0,
+      coverArt: data.playlist.coverArt,
+      ytPlaylistId: data.playlist.ytPlaylistId,
       createdAt: data.playlist.createdAt,
     };
   }

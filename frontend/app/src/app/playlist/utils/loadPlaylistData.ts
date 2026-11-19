@@ -16,9 +16,11 @@ export async function loadPlaylistData(
   fetchLibrary: () => Promise<void>,
   fetchPlaylistTracks: (id: string) => Promise<Track[]>
 ): Promise<LoadedPlaylistData> {
+  // Ensure library is always populated
+  await fetchLibrary();
+
   // 1. Liked Music auto playlist
   if (playlistId === 'liked' || playlistId.startsWith('LM')) {
-    await fetchLibrary();
     const libState = useLibraryStore.getState();
     const ytState = useYouTubeAuthStore.getState();
     const combined = [
@@ -50,8 +52,8 @@ export async function loadPlaylistData(
     };
   }
 
-  // 3. YouTube Music direct browse ID (starts with VL or PL)
-  if (playlistId.startsWith('VL') || playlistId.startsWith('PL')) {
+  // 3. YouTube Music direct browse ID (starts with VL, PL, or RD)
+  if (playlistId.startsWith('VL') || playlistId.startsWith('PL') || playlistId.startsWith('RD')) {
     const remote = await getPlaylist(playlistId);
     return {
       title: remote.title,
@@ -65,9 +67,14 @@ export async function loadPlaylistData(
   // 4. Custom local or synced backend playlist
   let pTracks = await fetchPlaylistTracks(playlistId);
   const meta = useLibraryStore.getState().playlists.find((p) => p.id === playlistId);
+  const syncedMeta = useYouTubeAuthStore.getState().syncedPlaylists.find(
+    (p) => p.id === playlistId || p.ytPlaylistId === playlistId || (Boolean(meta?.name) && p.title === meta?.name)
+  );
 
-  // If local tracks are empty and this is a YouTube synced playlist, fetch on-demand (JIT)
-  const ytId = meta?.ytPlaylistId || (meta?.source === 'youtube' ? meta.id : null);
+  // Find valid YouTube playlist ID (excluding UUIDs that contain hyphens)
+  const candidateId = meta?.ytPlaylistId || syncedMeta?.ytPlaylistId || syncedMeta?.id;
+  const ytId = candidateId && !candidateId.includes('-') ? candidateId : null;
+
   if (pTracks.length === 0 && ytId) {
     try {
       const remote = await getPlaylist(ytId);
