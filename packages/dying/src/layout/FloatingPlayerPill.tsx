@@ -2,6 +2,7 @@ import React from "react";
 import {
   ChevronUp,
   ChevronDown,
+  ListPlus,
   Mic2,
   MoreHorizontal,
   Maximize2,
@@ -60,6 +61,7 @@ export interface FloatingPlayerPillProps
   onToggleLyrics?: () => void;
   onExpandNowPlaying?: () => void;
   onArtistClick?: () => void;
+  onAddToPlaylist?: () => void;
   onMoreOptions?: () => void;
 
   trailingSlot?: React.ReactNode;
@@ -107,6 +109,7 @@ export const FloatingPlayerPill = React.forwardRef<
       onToggleLyrics,
       onExpandNowPlaying,
       onArtistClick,
+      onAddToPlaylist,
       onMoreOptions,
       trailingSlot,
       ...props
@@ -155,6 +158,18 @@ export const FloatingPlayerPill = React.forwardRef<
           <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 sm:min-w-[120px] sm:max-w-[210px] shrink-0">
             {trailingSlot ?? (
               <>
+                {onAddToPlaylist && (
+                  <SpringButton
+                    variant="ghost"
+                    size="xs"
+                    onClick={onAddToPlaylist}
+                    aria-label="Add to playlist"
+                    className="text-text-secondary hover:text-white transition-colors"
+                  >
+                    <ListPlus className="h-4 w-4" />
+                  </SpringButton>
+                )}
+
                 {/* More options (Speed, Sleep timer, Stats) */}
                 {onMoreOptions && (
                   <SpringButton

@@ -23,11 +23,17 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   FormField,
   Select,
   Switch,
 } from '@mp/dying';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, ListPlus, MoreHorizontal, Trash2 } from 'lucide-react';
 
 export function FeedbackSection() {
   const [isDialogOpen, setIsDialogOpen] = useState<boolean>(false);
@@ -102,6 +108,32 @@ export function FeedbackSection() {
                 Hover for Tooltip
               </Button>
             </Tooltip>
+          </CardContent>
+        </Card>
+
+        <Card variant="glass">
+          <CardHeader>
+            <CardTitle>Dropdown Menu</CardTitle>
+            <CardDescription>
+              Radix menu with arrow-key navigation, typeahead, Escape dismissal and a destructive item style.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="glass" leftIcon={<MoreHorizontal size={16} />}>
+                  Open menu
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuLabel>Track</DropdownMenuLabel>
+                <DropdownMenuItem icon={<ListPlus size={16} />}>Add to playlist</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem icon={<Trash2 size={16} />} destructive>
+                  Remove from this playlist
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardContent>
         </Card>
       </Grid>

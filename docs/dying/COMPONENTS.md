@@ -240,6 +240,35 @@ import {
 </Dialog>
 ```
 
+### `DropdownMenu`
+Action menu built on Radix `DropdownMenu`: opens from a trigger, arrow-key and typeahead navigation, `Escape` and outside-click dismissal, focus returns to the trigger. Items highlight with the `surface-hover` token; `destructive` switches the text to `status-error`.
+```tsx
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  Button,
+} from '@mp/dying';
+
+<DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="glass">Actions</Button>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent align="end">
+    <DropdownMenuLabel>Track</DropdownMenuLabel>
+    <DropdownMenuItem icon={<ListPlus size={16} />} onSelect={addToPlaylist}>
+      Add to playlist
+    </DropdownMenuItem>
+    <DropdownMenuSeparator />
+    <DropdownMenuItem destructive onSelect={remove}>Remove</DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>
+```
+`DropdownMenuContent` renders in a portal (default `align="end"`, `sideOffset={6}`). `DropdownMenuItem` takes an optional `icon` and `destructive` flag on top of the Radix item props.
+
 ### `Card`
 Compound surface card container.
 ```tsx
@@ -344,6 +373,19 @@ import { TrackTable, type TrackData } from '@mp/dying';
 />
 ```
 
+Row actions menu: pass `renderActions` to `TrackTable` (or `actions` to a single `TrackRow`) with `DropdownMenuItem`s and the row's "..." button becomes a menu trigger. Clicks and key presses inside the menu do not select the row. `actions` takes precedence over `onActionClick`.
+```tsx
+<TrackTable
+  tracks={tracks}
+  renderActions={(track) => (
+    <>
+      <DropdownMenuItem onSelect={() => addToQueue(track)}>Add to queue</DropdownMenuItem>
+      <DropdownMenuItem onSelect={() => openPlaylistPicker(track)}>Add to playlist</DropdownMenuItem>
+    </>
+  )}
+/>
+```
+
 ### `FloatingPlayerPill`
 Docked glass transport player with embedded Radix ScrubSlider.
 ```tsx
@@ -362,6 +404,7 @@ import { FloatingPlayerPill } from '@mp/dying';
   onVolumeChange={setVolume}
 />
 ```
+Optional `onAddToPlaylist` shows an "Add to playlist" button next to the playback options button.
 
 ### `FullImmersionLyrics`
 Accessible Radix Dialog modal for time-synced fullscreen lyrics.
@@ -410,6 +453,7 @@ import { QuickPicksGrid, QuickPickRow, type TrackData } from '@mp/dying';
   ))}
 </QuickPicksGrid>
 ```
+The "more options" button only renders when `actions` (menu items, same as `TrackRow`) or `onActionClick` is passed.
 
 ### `FullPlayerView`
 YouTube Music desktop full-screen player view with large album artwork, soft 10% dynamic ambient aura glow, scrub slider, and 3-tab right panel (`UP NEXT`, `LYRICS`, `RELATED`).

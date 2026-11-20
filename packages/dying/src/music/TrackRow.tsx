@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Play, Pause, Heart, MoreHorizontal } from "lucide-react";
 import { SoundWave } from "../effects/SoundWave";
+import { TrackActionsMenu } from "./TrackActionsMenu";
 import { cn } from "../utils/cn";
 
 export interface TrackData {
@@ -28,12 +29,17 @@ export interface TrackRowProps
   onPause?: () => void;
   onLikeToggle?: (track: TrackData, liked: boolean) => void;
   onActionClick?: (track: TrackData, event: React.MouseEvent) => void;
+  /** `DropdownMenuItem`s for the row's "..." menu. Takes precedence over `onActionClick`. */
+  actions?: React.ReactNode;
   onArtistClick?: (artist: string, artistId?: string, e?: React.MouseEvent) => void;
   onAlbumClick?: (album: string, albumId?: string, e?: React.MouseEvent) => void;
   showThumbnail?: boolean;
   showAlbum?: boolean;
   compact?: boolean;
 }
+
+const ACTION_BUTTON_CLASS =
+  "opacity-0 group-hover:opacity-100 p-1.5 text-text-tertiary hover:text-white rounded-lg hover:bg-white/[0.08] transition-all";
 
 function formatDuration(seconds: number = 0): string {
   const mins = Math.floor(seconds / 60);
@@ -54,6 +60,7 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
       onPause,
       onLikeToggle,
       onActionClick,
+      actions,
       onArtistClick,
       onAlbumClick,
       showThumbnail = true,
@@ -66,6 +73,10 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
   ) => {
     const [isHovered, setIsHovered] = useState(false);
     const [liked, setLiked] = useState(track.isLiked || false);
+
+    useEffect(() => {
+      setLiked(track.isLiked || false);
+    }, [track.isLiked]);
 
     const handleRowClick = () => {
       onSelect?.(track);
@@ -246,18 +257,31 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
           </span>
 
           {/* Action Menu Button */}
-          {onActionClick && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onActionClick(track, e);
-              }}
-              aria-label="Track actions"
-              className="opacity-0 group-hover:opacity-100 p-1.5 text-text-tertiary hover:text-white rounded-lg hover:bg-white/[0.08] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+          {actions ? (
+            <TrackActionsMenu
+              label="Track actions"
+              icon={<MoreHorizontal size={16} />}
+              className={ACTION_BUTTON_CLASS}
             >
-              <MoreHorizontal size={16} />
-            </button>
+              {actions}
+            </TrackActionsMenu>
+          ) : (
+            onActionClick && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onActionClick(track, e);
+                }}
+                aria-label="Track actions"
+                className={cn(
+                  ACTION_BUTTON_CLASS,
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+                )}
+              >
+                <MoreHorizontal size={16} />
+              </button>
+            )
           )}
         </div>
       </div>
