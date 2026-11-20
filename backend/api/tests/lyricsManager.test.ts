@@ -6,6 +6,10 @@ import type { Cache } from '../src/cache.js';
 import type { LyricsProvider, LyricsResult } from '../src/lyrics/types.js';
 
 describe('7. LyricsManager Orchestration (Cache -> DB -> Cascade)', () => {
+  const verifiedMetadata = {
+    resolve: async () => ({ title: 'Some Song', artist: 'Some Artist' }),
+  };
+
   // In-memory cache mock
   const createMockCache = (): Cache & { store: Map<string, string> } => {
     const store = new Map<string, string>();
@@ -69,6 +73,7 @@ describe('7. LyricsManager Orchestration (Cache -> DB -> Cascade)', () => {
     const manager = new LyricsManager({
       cache,
       providers: [provider1, provider2],
+      metadataResolver: verifiedMetadata,
     });
 
     const result = await manager.getLyrics({
@@ -97,6 +102,7 @@ describe('7. LyricsManager Orchestration (Cache -> DB -> Cascade)', () => {
     const manager = new LyricsManager({
       cache,
       providers: [failingProvider],
+      metadataResolver: verifiedMetadata,
     });
 
     const result = await manager.getLyrics({
@@ -184,6 +190,7 @@ describe('7. LyricsManager Orchestration (Cache -> DB -> Cascade)', () => {
       cache,
       db: mockDb,
       providers: [provider],
+      metadataResolver: verifiedMetadata,
     });
 
     const result = await manager.getLyrics({
@@ -234,15 +241,41 @@ describe('8. Fastify Lyrics Route Handler', () => {
 
     const res = await app.inject({
       method: 'GET',
-      url: '/api/lyrics?videoId=sample123&title=Test&artist=Sample',
+      url: '/api/lyrics?videoId=sample12345&title=Test&artist=Sample',
     });
 
     assert.equal(res.statusCode, 200);
     const body = JSON.parse(res.payload);
     // Should conform to lyricsResponseSchema
     const parsed = lyricsResponseSchema.parse(body);
-    assert.equal(parsed.videoId, 'sample123');
+    assert.equal(parsed.videoId, 'sample12345');
     assert.ok(parsed.source);
+    await app.close();
+  });
+
+  it('returns 400 when videoId is not a YouTube video id', async () => {
+    const fastifyModule = await import('fastify');
+    const Fastify = fastifyModule.default;
+    const { lyricsRoutes } = await import('../src/routes/lyrics.js');
+
+    const app = Fastify();
+    await app.register(lyricsRoutes, { prefix: '/api/lyrics' });
+
+    for (const videoId of ['short', 'has spaces!!', 'waytoolongvideoid', '../../etc/x']) {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/lyrics?videoId=${encodeURIComponent(videoId)}`,
+      });
+      assert.equal(res.statusCode, 400, videoId);
+      assert.equal(JSON.parse(res.payload).error, 'videoId_invalid');
+    }
+
+    const repeated = await app.inject({
+      method: 'GET',
+      url: '/api/lyrics?videoId=aaaaaaaaaaa&videoId=bbbbbbbbbbb',
+    });
+    assert.equal(repeated.statusCode, 400);
+    assert.equal(JSON.parse(repeated.payload).error, 'videoId_invalid');
     await app.close();
   });
 });

@@ -5,6 +5,8 @@ import { lyricsRateLimitConfig } from "../rateLimit.js";
 
 const lyricsManager = new LyricsManager();
 
+const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
+
 interface LyricsQueryParams {
   videoId?: string;
   title?: string;
@@ -12,11 +14,17 @@ interface LyricsQueryParams {
   durationSec?: string | number;
 }
 
+const optionalString = (value: unknown): string | undefined =>
+  typeof value === "string" ? value : undefined;
+
 export const lyricsRoutes: FastifyPluginAsync = async (app) => {
   app.get("/", lyricsRateLimitConfig, async (req, reply) => {
     const { videoId, title, artist, durationSec } = req.query as LyricsQueryParams;
     if (!videoId) {
       return reply.status(400).send({ error: "videoId_required" });
+    }
+    if (typeof videoId !== "string" || !YOUTUBE_VIDEO_ID.test(videoId)) {
+      return reply.status(400).send({ error: "videoId_invalid" });
     }
 
     let parsedDuration: number | undefined;
@@ -29,8 +37,8 @@ export const lyricsRoutes: FastifyPluginAsync = async (app) => {
 
     const result = await lyricsManager.getLyrics({
       videoId,
-      title,
-      artist,
+      title: optionalString(title),
+      artist: optionalString(artist),
       durationSec: parsedDuration,
     });
 
