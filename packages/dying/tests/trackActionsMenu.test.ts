@@ -31,7 +31,7 @@ const menuItems = React.createElement(
 
 const render = (element: React.ReactElement) => renderToStaticMarkup(element);
 
-describe("Dying Design System — Dropdown Menu & Track Actions", () => {
+describe("Dying Design System - Dropdown Menu & Track Actions", () => {
   test("exports the DropdownMenu family", () => {
     [
       DropdownMenu,
