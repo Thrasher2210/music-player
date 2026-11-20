@@ -33,36 +33,17 @@ export default defineContentScript({
       }
 
       // 1. Direct fetch bridge for MP_EXT_FETCH_REQUEST (WebExtensionAdapter)
+      // Forwarded to background script to bypass CORS via host_permissions
       if (event.data.type === "MP_EXT_FETCH_REQUEST") {
-        const { requestId, url, method, headers, body } = event.data;
+        const { requestId } = event.data;
         try {
-          const res = await fetch(url, {
-            method: method || "GET",
-            headers,
-            body,
-          });
-
-          const contentType = res.headers.get("content-type") || "";
-          let data: any;
-          if (contentType.includes("application/json")) {
-            data = await res.json();
-          } else {
-            data = await res.text();
-          }
-
-          const responseHeaders: Record<string, string> = {};
-          res.headers.forEach((val, key) => {
-            responseHeaders[key] = val;
-          });
-
+          const res = await browser.runtime.sendMessage(event.data);
+          const resObj = res && typeof res === "object" ? res : { data: res };
           window.postMessage(
             {
+              ...resObj,
               type: "MP_EXT_FETCH_RESPONSE",
               requestId,
-              status: res.status,
-              statusText: res.statusText,
-              headers: responseHeaders,
-              data,
             },
             "*"
           );

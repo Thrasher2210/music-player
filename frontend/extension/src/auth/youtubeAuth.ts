@@ -217,13 +217,17 @@ export async function authenticatedFetch(msg: any): Promise<FetchResult> {
   };
 
   const origin = new URL(targetUrl).origin;
-  if (cookie && cookie.value) {
-    requestHeaders["Authorization"] = await computeSapisidHash(
-      cookie.value,
-      origin
-    );
+  if (origin.includes("youtube.com")) {
+    if (cookie && cookie.value && !requestHeaders["Authorization"]) {
+      requestHeaders["Authorization"] = await computeSapisidHash(
+        cookie.value,
+        origin
+      );
+    }
+    if (!requestHeaders["X-Origin"]) {
+      requestHeaders["X-Origin"] = origin;
+    }
   }
-  requestHeaders["X-Origin"] = origin;
 
   let body = msg?.body;
   if (

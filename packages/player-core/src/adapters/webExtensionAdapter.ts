@@ -36,11 +36,32 @@ export class WebExtensionAdapter implements NetworkAdapter {
     return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
 
+  private async fallbackProxyFetch(url: string, init?: RequestInit): Promise<Response> {
+    try {
+      const parsed = new URL(url);
+      const cleanPath = parsed.pathname.replace(/^\/youtubei\/v1/, '');
+      const proxiedUrl = `/api/yt${cleanPath}${parsed.search}`;
+      const headers = new Headers(init?.headers);
+      if (!headers.has('x-target-url')) headers.set('x-target-url', url);
+      return await fetch(proxiedUrl, { ...init, headers });
+    } catch {
+      return await fetch(url, init);
+    }
+  }
+
   async fetch(url: string, init?: RequestInit): Promise<Response> {
     if (typeof window === 'undefined') {
       throw new Error('[WebExtensionAdapter] Cannot be used in non-browser context');
     }
+    try {
+      return await this.fetchViaExtension(url, init);
+    } catch (err: any) {
+      console.warn('[WebExtensionAdapter] Extension fetch failed, falling back to proxy:', err?.message || err);
+      return this.fallbackProxyFetch(url, init);
+    }
+  }
 
+  private fetchViaExtension(url: string, init?: RequestInit): Promise<Response> {
     const requestId = this.generateRequestId();
     const headersObj: Record<string, string> = {};
     if (init?.headers) {
@@ -72,9 +93,7 @@ export class WebExtensionAdapter implements NetworkAdapter {
         }
 
         const resp = event.data as ExtensionBridgeResponse;
-        if (resp.requestId !== requestId) {
-          return;
-        }
+        if (resp.requestId !== requestId) return;
 
         settled = true;
         clearTimeout(timer);
@@ -86,27 +105,27 @@ export class WebExtensionAdapter implements NetworkAdapter {
         }
 
         const bodyData = typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data);
-        const response = new Response(bodyData, {
-          status: resp.status || 200,
-          statusText: resp.statusText || 'OK',
-          headers: resp.headers || {},
-        });
-
-        resolve(response);
+        resolve(
+          new Response(bodyData, {
+            status: resp.status || 200,
+            statusText: resp.statusText || 'OK',
+            headers: resp.headers || {},
+          })
+        );
       };
 
       window.addEventListener('message', handleMessage);
-
-      const msg: ExtensionBridgeRequest = {
-        type: 'MP_EXT_FETCH_REQUEST',
-        requestId,
-        url,
-        method: init?.method || 'GET',
-        headers: headersObj,
-        body: bodyStr,
-      };
-
-      window.postMessage(msg, '*');
+      window.postMessage(
+        {
+          type: 'MP_EXT_FETCH_REQUEST',
+          requestId,
+          url,
+          method: init?.method || 'GET',
+          headers: headersObj,
+          body: bodyStr,
+        },
+        '*'
+      );
     });
   }
 
@@ -253,14 +272,9 @@ export class WebExtensionAdapter implements NetworkAdapter {
           }
 
           if (data.ok === false) {
-            reject(
-              new Error(
-                `[WebExtensionAdapter] HTTP ${data.status || 500}: ${data.statusText || 'Fetch failed'}`
-              )
-            );
+            reject(new Error(`[WebExtensionAdapter] HTTP ${data.status || 500}: ${data.statusText || 'Fetch failed'}`));
             return;
           }
-
           const result = data.data !== undefined ? data.data : data.response !== undefined ? data.response : data;
           resolve(result as T);
         }

@@ -32,7 +32,7 @@ export default defineBackground(() => {
     if (type === "MP_EXT_GET_ACCOUNT") {
       return await getAccount();
     }
-    if (type === "MP_EXT_AUTHENTICATED_FETCH") {
+    if (type === "MP_EXT_AUTHENTICATED_FETCH" || type === "MP_EXT_FETCH_REQUEST") {
       return await authenticatedFetch(msg);
     }
     return null;
