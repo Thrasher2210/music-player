@@ -26,51 +26,20 @@ export interface BrandLogoProps
   badge?: React.ReactNode;
 }
 
-const SIZE_MAP: Record<
-  "xs" | "sm" | "md" | "lg" | "xl",
-  {
-    iconSize: number;
-    wordmarkClass: string;
-    appIconSize: number;
-    tileRadius: string;
-    gap: string;
-  }
-> = {
-  xs: {
-    iconSize: 16,
-    wordmarkClass: "text-xs tracking-tight",
-    appIconSize: 24,
-    tileRadius: "rounded-md",
-    gap: "gap-1.5",
-  },
-  sm: {
-    iconSize: 20,
-    wordmarkClass: "text-sm tracking-tight",
-    appIconSize: 32,
-    tileRadius: "rounded-lg",
-    gap: "gap-2",
-  },
-  md: {
-    iconSize: 28,
-    wordmarkClass: "text-lg tracking-tight",
-    appIconSize: 44,
-    tileRadius: "rounded-xl",
-    gap: "gap-2.5",
-  },
-  lg: {
-    iconSize: 40,
-    wordmarkClass: "text-2xl tracking-tight",
-    appIconSize: 64,
-    tileRadius: "rounded-2xl",
-    gap: "gap-3",
-  },
-  xl: {
-    iconSize: 56,
-    wordmarkClass: "text-4xl tracking-tight",
-    appIconSize: 88,
-    tileRadius: "rounded-3xl",
-    gap: "gap-4",
-  },
+interface SizeConfig {
+  iconSize: number;
+  wordmarkClass: string;
+  appIconSize: number;
+  tileRadius: string;
+  gap: string;
+}
+
+const SIZE_MAP: Record<"xs" | "sm" | "md" | "lg" | "xl", SizeConfig> = {
+  xs: { iconSize: 16, wordmarkClass: "text-xs tracking-tight", appIconSize: 24, tileRadius: "rounded-md", gap: "gap-1.5" },
+  sm: { iconSize: 20, wordmarkClass: "text-sm tracking-tight", appIconSize: 32, tileRadius: "rounded-lg", gap: "gap-2" },
+  md: { iconSize: 28, wordmarkClass: "text-lg tracking-tight", appIconSize: 44, tileRadius: "rounded-xl", gap: "gap-2.5" },
+  lg: { iconSize: 40, wordmarkClass: "text-2xl tracking-tight", appIconSize: 64, tileRadius: "rounded-2xl", gap: "gap-3" },
+  xl: { iconSize: 56, wordmarkClass: "text-4xl tracking-tight", appIconSize: 88, tileRadius: "rounded-3xl", gap: "gap-4" },
 };
 
 /* -------------------------------------------------------------------------- */
@@ -80,11 +49,13 @@ const SIZE_MAP: Record<
 export interface BrandSymbolMarkProps extends React.SVGProps<SVGSVGElement> {
   size?: number;
   className?: string;
+  holeColor?: string;
 }
 
 export const BrandSymbolMark: React.FC<BrandSymbolMarkProps> = ({
   size = 28,
   className,
+  holeColor,
   ...props
 }) => {
   return (
@@ -106,9 +77,41 @@ export const BrandSymbolMark: React.FC<BrandSymbolMarkProps> = ({
         strokeLinejoin="round"
       />
       {/* Inner musical eighth-note head & turntable center label */}
-      <circle cx="56" cy="53" r="10" fill="currentColor" />
-      {/* Musical note stem */}
-      <rect x="61" y="30" width="9" height="23" rx="4.5" fill="currentColor" />
+      <circle cx="49.931" cy="49.834" r="10" fill="currentColor" />
+      {/* Angled musical note stem */}
+      <rect
+        x="42.227"
+        y="27.626"
+        width="7.323"
+        height="23"
+        rx="4.5"
+        fill="currentColor"
+        transform="matrix(0.989099, 0.147252, -0.147252, 0.989099, 10.33844, 0.008403)"
+        style={{ transformBox: "fill-box", transformOrigin: "50% 50%" }}
+      />
+      {/* Vinyl record center hole with white outline */}
+      <ellipse
+        cx="49.868"
+        cy="49.736"
+        rx="4.881"
+        ry="4.881"
+        style={{
+          fill: holeColor || "var(--color-brand-primary, #D6452B)",
+          stroke: "currentColor",
+          strokeWidth: 1,
+        }}
+      />
+      {/* Musical note flag */}
+      <rect
+        x="40.383"
+        y="16.779"
+        width="7.003"
+        height="13.969"
+        rx="4.5"
+        fill="currentColor"
+        transform="matrix(-0.733636, 0.679543, -0.679543, -0.733636, 16.641211, 9.658047)"
+        style={{ strokeWidth: 1, transformOrigin: "43.884px 23.762px" }}
+      />
     </svg>
   );
 };
@@ -131,35 +134,20 @@ export const BrandLogo = React.forwardRef<HTMLDivElement, BrandLogoProps>(
     },
     ref
   ) => {
-    // Resolve dimensions based on size
     const isNamedSize = typeof size === "string" && size in SIZE_MAP;
-    const sizeConfig = isNamedSize
-      ? SIZE_MAP[size as keyof typeof SIZE_MAP]
-      : SIZE_MAP.md;
-
+    const sizeConfig = isNamedSize ? SIZE_MAP[size as keyof typeof SIZE_MAP] : SIZE_MAP.md;
     const numericIconSize = typeof size === "number" ? size : sizeConfig.iconSize;
-    const numericAppIconSize =
-      typeof size === "number" ? size : sizeConfig.appIconSize;
+    const numericAppIconSize = typeof size === "number" ? size : sizeConfig.appIconSize;
 
-    // Resolve color styling
-    const getAccentColorClass = () => {
-      switch (color) {
-        case "brand":
-          return "text-brand-primary";
-        case "white":
-          return "text-white";
-        case "monochrome":
-          return "text-text-primary";
-        case "current":
-          return "text-current";
-        default:
-          return "text-brand-primary";
-      }
-    };
+    const accentClass =
+      color === "white"
+        ? "text-white"
+        : color === "monochrome"
+        ? "text-text-primary"
+        : color === "current"
+        ? "text-current"
+        : "text-brand-primary";
 
-    const accentClass = getAccentColorClass();
-
-    // 1. Mark Only
     if (variant === "mark") {
       return (
         <div
@@ -169,22 +157,18 @@ export const BrandLogo = React.forwardRef<HTMLDivElement, BrandLogoProps>(
           className={cn("inline-flex items-center justify-center shrink-0", accentClass, className)}
           {...props}
         >
-          <BrandSymbolMark size={numericIconSize} />
+          <BrandSymbolMark size={numericIconSize} holeColor="var(--color-canvas, #141416)" />
         </div>
       );
     }
 
-    // 2. Wordmark Only
     if (variant === "wordmark") {
       return (
         <div
           ref={ref}
           role="img"
           aria-label="GaneGan"
-          className={cn(
-            "inline-flex flex-col select-none leading-none",
-            className
-          )}
+          className={cn("inline-flex flex-col select-none leading-none", className)}
           {...props}
         >
           <div className="flex items-center gap-1.5">
@@ -208,7 +192,6 @@ export const BrandLogo = React.forwardRef<HTMLDivElement, BrandLogoProps>(
       );
     }
 
-    // 3. App Icon (Squircle Badge)
     if (variant === "app-icon") {
       return (
         <div
@@ -224,14 +207,15 @@ export const BrandLogo = React.forwardRef<HTMLDivElement, BrandLogoProps>(
           )}
           {...props}
         >
-          {/* Subtle specular sheen highlight on top edge */}
           <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent pointer-events-none" />
-          <BrandSymbolMark size={Math.round(numericAppIconSize * 0.62)} />
+          <BrandSymbolMark
+            size={Math.round(numericAppIconSize * 0.62)}
+            holeColor="var(--color-brand-primary, #D6452B)"
+          />
         </div>
       );
     }
 
-    // 4. Monochrome Tile (Graphite Glass Card Tile)
     if (variant === "monochrome-tile") {
       return (
         <div
@@ -247,12 +231,15 @@ export const BrandLogo = React.forwardRef<HTMLDivElement, BrandLogoProps>(
           )}
           {...props}
         >
-          <BrandSymbolMark size={Math.round(numericAppIconSize * 0.62)} />
+          <BrandSymbolMark
+            size={Math.round(numericAppIconSize * 0.62)}
+            holeColor="var(--color-surface, #1e1e22)"
+          />
         </div>
       );
     }
 
-    // 5. Full Lockup (Mark + Wordmark)
+    // Full Lockup (Mark + Wordmark)
     return (
       <div
         ref={ref}
@@ -262,7 +249,7 @@ export const BrandLogo = React.forwardRef<HTMLDivElement, BrandLogoProps>(
         {...props}
       >
         <div className={cn("shrink-0", accentClass)}>
-          <BrandSymbolMark size={numericIconSize} />
+          <BrandSymbolMark size={numericIconSize} holeColor="var(--color-canvas, #141416)" />
         </div>
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -289,6 +276,4 @@ export const BrandLogo = React.forwardRef<HTMLDivElement, BrandLogoProps>(
 );
 
 BrandLogo.displayName = "BrandLogo";
-
-// Alias export
 export const GaneGanLogo = BrandLogo;

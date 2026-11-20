@@ -1,5 +1,12 @@
 import { type Track } from '@mp/player-core';
 import { type Playlist, type PlayHistoryItem } from './types';
+import {
+  getGuestLikes,
+  saveGuestLike,
+  removeGuestLike,
+  getGuestPlaylists,
+  saveGuestPlaylist,
+} from './guestStorage';
 
 export interface LibraryFetchResult {
   likedTracks: Track[];
@@ -32,6 +39,13 @@ export async function fetchLibraryData(): Promise<LibraryFetchResult> {
         likedVideoIds.add(l.videoId);
       }
     }
+  } else {
+    // Unauthenticated guest fallback
+    likedTracks = getGuestLikes();
+    for (const t of likedTracks) {
+      const vid = t.videoId || t.id;
+      if (vid) likedVideoIds.add(vid);
+    }
   }
 
   let playlists: Playlist[] = [];
@@ -48,6 +62,9 @@ export async function fetchLibraryData(): Promise<LibraryFetchResult> {
         createdAt: p.createdAt,
       }));
     }
+  } else {
+    // Unauthenticated guest fallback
+    playlists = getGuestPlaylists();
   }
 
   let history: PlayHistoryItem[] = [];
@@ -67,25 +84,43 @@ export async function fetchLibraryData(): Promise<LibraryFetchResult> {
 
 export async function likeTrackApi(track: Track): Promise<boolean> {
   const vid = track.videoId || track.id;
-  const res = await fetch(`/api/likes/${encodeURIComponent(vid)}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({
-      title: track.title,
-      artist: track.artist,
-      albumArt: track.thumbnail || null,
-    }),
-  });
-  return res.ok || res.status === 401;
+  try {
+    const res = await fetch(`/api/likes/${encodeURIComponent(vid)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        title: track.title,
+        artist: track.artist,
+        albumArt: track.thumbnail || null,
+      }),
+    });
+    if (res.status === 401) {
+      saveGuestLike(track);
+      return true;
+    }
+    return res.ok;
+  } catch {
+    saveGuestLike(track);
+    return true;
+  }
 }
 
 export async function unlikeTrackApi(videoId: string): Promise<boolean> {
-  const res = await fetch(`/api/likes/${encodeURIComponent(videoId)}`, {
-    method: 'DELETE',
-    credentials: 'include',
-  });
-  return res.ok || res.status === 401;
+  try {
+    const res = await fetch(`/api/likes/${encodeURIComponent(videoId)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (res.status === 401) {
+      removeGuestLike(videoId);
+      return true;
+    }
+    return res.ok;
+  } catch {
+    removeGuestLike(videoId);
+    return true;
+  }
 }
 
 export async function createPlaylistApi(
@@ -93,24 +128,51 @@ export async function createPlaylistApi(
   extra?: { source?: 'local' | 'youtube'; ytPlaylistId?: string; coverArt?: string }
 ): Promise<Playlist | null> {
   if (!name.trim()) return null;
-  const res = await fetch('/api/playlists', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ name: name.trim(), ...extra }),
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (data?.playlist) {
-    return {
-      id: data.playlist.id,
-      name: data.playlist.name,
-      source: data.playlist.source || 'local',
+  try {
+    const res = await fetch('/api/playlists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name: name.trim(), ...extra }),
+    });
+    if (res.status === 401) {
+      const guestPl: Playlist = {
+        id: `guest-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        name: name.trim(),
+        source: extra?.source || 'local',
+        trackCount: 0,
+        coverArt: extra?.coverArt,
+        ytPlaylistId: extra?.ytPlaylistId,
+        createdAt: new Date().toISOString(),
+      };
+      saveGuestPlaylist(guestPl);
+      return guestPl;
+    }
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data?.playlist) {
+      return {
+        id: data.playlist.id,
+        name: data.playlist.name,
+        source: data.playlist.source || 'local',
+        trackCount: 0,
+        coverArt: data.playlist.coverArt,
+        ytPlaylistId: data.playlist.ytPlaylistId,
+        createdAt: data.playlist.createdAt,
+      };
+    }
+  } catch {
+    const guestPl: Playlist = {
+      id: `guest-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: name.trim(),
+      source: extra?.source || 'local',
       trackCount: 0,
-      coverArt: data.playlist.coverArt,
-      ytPlaylistId: data.playlist.ytPlaylistId,
-      createdAt: data.playlist.createdAt,
+      coverArt: extra?.coverArt,
+      ytPlaylistId: extra?.ytPlaylistId,
+      createdAt: new Date().toISOString(),
     };
+    saveGuestPlaylist(guestPl);
+    return guestPl;
   }
   return null;
 }

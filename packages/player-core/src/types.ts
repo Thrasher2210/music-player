@@ -2,7 +2,15 @@
  * Core type definitions for @mp/player-core
  */
 
-export type InnerTubeClientName = 'VISIONOS' | 'IOS' | 'ANDROID_MUSIC' | 'WEB_REMIX' | 'WEB' | 'MWEB';
+export type InnerTubeClientName =
+  | 'TVHTML5'
+  | 'ANDROID'
+  | 'VISIONOS'
+  | 'IOS'
+  | 'ANDROID_MUSIC'
+  | 'WEB_REMIX'
+  | 'WEB'
+  | 'MWEB';
 
 export interface InnerTubeContext {
   client: {

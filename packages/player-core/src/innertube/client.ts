@@ -27,6 +27,7 @@ import {
   requestAuthenticatedBrowse,
   requestLikeStatus,
 } from './libraryParsers';
+import { fetchWebPlayerFallback } from './webFallback';
 
 export * from './contexts';
 export * from './parsers';
@@ -75,11 +76,27 @@ export class InnerTubeClient {
       },
     };
 
-    return this.network.postJson<PlayerResponse>(endpoint, payload, {
-      'Content-Type': 'text/plain',
-      'X-YouTube-Client-Name': context.client.clientName,
-      'X-YouTube-Client-Version': context.client.clientVersion,
-    });
+    try {
+      const resp = await this.network.postJson<PlayerResponse>(endpoint, payload, {
+        'Content-Type': 'text/plain',
+        'X-YouTube-Client-Name': context.client.clientName,
+        'X-YouTube-Client-Version': context.client.clientVersion,
+      });
+      if (resp && resp.playabilityStatus?.status === 'OK') {
+        return resp;
+      }
+    } catch {
+      // Fall through to resilient Innertube web fallback
+    }
+
+    if (clientName === 'WEB_REMIX' || clientName === 'WEB') {
+      const fallback = await fetchWebPlayerFallback(videoId);
+      if (fallback) return fallback;
+    }
+
+    return {
+      playabilityStatus: { status: 'UNPLAYABLE', reason: 'Unable to stream audio' },
+    };
   }
 
   /**
@@ -250,38 +267,9 @@ export class InnerTubeClient {
     return requestLikeStatus(this.network, this.baseUrl, videoId, status, clientName);
   }
 
-  /**
-   * Parse YouTube Music browse response into chips, quick picks, and shelves
-   */
-  parseHomeFeed(data: any): HomeFeedData {
-    return parseHomeFeed(data);
-  }
-
-  /**
-   * Parse YouTube Music Next response into Up Next queue and Related shelves
-   */
-  parseNextRadio(data: any): NextRadioData {
-    return parseNextRadio(data);
-  }
-
-  /**
-   * Robust parser extracting Track[] from various InnerTube response layouts
-   */
-  parseSearchResults(data: any): Track[] {
-    return parseSearchResults(data);
-  }
-
-  /**
-   * Parse YouTube Music browse response for liked videos
-   */
-  parseLikedVideos(data: any): Track[] {
-    return parseLikedVideos(data);
-  }
-
-  /**
-   * Parse YouTube Music browse response for library playlists
-   */
-  parseLibraryPlaylists(data: any): RemotePlaylistDetails[] {
-    return parseLibraryPlaylists(data);
-  }
+  parseHomeFeed(data: any): HomeFeedData { return parseHomeFeed(data); }
+  parseNextRadio(data: any): NextRadioData { return parseNextRadio(data); }
+  parseSearchResults(data: any): Track[] { return parseSearchResults(data); }
+  parseLikedVideos(data: any): Track[] { return parseLikedVideos(data); }
+  parseLibraryPlaylists(data: any): RemotePlaylistDetails[] { return parseLibraryPlaylists(data); }
 }

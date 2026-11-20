@@ -36,6 +36,10 @@ export function PlaylistHeader({
 }: PlaylistHeaderProps) {
   const [imgError, setImgError] = React.useState(false);
 
+  React.useEffect(() => {
+    setImgError(false);
+  }, [coverUrl]);
+
   return (
     <Flex
       gap="6"
@@ -47,7 +51,6 @@ export function PlaylistHeader({
           <img
             src={coverUrl}
             alt={title}
-            referrerPolicy="no-referrer"
             onError={() => setImgError(true)}
             className="w-full h-full object-cover"
           />

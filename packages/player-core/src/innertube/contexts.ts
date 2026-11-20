@@ -4,6 +4,29 @@ import { NetworkAdapter } from '../adapters/network';
 export const INNERTUBE_PUBLIC_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
 
 export const INNERTUBE_CONTEXTS: Record<InnerTubeClientName, InnerTubeContext> = {
+  TVHTML5: {
+    client: {
+      clientName: 'TVHTML5',
+      clientVersion: '7.20260707.07.00',
+      hl: 'en',
+      gl: 'US',
+      deviceMake: 'Samsung',
+      deviceModel: 'SmartTV',
+      osName: 'Tizen',
+      platform: 'TV',
+    },
+  },
+  ANDROID: {
+    client: {
+      clientName: 'ANDROID',
+      clientVersion: '21.26.364',
+      hl: 'en',
+      gl: 'US',
+      osName: 'Android',
+      osVersion: '15',
+      platform: 'MOBILE',
+    },
+  },
   VISIONOS: {
     client: {
       clientName: 'VISIONOS',

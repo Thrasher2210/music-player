@@ -108,7 +108,6 @@ export const LibraryPlaylistsSection: React.FC<LibraryPlaylistsSectionProps> = (
                     <img
                       src={cover}
                       alt={playlist.name}
-                      referrerPolicy="no-referrer"
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
@@ -147,7 +146,6 @@ export const LibraryPlaylistsSection: React.FC<LibraryPlaylistsSectionProps> = (
                     <img
                       src={cover}
                       alt={playlist.title || playlist.name}
-                      referrerPolicy="no-referrer"
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (

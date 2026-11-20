@@ -6,7 +6,8 @@ export async function POST(
 ) {
   try {
     const { path } = await params;
-    const subpath = path ? path.join('/') : '';
+    const rawSubpath = path ? path.join('/') : '';
+    const subpath = rawSubpath.replace(/^youtubei\/v1\/?/, '');
     const search = req.nextUrl.search;
     
     // Ensure InnerTube public key is always present
@@ -32,18 +33,30 @@ export async function POST(
       // not JSON
     }
 
+    const isTv = clientName.toUpperCase().startsWith('TVHTML5');
+    const isAndroid = clientName.toUpperCase().startsWith('ANDROID');
     const isIos = clientName.toLowerCase() === 'ios';
     const isVision = clientName.toLowerCase() === 'visionos';
     const isMweb = clientName.toUpperCase() === 'MWEB';
     const isWeb = clientName.toUpperCase() === 'WEB';
 
     let headerClientName = '67';
-    let headerClientVersion = '1.20240101.01.00';
+    let headerClientVersion = '1.20250210.01.00';
     let userAgent =
       req.headers.get('user-agent') ||
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
-    if (isIos) {
+    if (isTv) {
+      headerClientName = '31';
+      headerClientVersion = clientVersion || '7.20260707.07.00';
+      userAgent =
+        'Mozilla/5.0(SMART-TV; Linux; Tizen 4.0.0.2) AppleWebkit/605.1.15 (KHTML, like Gecko) SamsungBrowser/9.2 TV Safari/605.1.15';
+    } else if (isAndroid) {
+      headerClientName = clientName.toUpperCase() === 'ANDROID_MUSIC' ? '67' : '3';
+      headerClientVersion = clientVersion || '21.26.364';
+      userAgent =
+        'com.google.android.youtube/21.26.364 (Linux; U; Android 15; en_US; Pixel 9 Pro; Build/AP4A.250205.002; Cronet/132.0.6834.79) gzip';
+    } else if (isIos) {
       headerClientName = '5';
       headerClientVersion = clientVersion || '20.11.6';
       userAgent = 'com.google.ios.youtube/20.11.6 (iPhone16,2; U; CPU OS 17_4 like Mac OS X; en_US)';
@@ -52,13 +65,13 @@ export async function POST(
       headerClientVersion = clientVersion || '1.02';
     } else if (isMweb) {
       headerClientName = '62';
-      headerClientVersion = clientVersion || '2.20240101.01.00';
+      headerClientVersion = clientVersion || '2.20250210.01.00';
     } else if (isWeb) {
       headerClientName = '1';
-      headerClientVersion = clientVersion || '2.20240101.01.00';
+      headerClientVersion = clientVersion || '2.20250210.01.00';
     }
 
-    const isMobileClient = isIos || isVision || clientName.toUpperCase().startsWith('ANDROID');
+    const isMobileClient = isIos || isVision || isAndroid || isTv;
 
     const forwardHeaders: Record<string, string> = {
       'Content-Type': req.headers.get('content-type') || 'text/plain',

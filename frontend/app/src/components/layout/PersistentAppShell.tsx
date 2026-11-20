@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useTransition } from 'react';
+import React, { useState, useEffect, useCallback, useTransition, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   AppShell,
@@ -27,6 +27,7 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
 
   const [hasMounted, setHasMounted] = useState(false);
   const [, startTransition] = useTransition();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Dialog & Modal State
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
@@ -115,7 +116,7 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
 
   useEffect(() => {
     setHasMounted(true);
-    initialize();
+    initialize(audioRef.current || undefined);
   }, [initialize]);
 
   useEffect(() => {
@@ -287,6 +288,7 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
         isPlaybackOptionsOpen={isPlaybackOptionsOpen}
         setIsPlaybackOptionsOpen={setIsPlaybackOptionsOpen}
       />
+      <audio ref={audioRef} id="mp-global-audio" preload="auto" className="hidden" aria-hidden="true" />
     </>
   );
 }
