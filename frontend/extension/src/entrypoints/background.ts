@@ -4,6 +4,9 @@ import {
   getAccount,
   authenticatedFetch,
 } from "../auth/youtubeAuth";
+import { createMessageHandler } from "../messaging/handleMessage";
+import { APP_ORIGINS } from "../security/appOrigins";
+import { originOf } from "../security/origins";
 
 export default defineBackground(() => {
   // Register dynamic DNR rules on background startup & install
@@ -12,31 +15,14 @@ export default defineBackground(() => {
     registerDnrRules();
   });
 
-  async function handleMessage(msg: any, _sender: any): Promise<any> {
-    const type = typeof msg === "string" ? msg : msg?.type;
-
-    if (type === "ping") {
-      return { type: "pong", status: "ok" };
-    }
-    if (type === "status") {
-      return {
-        active: true,
-        status: "ready",
-        version: browser.runtime.getManifest().version,
-        dnr: true,
-      };
-    }
-    if (type === "MP_EXT_CHECK_AUTH") {
-      return await checkAuth();
-    }
-    if (type === "MP_EXT_GET_ACCOUNT") {
-      return await getAccount();
-    }
-    if (type === "MP_EXT_AUTHENTICATED_FETCH" || type === "MP_EXT_FETCH_REQUEST") {
-      return await authenticatedFetch(msg);
-    }
-    return null;
-  }
+  const handleMessage = createMessageHandler({
+    allowedOrigins: APP_ORIGINS,
+    extensionOrigin: originOf(browser.runtime.getURL("/")) ?? "",
+    getVersion: () => browser.runtime.getManifest().version,
+    checkAuth,
+    getAccount,
+    authenticatedFetch,
+  });
 
   browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     handleMessage(msg, sender)

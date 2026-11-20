@@ -1,14 +1,8 @@
+import { APP_ORIGINS } from "../security/appOrigins";
+import { toMatchPatterns } from "../security/origins";
+
 export default defineContentScript({
-  matches: [
-    "http://localhost/*",
-    "http://127.0.0.1/*",
-    "http://localhost:*/*",
-    "http://127.0.0.1:*/*",
-    "https://*.nip.io/*",
-    "https://*.pages.dev/*",
-    "https://*.vercel.app/*",
-    "<all_urls>",
-  ],
+  matches: toMatchPatterns(APP_ORIGINS),
   runAt: "document_start",
   main() {
     // Set property on window in extension context
@@ -31,7 +25,11 @@ export default defineContentScript({
 
     // Bridge for window messages
     window.addEventListener("message", async (event) => {
-      if (event.source !== window || !event.data) {
+      if (
+        event.source !== window ||
+        event.origin !== window.location.origin ||
+        !event.data
+      ) {
         return;
       }
 
