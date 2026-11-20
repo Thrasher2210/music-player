@@ -359,7 +359,7 @@ import { AmbientAura, SoundWave } from '@mp/dying';
 ## 5. Streaming Domain Components
 
 ### `TrackTable` & `TrackRow`
-Responsive audio song table with live waveform indicator, duration formatting, and hover actions.
+Responsive audio song table with live waveform indicator, duration formatting, and hover actions. The like and "..." buttons appear on row hover or keyboard focus, and are always visible on touch screens (`pointer: coarse`). A track with no `duration` (or `0`) shows an empty duration cell instead of `0:00`; pass `showAlbum={false}` when no track has an album.
 ```tsx
 import { TrackTable, type TrackData } from '@mp/dying';
 
@@ -454,6 +454,7 @@ import { QuickPicksGrid, QuickPickRow, type TrackData } from '@mp/dying';
 </QuickPicksGrid>
 ```
 The "more options" button only renders when `actions` (menu items, same as `TrackRow`) or `onActionClick` is passed.
+The queue and "more options" buttons take no width until the row is hovered, keyboard focused or has an open menu, so titles use the full row. On touch screens they are always shown.
 
 ### `FullPlayerView`
 YouTube Music desktop full-screen player view with large album artwork, soft 10% dynamic ambient aura glow, scrub slider, and 3-tab right panel (`UP NEXT`, `LYRICS`, `RELATED`).

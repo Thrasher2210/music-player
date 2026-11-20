@@ -123,6 +123,7 @@ function SearchContent() {
       ) : (
         <TrackTable
           tracks={results.map(getTrackDataWithLiked)}
+          showAlbum={results.some((t) => t.album)}
           currentTrackId={currentTrack?.id || currentTrack?.videoId}
           isPlaying={isCurrentlyPlaying}
           onTrackSelect={(t) => {
