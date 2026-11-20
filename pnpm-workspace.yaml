@@ -6,3 +6,6 @@ packages:
   - backend/worker
   - backend/db
   - backend/shared
+
+onlyBuiltDependencies:
+  - esbuild
