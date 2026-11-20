@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authClient } from '../lib/auth-client';
+import { migrateGuestData } from './library/guestMigration';
+import { useLibraryStore } from './libraryStore';
 
 export interface UserProfile {
   id: string;
@@ -8,13 +10,6 @@ export interface UserProfile {
   email: string;
   image?: string | null;
   isGuest?: boolean;
-}
-
-export interface GuestLike {
-  videoId: string;
-  title: string;
-  artist: string;
-  albumArt?: string | null;
 }
 
 export interface AuthResponse {
@@ -33,9 +28,15 @@ interface AuthState {
   loginWithProvider: (provider: 'google' | 'github' | 'apple' | 'discord') => Promise<any>;
   logout: () => Promise<void>;
   loginAsGuest: (name?: string) => void;
-  migrateGuestLikes: () => Promise<void>;
-  addGuestLike: (like: GuestLike) => void;
-  getGuestLikes: () => GuestLike[];
+}
+
+/** Moves guest likes and playlists to the account and reloads the library if anything moved. */
+function syncGuestData(): void {
+  migrateGuestData()
+    .then(({ likes, playlists }) => {
+      if (likes > 0 || playlists > 0) return useLibraryStore.getState().fetchLibrary();
+    })
+    .catch((err) => console.warn('Failed to migrate guest data:', err));
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -63,8 +64,7 @@ export const useAuthStore = create<AuthState>()(
               },
               isAuthenticated: true,
             });
-            // Silently migrate any local guest likes to backend
-            void get().migrateGuestLikes();
+            syncGuestData();
           } else {
             const current = get().user;
             if (current && !current.isGuest) {
@@ -104,8 +104,7 @@ export const useAuthStore = create<AuthState>()(
               },
               isAuthenticated: true,
             });
-            // Silent background guest library migration
-            void get().migrateGuestLikes();
+            syncGuestData();
           }
 
           return { success: true };
@@ -144,8 +143,7 @@ export const useAuthStore = create<AuthState>()(
               },
               isAuthenticated: true,
             });
-            // Silent background guest library migration
-            void get().migrateGuestLikes();
+            syncGuestData();
           }
 
           return { success: true };
@@ -186,59 +184,6 @@ export const useAuthStore = create<AuthState>()(
           },
           isAuthenticated: false,
         }),
-
-      migrateGuestLikes: async () => {
-        if (typeof window === 'undefined') return;
-        try {
-          const stored = localStorage.getItem('ganegan_guest_likes');
-          if (!stored) return;
-          const likes: GuestLike[] = JSON.parse(stored);
-          if (!Array.isArray(likes) || likes.length === 0) return;
-
-          await Promise.allSettled(
-            likes.map(async (like) => {
-              if (!like.videoId) return;
-              return fetch(`/api/likes/${encodeURIComponent(like.videoId)}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  title: like.title || 'Unknown Title',
-                  artist: like.artist || 'Unknown Artist',
-                  albumArt: like.albumArt ?? null,
-                }),
-              });
-            })
-          );
-
-          localStorage.removeItem('ganegan_guest_likes');
-        } catch (err) {
-          console.warn('Failed to migrate guest likes:', err);
-        }
-      },
-
-      addGuestLike: (like: GuestLike) => {
-        if (typeof window === 'undefined') return;
-        try {
-          const stored = localStorage.getItem('ganegan_guest_likes');
-          const likes: GuestLike[] = stored ? JSON.parse(stored) : [];
-          if (!likes.some((l) => l.videoId === like.videoId)) {
-            likes.push(like);
-            localStorage.setItem('ganegan_guest_likes', JSON.stringify(likes));
-          }
-        } catch (err) {
-          console.warn('Error saving guest like:', err);
-        }
-      },
-
-      getGuestLikes: (): GuestLike[] => {
-        if (typeof window === 'undefined') return [];
-        try {
-          const stored = localStorage.getItem('ganegan_guest_likes');
-          return stored ? JSON.parse(stored) : [];
-        } catch {
-          return [];
-        }
-      },
     }),
     {
       name: 'ganegan-auth-session',
