@@ -2,7 +2,7 @@ import { ClientVerdict, InnerTubeClientName, Track } from '../types';
 import { NetworkAdapter } from '../adapters/network';
 import { InnerTubeClient } from '../innertube/client';
 import { executeClientWalk, VerdictCache } from '../walk/clientWalk';
-import { createDashBlobUrl, generateDashMpd } from '../manifest/dashGenerator';
+import { createDashBlobUrl, createDashDataUri, generateDashMpd } from '../manifest/dashGenerator';
 import { AudioDriver } from '../drivers/audio';
 
 export interface PreparedStream {
@@ -10,6 +10,7 @@ export interface PreparedStream {
   client: InnerTubeClientName;
   verdicts: ClientVerdict[];
   updatedDuration?: number;
+  sabrConfig?: any;
 }
 
 export function enrichTrackMetadata(track: Track, videoDetails: any): { changed: boolean; newDuration?: number } {
@@ -62,21 +63,20 @@ export async function prepareTrackStream(
 
   const isSabr = Boolean(
     (walkResult.is_sabr || walkResult.isSabr) &&
-    serverAbrStreamingUrl &&
-    walkResult.audioFormats.some((f) => !f.url)
+    serverAbrStreamingUrl
   );
 
-  if (typeof (audioDriver as any).configureSabr === 'function' && isSabr) {
-    const ustreamerConfig =
+  const sabrConfig = isSabr && serverAbrStreamingUrl ? {
+    serverAbrStreamingUrl,
+    ustreamerConfig:
       (walkResult.playerResponse as any)?.playerConfig?.mediaCommonConfig?.mediaUstreamerRequestConfig?.videoPlaybackUstreamerConfig ||
       (walkResult.playerResponse as any)?.videoPlaybackUstreamerConfig ||
-      'CAE=';
+      'CAE=',
+    formats: walkResult.audioFormats,
+  } : undefined;
 
-    (audioDriver as any).configureSabr({
-      serverAbrStreamingUrl,
-      ustreamerConfig,
-      formats: walkResult.audioFormats,
-    });
+  if (typeof (audioDriver as any).configureSabr === 'function' && sabrConfig) {
+    (audioDriver as any).configureSabr(sabrConfig);
   }
 
   const mpdXml = generateDashMpd(walkResult.audioFormats, {
@@ -89,13 +89,14 @@ export async function prepareTrackStream(
         : url,
   });
 
-  const manifestUrl = createDashBlobUrl(mpdXml);
+  const manifestUrl = createDashDataUri(mpdXml);
 
   return {
     manifestUrl,
     client: walkResult.client,
     verdicts: walkResult.verdicts,
     updatedDuration: newDuration,
+    sabrConfig,
   };
 }
 
@@ -114,7 +115,7 @@ export async function loadAndPlayPreparedTrack(
     networkAdapter,
     audioDriver
   );
-  await audioDriver.load(prep.manifestUrl, startSeek);
+  await (audioDriver as any).load(prep.manifestUrl, startSeek, prep.sabrConfig);
   await audioDriver.play();
   return prep;
 }

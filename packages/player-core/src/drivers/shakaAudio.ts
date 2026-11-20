@@ -90,6 +90,7 @@ export class ShakaMseAudioDriver implements AudioDriver {
         dash: {
           ignoreMinBufferTime: true,
           autoCorrectDrift: true,
+          clockSyncUri: '',
         },
       },
     });
@@ -107,9 +108,8 @@ export class ShakaMseAudioDriver implements AudioDriver {
     if (!this.sabrAdapter) return;
     if (config.serverAbrStreamingUrl) this.sabrAdapter.setStreamingURL(config.serverAbrStreamingUrl);
     if (config.ustreamerConfig) this.sabrAdapter.setUstreamerConfig(config.ustreamerConfig);
-    if (config.formats && config.formats.length > 0) {
-      const sabrFormats = config.formats.map((f) => buildSabrFormat(f as any));
-      this.sabrAdapter.setServerAbrFormats(sabrFormats);
+    if (config.formats?.length) {
+      this.sabrAdapter.setServerAbrFormats(config.formats.map((f) => buildSabrFormat(f as any)));
     }
   }
 

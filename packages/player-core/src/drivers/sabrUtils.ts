@@ -152,7 +152,11 @@ export class ShakaPlayerAdapter implements SabrPlayerAdapter {
         },
       };
 
-      if (!(this.sabrAdapter as any)?.streamingURL) {
+      const streamingUrl =
+        (this.sabrAdapter as any)?.serverAbrStreamingUrl ||
+        (this.sabrAdapter as any)?.streamingURL;
+
+      if (!streamingUrl) {
         console.warn('[ShakaPlayerAdapter] Server ABR URL not set, skipping SABR request interceptor');
         return;
       }

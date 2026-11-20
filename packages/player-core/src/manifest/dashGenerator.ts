@@ -184,14 +184,10 @@ ${representationsXml}
 }
 
 /**
- * Creates a browser Blob URL for the DASH MPD XML string
+ * Creates a DASH data URI for the DASH MPD XML string (replaces blob URL to prevent HTTP HEAD ERR_METHOD_NOT_SUPPORTED)
  */
 export function createDashBlobUrl(mpdXml: string): string {
-  if (typeof window === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined') {
-    return createDashDataUri(mpdXml);
-  }
-  const blob = new Blob([mpdXml], { type: 'application/dash+xml;charset=utf-8' });
-  return URL.createObjectURL(blob);
+  return createDashDataUri(mpdXml);
 }
 
 /**
