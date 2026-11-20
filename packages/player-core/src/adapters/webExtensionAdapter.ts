@@ -29,10 +29,6 @@ export class WebExtensionAdapter implements NetworkAdapter {
   }
 
   resolveStreamUrl(url: string, videoId?: string): string {
-    // When extension is active, browser fetches directly from googlevideo.com via DNR rules
-    if (this.isExtensionActive()) {
-      return url;
-    }
     if (url.includes('/stream?url=')) {
       if (videoId && !url.includes('&v=')) {
         return `${url}&v=${encodeURIComponent(videoId)}`;
@@ -63,6 +59,15 @@ export class WebExtensionAdapter implements NetworkAdapter {
   async fetch(url: string, init?: RequestInit): Promise<Response> {
     if (typeof window === 'undefined') {
       throw new Error('[WebExtensionAdapter] Cannot be used in non-browser context');
+    }
+    // Route player metadata requests through proxy endpoint for reliable mobile client streaming formats
+    if (url.includes('/youtubei/v1/player')) {
+      try {
+        const proxyResp = await this.fallbackProxyFetch(url, init);
+        if (proxyResp.ok) return proxyResp;
+      } catch {
+        // Fallback to extension fetch
+      }
     }
     try {
       return await this.fetchViaExtension(url, init);

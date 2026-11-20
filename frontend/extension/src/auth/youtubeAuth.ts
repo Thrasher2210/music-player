@@ -218,13 +218,18 @@ export async function authenticatedFetch(msg: any): Promise<FetchResult> {
 
   const origin = new URL(targetUrl).origin;
   if (origin.includes("youtube.com")) {
-    if (cookie && cookie.value && !requestHeaders["Authorization"]) {
-      requestHeaders["Authorization"] = await computeSapisidHash(
-        cookie.value,
-        origin
-      );
+    let isMobile = false;
+    if (msg?.body) {
+      try {
+        const parsed = typeof msg.body === "string" ? JSON.parse(msg.body) : msg.body;
+        const cn = String(parsed?.context?.client?.clientName || "").toUpperCase();
+        isMobile = cn === "IOS" || cn === "VISIONOS" || cn.startsWith("ANDROID") || cn.startsWith("TV");
+      } catch {}
     }
-    if (!requestHeaders["X-Origin"]) {
+    if (!isMobile && cookie && cookie.value && !requestHeaders["Authorization"]) {
+      requestHeaders["Authorization"] = await computeSapisidHash(cookie.value, origin);
+    }
+    if (!isMobile && !requestHeaders["X-Origin"]) {
       requestHeaders["X-Origin"] = origin;
     }
   }

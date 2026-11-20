@@ -96,7 +96,7 @@ export const DNR_RULES: Rule[] = [
     },
     action: {
       type: "modifyHeaders",
-      requestHeaders: impersonate("https://www.youtube.com").slice(0, 2),
+      requestHeaders: [remove("Origin")],
       responseHeaders: CORS_RESPONSE,
     },
   },
