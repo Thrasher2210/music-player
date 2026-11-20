@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, FolderDown, Chrome, UploadCloud } from 'lucide-react';
+import { RefreshCw, Download, FolderDown, Chrome, UploadCloud } from 'lucide-react';
 import {
   DialogFooter,
   Button,
@@ -29,9 +29,25 @@ export const StageExtensionMissing: React.FC<StageExtensionMissingProps> = ({
         <Text size="sm" weight="semibold" className="text-text-primary block mb-1">
           Install Browser Extension
         </Text>
-        <Text size="xs" variant="secondary" className="block mb-3">
+        <Text size="xs" variant="secondary" className="block mb-4">
           The GaneGan Companion Extension enables high-fidelity YouTube Music streaming and library synchronization without CORS restrictions.
         </Text>
+
+        <Box className="mb-4">
+          <a
+            href="/downloads/ganegan-extension.zip"
+            download="ganegan-extension.zip"
+            className="block w-full no-underline"
+          >
+            <Button
+              variant="primary"
+              fullWidth
+              leftIcon={<Download size={16} />}
+            >
+              Download Extension (.zip)
+            </Button>
+          </a>
+        </Box>
 
         <Stack gap="3">
           <Flex align="start" gap="3">
@@ -40,10 +56,10 @@ export const StageExtensionMissing: React.FC<StageExtensionMissingProps> = ({
             </Box>
             <Stack gap="1">
               <Text size="xs" weight="medium" className="text-text-primary">
-                1. Locate or Build Extension
+                1. Download & Extract
               </Text>
               <Text size="xs" variant="secondary">
-                Pre-built at `frontend/extension/.output/chrome-mv3` (or run `pnpm --filter @mp/extension build`).
+                Click the download button above and extract the zip file into a folder on your computer.
               </Text>
             </Stack>
           </Flex>
@@ -54,10 +70,10 @@ export const StageExtensionMissing: React.FC<StageExtensionMissingProps> = ({
             </Box>
             <Stack gap="1">
               <Text size="xs" weight="medium" className="text-text-primary">
-                2. Open chrome://extensions
+                2. Open Extensions Manager
               </Text>
               <Text size="xs" variant="secondary">
-                Open your Chromium extensions manager and toggle Developer mode on.
+                Go to <code className="text-text-primary bg-surface px-1 py-0.5 rounded text-[11px]">chrome://extensions</code> in your browser and toggle Developer mode ON.
               </Text>
             </Stack>
           </Flex>
@@ -71,7 +87,7 @@ export const StageExtensionMissing: React.FC<StageExtensionMissingProps> = ({
                 3. Load Unpacked
               </Text>
               <Text size="xs" variant="secondary">
-                Select `frontend/extension/dist` (or press Ctrl+H to view `.output/chrome-mv3`).
+                Click &ldquo;Load unpacked&rdquo; in the top-left and select the extracted folder.
               </Text>
             </Stack>
           </Flex>
@@ -83,7 +99,7 @@ export const StageExtensionMissing: React.FC<StageExtensionMissingProps> = ({
           Cancel
         </Button>
         <Button
-          variant="primary"
+          variant="secondary"
           onClick={onVerify}
           isLoading={isChecking}
           loadingText="Verifying..."

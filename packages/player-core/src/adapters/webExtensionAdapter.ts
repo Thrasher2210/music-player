@@ -1,24 +1,7 @@
 import { NetworkAdapter } from './network';
 import { YouTubeAuthStatus } from '../types';
-
-export interface ExtensionBridgeRequest {
-  type: 'MP_EXT_FETCH_REQUEST';
-  requestId: string;
-  url: string;
-  method?: string;
-  headers?: Record<string, string>;
-  body?: string;
-}
-
-export interface ExtensionBridgeResponse {
-  type: 'MP_EXT_FETCH_RESPONSE';
-  requestId: string;
-  status: number;
-  statusText: string;
-  headers: Record<string, string>;
-  data: any;
-  error?: string;
-}
+import { ExtensionBridgeRequest, ExtensionBridgeResponse } from './extensionTypes';
+export type { ExtensionBridgeRequest, ExtensionBridgeResponse };
 
 /**
  * WebExtensionAdapter: Communicates with WXT / WebExtension background via window.postMessage bridge.
@@ -30,6 +13,21 @@ export class WebExtensionAdapter implements NetworkAdapter {
 
   constructor(timeoutMs = 15000) {
     this.timeoutMs = timeoutMs;
+  }
+
+  resolveStreamUrl(url: string, videoId?: string): string {
+    if (url.includes('/stream?url=')) {
+      if (videoId && !url.includes('&v=')) {
+        return `${url}&v=${encodeURIComponent(videoId)}`;
+      }
+      return url;
+    }
+    const origin =
+      typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : 'http://localhost:3000';
+    const vParam = videoId ? `&v=${encodeURIComponent(videoId)}` : '';
+    return `${origin}/api/yt/stream?url=${encodeURIComponent(url)}${vParam}`;
   }
 
   private generateRequestId(): string {
@@ -147,12 +145,8 @@ export class WebExtensionAdapter implements NetworkAdapter {
   }
 
   async checkExtension(timeoutMs = 400): Promise<boolean> {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    if ((window as any).__MP_EXTENSION_ACTIVE__) {
-      return true;
-    }
+    if (typeof window === 'undefined') return false;
+    if ((window as any).__MP_EXTENSION_ACTIVE__) return true;
 
     const requestId = this.generateRequestId();
     return new Promise<boolean>((resolve) => {

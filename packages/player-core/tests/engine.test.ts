@@ -254,4 +254,44 @@ describe('PlayerEngine', () => {
     const countAfter = prefetchedVideoIds.filter((id) => id === 'prefetch_v2').length;
     assert.equal(countBefore, countAfter);
   });
+
+  it('resets currentTime to 0 and seeks to 0 when starting a new track', async () => {
+    let loadedStartTime: number | undefined;
+    const mockDriver: any = {
+      name: 'mock', state: 'idle',
+      getState: () => mockDriver.state, isPaused: () => false, hasLoadedStream: () => true,
+      listeners: {} as Record<string, Function[]>,
+      on: (event: string, fn: Function) => {
+        if (!mockDriver.listeners[event]) mockDriver.listeners[event] = [];
+        mockDriver.listeners[event].push(fn);
+        return () => {};
+      },
+      emit: (event: string, ...args: any[]) => {
+        for (const fn of mockDriver.listeners[event] || []) fn(...args);
+      },
+      load: async (_src: string, startTime = 0) => { loadedStartTime = startTime; mockDriver.state = 'playing'; },
+      play: async () => {}, pause: async () => {}, destroy: async () => {},
+    };
+
+    const mockAdapter: NetworkAdapter = {
+      name: 'mock',
+      fetch: async () => new Response('{}'),
+      postJson: async () => ({
+        playabilityStatus: { status: 'OK' },
+        streamingData: { adaptiveFormats: [{ itag: 251, mimeType: 'audio/webm; codecs="opus"', url: 'https://example.com/audio.webm' }] },
+      }),
+    };
+
+    const engine = new PlayerEngine({ networkAdapter: mockAdapter, audioDriver: mockDriver });
+    engine.setQueue([{ id: '1', videoId: 't1', title: 'T1', duration: 200 }, { id: '2', videoId: 't2', title: 'T2', duration: 200 }]);
+
+    await engine.play(0);
+    mockDriver.emit('timeUpdate', 103);
+    assert.equal(engine.getCurrentTime(), 103);
+
+    // Switch to track 2
+    await engine.play(1);
+    assert.equal(engine.getCurrentTime(), 0);
+    assert.equal(loadedStartTime, 0);
+  });
 });

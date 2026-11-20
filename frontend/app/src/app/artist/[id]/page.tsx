@@ -102,6 +102,11 @@ export default function ArtistPage() {
 
   const handleTrackSelect = (track: Track, index: number) => {
     if (!artist) return;
+    const isCurrent = currentTrack && (currentTrack.videoId === track.videoId || currentTrack.id === track.id);
+    if (isCurrent) {
+      togglePlay();
+      return;
+    }
     setQueue(artist.topSongs, index, false);
     playTrack(track);
   };

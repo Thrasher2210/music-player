@@ -110,6 +110,11 @@ export default function PlaylistPage() {
   };
 
   const handleTrackSelect = (track: Track, index: number) => {
+    const isCurrent = currentTrack && (currentTrack.videoId === track.videoId || currentTrack.id === track.id);
+    if (isCurrent) {
+      togglePlay();
+      return;
+    }
     setQueue(tracks, index, false);
     playTrack(track);
   };

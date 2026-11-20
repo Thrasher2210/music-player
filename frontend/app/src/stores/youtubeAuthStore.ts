@@ -13,7 +13,6 @@ import {
   addTracksToPlaylistApi,
 } from './library/libraryApi';
 import { useLibraryStore } from './libraryStore';
-import { usePlayerStore } from './playerStore';
 
 export interface YouTubeAccount {
   name?: string;
@@ -74,7 +73,7 @@ export const useYouTubeAuthStore = create<YouTubeAuthState>((set, get) => ({
       let account: YouTubeAccount | null = null;
 
       try {
-        const auth = await adapter.getYouTubeAuthStatus(1500);
+        const auth = await adapter.getYouTubeAuthStatus(3500);
         if (auth) {
           connected = Boolean(auth.connected);
           account = auth.account || null;
@@ -89,10 +88,6 @@ export const useYouTubeAuthStore = create<YouTubeAuthState>((set, get) => ({
         isYouTubeAuthenticated: connected,
         youtubeAccount: account,
       });
-
-      if (connected) {
-        usePlayerStore.getState().setNetworkAdapterType('web-extension');
-      }
     } catch (err) {
       console.warn('[youtubeAuthStore] checkStatus failed:', err);
       set({

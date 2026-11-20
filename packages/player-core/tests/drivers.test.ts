@@ -41,7 +41,7 @@ describe('Drivers & Network Adapters', () => {
     await driver.destroy();
   });
 
-  it('resolves direct stream URLs when extension is active in DevProxyAdapter', () => {
+  it('reliably resolves proxied stream URLs in DevProxyAdapter', () => {
     const devProxy = new DevProxyAdapter({ proxyBaseUrl: '/api/yt' });
     const rawStreamUrl = 'https://rr1---sn-example.googlevideo.com/videoplayback?itag=251';
 
@@ -50,7 +50,7 @@ describe('Drivers & Network Adapters', () => {
     assert.ok(proxiedUrl.includes('/api/yt/stream?url='));
     assert.ok(proxiedUrl.includes(encodeURIComponent(rawStreamUrl)));
 
-    // When window.__MP_EXTENSION_ACTIVE__ is active, returns direct stream URL
+    // Even when window.__MP_EXTENSION_ACTIVE__ is active, continues to safely route via stream proxy
     const originalWindow = (globalThis as any).window;
     try {
       (globalThis as any).window = {
@@ -58,13 +58,9 @@ describe('Drivers & Network Adapters', () => {
         __MP_EXTENSION_ACTIVE__: true,
       };
 
-      const directUrl = devProxy.resolveStreamUrl(rawStreamUrl);
-      assert.equal(directUrl, rawStreamUrl);
-
-      // When __MP_EXTENSION_ACTIVE__ is false, returns proxied URL
-      (globalThis as any).window.__MP_EXTENSION_ACTIVE__ = false;
-      const fallbackUrl = devProxy.resolveStreamUrl(rawStreamUrl);
-      assert.ok(fallbackUrl.includes('/api/yt/stream?url='));
+      const resolvedUrl = devProxy.resolveStreamUrl(rawStreamUrl);
+      assert.ok(resolvedUrl.includes('/api/yt/stream?url='));
+      assert.ok(resolvedUrl.includes(encodeURIComponent(rawStreamUrl)));
     } finally {
       if (originalWindow !== undefined) {
         (globalThis as any).window = originalWindow;

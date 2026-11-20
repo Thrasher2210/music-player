@@ -32,9 +32,7 @@ export const createDiagnosticsSlice = (set: StoreSet, get: StoreGet) => ({
   bufferedAheadSeconds: 0,
   bufferedPercent: 0,
   networkAdapterType: 'dev-proxy' as NetworkAdapterType,
-  streamingStatus: (typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__)
-    ? 'Direct CDN via Extension'
-    : 'Edge Fallback Proxy') as StreamingStatus,
+  streamingStatus: 'Edge Fallback Proxy' as StreamingStatus,
   verdicts: [] as ClientVerdict[],
 
   setNetworkAdapterType: (type: NetworkAdapterType) => {
@@ -43,20 +41,15 @@ export const createDiagnosticsSlice = (set: StoreSet, get: StoreGet) => ({
       const newAdapter = createNetworkAdapter(type);
       engine.setNetworkAdapter(newAdapter);
     }
-    const isDirect =
-      type === 'web-extension' ||
-      (typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__));
     set({
       networkAdapterType: type,
-      streamingStatus: isDirect ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
+      streamingStatus: type === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
     });
   },
 
   getDiagnosticInfo: (): DiagnosticInfo => {
     const s = get();
-    const isExtensionActive =
-      typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__);
-    const isDirect = isExtensionActive || s.networkAdapterType === 'web-extension';
+    const isDirect = s.networkAdapterType === 'web-extension';
     const streamingStatus: StreamingStatus = isDirect
       ? 'Direct CDN via Extension'
       : 'Edge Fallback Proxy';
@@ -175,15 +168,14 @@ export const createDiagnosticsSlice = (set: StoreSet, get: StoreGet) => ({
   getArtist: async (browseId: string): Promise<ArtistDetails> => {
     let engine = get().engine || getSharedEngine();
     if (!engine) {
-      const isExt = typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__);
-      const adapterType: NetworkAdapterType = isExt ? 'web-extension' : get().networkAdapterType;
+      const adapterType: NetworkAdapterType = get().networkAdapterType || 'dev-proxy';
       const adapter = createNetworkAdapter(adapterType);
       const shared = new PlayerEngine({ networkAdapter: adapter });
       setSharedEngine(shared);
       set({
         engine: shared,
         networkAdapterType: adapterType,
-        streamingStatus: isExt || adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
+        streamingStatus: adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
       });
       engine = shared;
     }
@@ -193,15 +185,14 @@ export const createDiagnosticsSlice = (set: StoreSet, get: StoreGet) => ({
   getAlbum: async (browseId: string): Promise<AlbumDetails> => {
     let engine = get().engine || getSharedEngine();
     if (!engine) {
-      const isExt = typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__);
-      const adapterType: NetworkAdapterType = isExt ? 'web-extension' : get().networkAdapterType;
+      const adapterType: NetworkAdapterType = get().networkAdapterType || 'dev-proxy';
       const adapter = createNetworkAdapter(adapterType);
       const shared = new PlayerEngine({ networkAdapter: adapter });
       setSharedEngine(shared);
       set({
         engine: shared,
         networkAdapterType: adapterType,
-        streamingStatus: isExt || adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
+        streamingStatus: adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
       });
       engine = shared;
     }
@@ -211,15 +202,14 @@ export const createDiagnosticsSlice = (set: StoreSet, get: StoreGet) => ({
   getPlaylist: async (playlistId: string): Promise<RemotePlaylistDetails> => {
     let engine = get().engine || getSharedEngine();
     if (!engine) {
-      const isExt = typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__);
-      const adapterType: NetworkAdapterType = isExt ? 'web-extension' : get().networkAdapterType;
+      const adapterType: NetworkAdapterType = get().networkAdapterType || 'dev-proxy';
       const adapter = createNetworkAdapter(adapterType);
       const shared = new PlayerEngine({ networkAdapter: adapter });
       setSharedEngine(shared);
       set({
         engine: shared,
         networkAdapterType: adapterType,
-        streamingStatus: isExt || adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
+        streamingStatus: adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
       });
       engine = shared;
     }

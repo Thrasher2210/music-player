@@ -65,9 +65,6 @@ export class DevProxyAdapter implements NetworkAdapter {
   }
 
   resolveStreamUrl(url: string, videoId?: string): string {
-    if (typeof window !== 'undefined' && window.__MP_EXTENSION_ACTIVE__) {
-      return url;
-    }
     if (url.includes('/stream?url=')) {
       if (videoId && !url.includes('&v=')) {
         return `${url}&v=${encodeURIComponent(videoId)}`;

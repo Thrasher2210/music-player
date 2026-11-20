@@ -44,17 +44,13 @@ export const createPlaybackSlice = (set: StoreSet, get: StoreGet) => ({
 
   initialize: (mediaElement?: HTMLMediaElement) => {
     if (typeof window === 'undefined') return;
-    const isExtensionActive = Boolean(window.__MP_EXTENSION_ACTIVE__);
 
     if (get().isInitialized && getSharedEngine()) {
-      if (isExtensionActive && get().networkAdapterType !== 'web-extension') {
-        get().setNetworkAdapterType('web-extension');
-      }
       return;
     }
 
     if (mediaElement) setSharedMediaElement(mediaElement);
-    const adapterType: NetworkAdapterType = isExtensionActive ? 'web-extension' : get().networkAdapterType;
+    const adapterType: NetworkAdapterType = get().networkAdapterType || 'dev-proxy';
     const adapter = createNetworkAdapter(adapterType);
 
     const engine = new PlayerEngine({
@@ -62,17 +58,6 @@ export const createPlaybackSlice = (set: StoreSet, get: StoreGet) => ({
       mediaElement: getSharedMediaElement() || undefined,
     });
     setSharedEngine(engine);
-
-    window.addEventListener('message', (event) => {
-      if (
-        event.data?.type === 'MP_EXTENSION_READY' ||
-        (typeof window !== 'undefined' && Boolean(window.__MP_EXTENSION_ACTIVE__))
-      ) {
-        if (get().networkAdapterType !== 'web-extension') {
-          get().setNetworkAdapterType('web-extension');
-        }
-      }
-    });
 
     bindEngineEvents(engine, set, get);
     engine.setVolume(get().volume);
@@ -84,7 +69,7 @@ export const createPlaybackSlice = (set: StoreSet, get: StoreGet) => ({
       engine,
       isInitialized: true,
       networkAdapterType: adapterType,
-      streamingStatus: isExtensionActive || adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
+      streamingStatus: adapterType === 'web-extension' ? 'Direct CDN via Extension' : 'Edge Fallback Proxy',
       activeClient: engine.getActiveClient(),
       queue: engine.getQueue(),
     });
@@ -138,7 +123,7 @@ export const createPlaybackSlice = (set: StoreSet, get: StoreGet) => ({
 
   pause: async () => {
     set({ playbackState: 'paused' });
-    const engine = get().engine;
+    const engine = get().engine || getSharedEngine();
     if (engine) {
       try {
         await engine.pause();
@@ -149,28 +134,30 @@ export const createPlaybackSlice = (set: StoreSet, get: StoreGet) => ({
   },
 
   togglePlay: async () => {
-    const { engine, playbackState, queue } = get();
-    if (!engine) get().initialize();
-    const currentEng = getSharedEngine();
-    if (!currentEng) return;
+    let engine = get().engine || getSharedEngine();
+    if (!engine) {
+      get().initialize();
+      engine = getSharedEngine();
+    }
+    if (!engine) return;
 
-    const isCurrentlyPlaying = playbackState === 'playing' || !currentEng.getAudioDriver()?.isPaused();
+    const isCurrentlyPlaying = get().playbackState === 'playing' || !engine.getAudioDriver()?.isPaused();
     if (isCurrentlyPlaying) {
       set({ playbackState: 'paused' });
       try {
-        await currentEng.pause();
+        await engine.pause();
       } catch {
         set({ playbackState: 'playing' });
       }
     } else {
       set({ playbackState: 'playing', error: null });
       try {
-        if (currentEng.getCurrentTrack()) {
-          await currentEng.play();
-        } else if (queue.length > 0) {
-          await currentEng.play(0);
+        if (engine.getCurrentTrack()) {
+          await engine.play();
+        } else if (get().queue.length > 0) {
+          await engine.play(0);
         } else if (get().currentTrack) {
-          await currentEng.playTrack(get().currentTrack!);
+          await engine.playTrack(get().currentTrack!);
         }
       } catch (err: any) {
         set({ playbackState: 'paused', error: err?.message || 'Playback failed' });

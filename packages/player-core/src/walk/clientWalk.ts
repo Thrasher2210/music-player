@@ -6,6 +6,7 @@ import {
   Track,
 } from '../types';
 import { InnerTubeClient } from '../innertube/client';
+import { fetchWebPlayerFallback } from '../innertube/webFallback';
 import { NetworkAdapter } from '../adapters/network';
 import {
   CLIENT_WALK_PRIORITY,
@@ -215,6 +216,39 @@ export async function executeClientWalk(
         });
       }
     }
+  }
+
+  // 3. Ultimate Fallback: Try web player fallback directly
+  try {
+    const fallbackResponse = await fetchWebPlayerFallback(videoId);
+    if (fallbackResponse && fallbackResponse.playabilityStatus?.status === 'OK') {
+      const allFormats = fallbackResponse.streamingData?.adaptiveFormats || [];
+      const serverAbrStreamingUrl = fallbackResponse.streamingData?.serverAbrStreamingUrl;
+      const isSabrClient = Boolean(serverAbrStreamingUrl);
+      const audioFormats = allFormats
+        .filter(
+          (fmt) =>
+            (fmt.mimeType && fmt.mimeType.toLowerCase().startsWith('audio/')) ||
+            [251, 250, 249, 140, 139, 171].includes(fmt.itag)
+        )
+        .map((fmt) => (isSabrClient ? { ...fmt, is_sabr: true, isSabr: true } : fmt));
+
+      if (audioFormats.length > 0) {
+        const fallbackResult: ClientWalkResult = {
+          client: 'WEB_REMIX',
+          playerResponse: fallbackResponse,
+          audioFormats,
+          verdicts: [{ client: 'WEB_REMIX', playable: true }],
+          is_sabr: isSabrClient,
+          isSabr: isSabrClient,
+          serverAbrStreamingUrl,
+        };
+        streamResultCache.set(videoId, { expiresAt: now + STREAM_CACHE_TTL_MS, result: fallbackResult });
+        return fallbackResult;
+      }
+    }
+  } catch {
+    // Continue to error throw below
   }
 
   // All attempted clients failed

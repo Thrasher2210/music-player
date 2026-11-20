@@ -80,6 +80,11 @@ export default function ExplorePage() {
 
   const handleTrackSelect = (track: Track, index: number) => {
     if (!feed) return;
+    const isCurrent = currentTrack && (currentTrack.videoId === track.videoId || currentTrack.id === track.id);
+    if (isCurrent) {
+      togglePlay();
+      return;
+    }
     setQueue(feed.quickPicks, index);
     playTrack(track);
   };

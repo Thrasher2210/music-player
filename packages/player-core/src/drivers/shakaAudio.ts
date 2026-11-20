@@ -182,6 +182,7 @@ export class ShakaMseAudioDriver implements AudioDriver {
 
   async pause(): Promise<void> {
     if (!this.mediaElement) return;
+    this.setState('paused');
     this.mediaElement.pause();
   }
 

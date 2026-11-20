@@ -1,13 +1,6 @@
 import {
-  AlbumDetails,
-  ArtistDetails,
-  HomeFeedData,
-  InnerTubeClientName,
-  NextRadioData,
-  PlaybackState,
-  RemotePlaylistDetails,
-  RepeatMode,
-  Track,
+  AlbumDetails, ArtistDetails, HomeFeedData, InnerTubeClientName,
+  NextRadioData, PlaybackState, RemotePlaylistDetails, RepeatMode, Track,
 } from '../types';
 import { NetworkAdapter, NativeHttpAdapter } from '../adapters/network';
 import { InnerTubeClient } from '../innertube/client';
@@ -54,22 +47,10 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       verdictCache: this.verdictCache,
       networkAdapter: this.networkAdapter,
       queueManager: this.queueManager,
-      onStateChange: (state) => {
-        this.playbackState = state;
-        this.emit('stateChange', state);
-      },
-      onTimeUpdate: (time) => {
-        this.currentTime = time;
-        this.emit('timeUpdate', time);
-      },
-      onRateChange: (rate) => {
-        this.playbackRate = rate;
-        this.emit('playbackRateChange', rate);
-      },
-      onDurationChange: (dur) => {
-        this.duration = dur;
-        this.emit('durationChange', dur);
-      },
+      onStateChange: (state) => { this.playbackState = state; this.emit('stateChange', state); },
+      onTimeUpdate: (time) => { this.currentTime = time; this.emit('timeUpdate', time); },
+      onRateChange: (rate) => { this.playbackRate = rate; this.emit('playbackRateChange', rate); },
+      onDurationChange: (dur) => { this.duration = dur; this.emit('durationChange', dur); },
       onEnded: () => this.emit('ended'),
       onError: (err) => this.emit('error', err),
       getActiveClient: () => this.activeClient,
@@ -82,9 +63,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     });
 
     if (options.mediaElement) {
-      this.audioDriver.initialize(options.mediaElement).catch((err) => {
-        this.emit('error', err);
-      });
+      this.audioDriver.initialize(options.mediaElement).catch((err) => { this.emit('error', err); });
     }
   }
 
@@ -144,6 +123,17 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   async playTrack(track: Track): Promise<void> {
     const existingIndex = this.queueManager.findIndexByVideoId(track.videoId);
     if (existingIndex !== -1) {
+      if (existingIndex === this.getCurrentIndex()) {
+        const isLoaded = typeof (this.audioDriver as any).hasLoadedStream === 'function'
+          ? (this.audioDriver as any).hasLoadedStream()
+          : true;
+        if (isLoaded) {
+          this.playbackState = 'playing';
+          this.emit('stateChange', 'playing');
+          await this.audioDriver.play();
+          return;
+        }
+      }
       await this.play(existingIndex);
     } else {
       const insertIdx = this.queueManager.insertAfterCurrent(track);
@@ -153,7 +143,19 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   }
 
   async play(index?: number, startTime?: number): Promise<void> {
+    const prevTrack = this.getCurrentTrack();
     if (typeof index === 'number') {
+      if (index === this.getCurrentIndex() && this.getCurrentTrack() && startTime === undefined) {
+        const isLoaded = typeof (this.audioDriver as any).hasLoadedStream === 'function'
+          ? (this.audioDriver as any).hasLoadedStream()
+          : true;
+        if (isLoaded) {
+          this.playbackState = 'playing';
+          this.emit('stateChange', 'playing');
+          await this.audioDriver.play();
+          return;
+        }
+      }
       if (index < 0 || index >= this.queueManager.getLength()) return;
       this.queueManager.setCurrentIndex(index);
       this.driverCoordinator.resetPrefetch();
@@ -161,9 +163,9 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     } else if (startTime === undefined) {
       const isLoaded = typeof (this.audioDriver as any).hasLoadedStream === 'function'
         ? (this.audioDriver as any).hasLoadedStream()
-        : this.audioDriver.getState() === 'paused';
+        : true;
 
-      if (this.getCurrentTrack() && isLoaded && (this.audioDriver.isPaused() || this.playbackState === 'paused')) {
+      if (this.getCurrentTrack() && isLoaded) {
         this.playbackState = 'playing';
         this.emit('stateChange', 'playing');
         await this.audioDriver.play();
@@ -174,9 +176,12 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     const currentTrack = this.getCurrentTrack();
     if (!currentTrack) return;
 
+    const isNewTrack = !prevTrack || prevTrack.videoId !== currentTrack.videoId;
+    if (isNewTrack && startTime === undefined) this.currentTime = 0;
+
     const startSeek = typeof startTime === 'number'
       ? startTime
-      : this.playbackState === 'error' ? Math.max(0, this.currentTime) : 0;
+      : (!isNewTrack && this.playbackState === 'error' ? Math.max(0, this.currentTime) : 0);
 
     if (this.playbackState === 'error') invalidateStreamCache(currentTrack.videoId);
 
@@ -219,7 +224,11 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     }
   }
 
-  async pause(): Promise<void> { await this.audioDriver.pause(); }
+  async pause(): Promise<void> {
+    this.playbackState = 'paused';
+    this.emit('stateChange', 'paused');
+    await this.audioDriver.pause();
+  }
 
   async togglePlay(): Promise<void> {
     if (this.playbackState === 'playing' || !this.audioDriver.isPaused()) {
@@ -242,7 +251,6 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   }
 
   getVolume(): number { return this.volume; }
-
   setPlaybackRate(rate: number): void {
     this.playbackRate = rate;
     this.audioDriver.setPlaybackRate(rate);
@@ -264,10 +272,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   }
 
   async previous(): Promise<void> {
-    if (this.currentTime > 3) {
-      await this.seek(0);
-      return;
-    }
+    if (this.currentTime > 3) { await this.seek(0); return; }
     const prevIdx = this.queueManager.getPreviousIndex();
     if (prevIdx !== null) await this.play(prevIdx);
     else await this.seek(0);
@@ -277,7 +282,6 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   getRepeatMode(): RepeatMode { return this.queueManager.getRepeatMode(); }
   setShuffle(shuffle: boolean): void { this.queueManager.setShuffle(shuffle); }
   getShuffle(): boolean { return this.queueManager.getShuffle(); }
-
   search(query: string, clientName?: InnerTubeClientName): Promise<Track[]> { return this.innerTube.search(query, clientName); }
   getHomeFeed(moodParam?: string): Promise<HomeFeedData> { return this.innerTube.getHomeFeed(moodParam); }
   getExploreFeed(): Promise<HomeFeedData> { return this.innerTube.getExploreFeed(); }

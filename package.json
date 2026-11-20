@@ -11,6 +11,7 @@
     "dev:ext": "pnpm --filter @mp/extension dev",
     "dev:api": "pnpm --filter @mp/api dev",
     "dev:worker": "pnpm --filter @mp/worker dev",
+    "package:ext": "pnpm --filter @mp/extension zip && mkdir -p frontend/app/public/downloads && cp frontend/extension/.output/*.zip frontend/app/public/downloads/ganegan-extension.zip",
     "db:up": "docker compose up -d postgres redis",
     "db:down": "docker compose down",
     "db:migrate": "pnpm --filter @mp/db migrate",

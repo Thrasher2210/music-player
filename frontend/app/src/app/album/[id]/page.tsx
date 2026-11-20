@@ -101,6 +101,11 @@ export default function AlbumPage() {
 
   const handleTrackSelect = (track: Track, index: number) => {
     if (!album) return;
+    const isCurrent = currentTrack && (currentTrack.videoId === track.videoId || currentTrack.id === track.id);
+    if (isCurrent) {
+      togglePlay();
+      return;
+    }
     setQueue(album.tracks, index, false);
     playTrack(track);
   };
