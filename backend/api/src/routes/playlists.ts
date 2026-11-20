@@ -19,11 +19,16 @@ export const playlistsRoutes: FastifyPluginAsync = async (app) => {
   app.get("/", async (req) => {
     const userId = await requireUser(req);
     const rows = await db
-      .select()
+      .select({
+        playlist: schema.playlists,
+        trackCount: sql<number>`count(${schema.playlistTracks.id})::int`,
+      })
       .from(schema.playlists)
+      .leftJoin(schema.playlistTracks, eq(schema.playlistTracks.playlistId, schema.playlists.id))
       .where(eq(schema.playlists.userId, userId))
+      .groupBy(schema.playlists.id)
       .orderBy(desc(schema.playlists.createdAt));
-    return { playlists: rows };
+    return { playlists: rows.map(({ playlist, trackCount }) => ({ ...playlist, trackCount })) };
   });
 
   app.post("/", async (req, reply) => {
