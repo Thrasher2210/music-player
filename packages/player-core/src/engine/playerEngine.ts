@@ -177,7 +177,10 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     if (!currentTrack) return;
 
     const isNewTrack = !prevTrack || prevTrack.videoId !== currentTrack.videoId;
-    if (isNewTrack && startTime === undefined) this.currentTime = 0;
+    if (isNewTrack && startTime === undefined) {
+      this.currentTime = 0;
+      this.emit('timeUpdate', 0);
+    }
 
     const startSeek = typeof startTime === 'number'
       ? startTime
@@ -211,9 +214,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       this.driverCoordinator.resetRecovery();
 
       const nextTrack = this.queueManager.getTrackAt(this.getCurrentIndex() + 1);
-      if (nextTrack?.videoId) {
-        prefetchAudioWarmup(nextTrack, this.networkAdapter, this.verdictCache).catch(() => {});
-      }
+      if (nextTrack?.videoId) prefetchAudioWarmup(nextTrack, this.networkAdapter, this.verdictCache).catch(() => {});
     } catch (err: any) {
       if (currentRequestId !== this.playRequestId) return;
       this.playbackState = 'error';

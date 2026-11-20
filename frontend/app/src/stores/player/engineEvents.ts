@@ -21,9 +21,11 @@ export function bindEngineEvents(engine: PlayerEngine, set: StoreSet, get: Store
     (engine as any).on('playbackRateChange', (rate: number) => set({ playbackRate: rate }));
   }
 
+  let lastTrackVideoId: string | null = null;
+
   engine.on('trackChange', (track, index) => {
-    const prev = get().currentTrack;
-    const isSameVideo = Boolean(prev?.videoId && track?.videoId && prev.videoId === track.videoId);
+    const isSameVideo = Boolean(track?.videoId && lastTrackVideoId === track.videoId);
+    lastTrackVideoId = track?.videoId || null;
     const cached = track?.videoId ? lyricsCache.get(track.videoId) : null;
     set({
       currentTrack: track ? { ...track } : null,

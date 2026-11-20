@@ -94,9 +94,12 @@ export const createPlaybackSlice = (set: StoreSet, get: StoreGet) => ({
     }
     if (!engine) return;
 
+    const prevTrack = get().currentTrack;
+    const isNew = !prevTrack || prevTrack.videoId !== track.videoId;
     const cached = track.videoId ? lyricsCache.get(track.videoId) : null;
     set({
       currentTrack: track,
+      ...(isNew ? { currentTime: 0, bufferedAheadSeconds: 0, bufferedPercent: 0 } : {}),
       playbackState: 'playing',
       error: null,
       lyrics: cached || null,
@@ -187,6 +190,7 @@ export const createPlaybackSlice = (set: StoreSet, get: StoreGet) => ({
   next: async () => {
     const engine = get().engine || getSharedEngine();
     if (engine) {
+      set({ currentTime: 0, bufferedAheadSeconds: 0, bufferedPercent: 0 });
       try {
         await engine.next();
       } catch (err: any) {
@@ -214,6 +218,7 @@ export const createPlaybackSlice = (set: StoreSet, get: StoreGet) => ({
   previous: async () => {
     const engine = get().engine || getSharedEngine();
     if (engine) {
+      set({ currentTime: 0, bufferedAheadSeconds: 0, bufferedPercent: 0 });
       try {
         await engine.previous();
       } catch (err: any) {
@@ -281,11 +286,6 @@ export const createPlaybackSlice = (set: StoreSet, get: StoreGet) => ({
     set({ playbackRate: rate });
   },
 
-  setSleepTimer: (mode: SleepTimerMode) => {
-    handleSleepTimer(mode, set, get);
-  },
-
-  fetchLyrics: async (track: Track): Promise<LyricsResponse | null> => {
-    return fetchLyricsService(track, set, get);
-  },
+  setSleepTimer: (mode: SleepTimerMode) => handleSleepTimer(mode, set, get),
+  fetchLyrics: (track: Track): Promise<LyricsResponse | null> => fetchLyricsService(track, set, get),
 });

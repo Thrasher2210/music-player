@@ -135,29 +135,27 @@ export class ShakaMseAudioDriver implements AudioDriver {
         await (this.player as any).unload();
         await (this.player as any).detach();
         await (this.player as any).attach(this.mediaElement);
-        if (this.sabrPlayerAdapter) {
-          this.sabrPlayerAdapter.attachFiltersToPlayer(this.player!);
-        }
-      } catch {
-        // Fallback
-      }
+        if (this.sabrPlayerAdapter) this.sabrPlayerAdapter.attachFiltersToPlayer(this.player!);
+      } catch {}
     }
 
-    if (this.activeBlobUrl && this.activeBlobUrl.startsWith('blob:') && typeof URL !== 'undefined') {
-      try {
-        URL.revokeObjectURL(this.activeBlobUrl);
-      } catch {
-        // Ignore
-      }
+    if (this.activeBlobUrl?.startsWith('blob:') && typeof URL !== 'undefined') {
+      try { URL.revokeObjectURL(this.activeBlobUrl); } catch {}
       this.activeBlobUrl = null;
     }
 
     if (src.startsWith('blob:')) this.activeBlobUrl = src;
+    if (this.mediaElement) {
+      try { this.mediaElement.currentTime = startTime; } catch {}
+    }
     this.setState('loading');
 
     try {
       await (this.player as any).load(src, startTime);
-      if (this.mediaElement) this.mediaElement.playbackRate = this.playbackRate;
+      if (this.mediaElement) {
+        try { this.mediaElement.currentTime = startTime; } catch {}
+        this.mediaElement.playbackRate = this.playbackRate;
+      }
       this.setState('paused');
     } catch (err: any) {
       this.setState('error');
