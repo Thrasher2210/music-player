@@ -14,6 +14,11 @@ export interface PlayHistoryItem {
   videoId: string;
   playedAt: string;
   msPlayed: number;
+  /** Track details, null for plays recorded without them. */
+  title?: string | null;
+  artist?: string | null;
+  albumArt?: string | null;
+  durationSec?: number | null;
 }
 
 export interface LibraryState {
@@ -31,6 +36,6 @@ export interface LibraryState {
   deletePlaylist: (id: string) => Promise<boolean>;
   addTracksToPlaylist: (playlistId: string, tracks: Track[]) => Promise<boolean>;
   removeTrackFromPlaylist: (playlistId: string, videoId: string) => Promise<boolean>;
-  recordPlayHistory: (videoId: string, msPlayed?: number) => Promise<void>;
+  recordPlayHistory: (track: Track, msPlayed?: number) => Promise<void>;
   fetchPlaylistTracks: (playlistId: string) => Promise<Track[]>;
 }

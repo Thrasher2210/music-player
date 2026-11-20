@@ -7,8 +7,11 @@ import {
   lyricsCache,
   debouncedFetchLyrics,
 } from './engineContext';
+import { createHistoryRecorder, recordPlay } from './historyRecorder';
 
 export function bindEngineEvents(engine: PlayerEngine, set: StoreSet, get: StoreGet) {
+  const history = createHistoryRecorder(recordPlay);
+
   engine.on('stateChange', (state) => {
     set({ playbackState: state, error: state === 'error' ? get().error : null });
     if (get().sleepTimerMode === 'end_of_track' && (state === 'idle' || state === 'ended')) {
@@ -26,6 +29,7 @@ export function bindEngineEvents(engine: PlayerEngine, set: StoreSet, get: Store
   engine.on('trackChange', (track, index) => {
     const isSameVideo = Boolean(track?.videoId && lastTrackVideoId === track.videoId);
     lastTrackVideoId = track?.videoId || null;
+    history.trackChange(track);
     const cached = track?.videoId ? lyricsCache.get(track.videoId) : null;
     set({
       currentTrack: track ? { ...track } : null,
@@ -53,6 +57,7 @@ export function bindEngineEvents(engine: PlayerEngine, set: StoreSet, get: Store
 
   engine.on('timeUpdate', (time) => {
     set({ currentTime: time });
+    history.timeUpdate(time, get().duration);
     const driver = engine.getAudioDriver() as any;
     const mediaEl = getSharedMediaElement() || driver?.mediaElement;
     updateBufferStatus(mediaEl, time, get().duration, set);
@@ -78,6 +83,7 @@ export function bindEngineEvents(engine: PlayerEngine, set: StoreSet, get: Store
 
   engine.on('error', (err) => set({ error: err.message || 'Playback error occurred' }));
   engine.on('ended', () => {
+    history.ended();
     set({ playbackState: 'ended' });
     if (get().sleepTimerMode === 'end_of_track') {
       get().pause().catch(() => {});

@@ -75,6 +75,10 @@ export async function fetchLibraryData(): Promise<LibraryFetchResult> {
         videoId: h.videoId,
         playedAt: h.playedAt,
         msPlayed: h.msPlayed ?? 0,
+        title: h.title ?? null,
+        artist: h.artist ?? null,
+        albumArt: h.albumArt ?? null,
+        durationSec: h.durationSec ?? null,
       }));
     }
   }
@@ -221,20 +225,46 @@ export async function removeTrackFromPlaylistApi(
   return res.ok;
 }
 
+const MAX_TEXT_LENGTH = 500;
+
+/** Records a play and returns it as stored, or null when the server did not accept it (e.g. guests). */
 export async function recordPlayHistoryApi(
-  videoId: string,
+  track: Track,
   msPlayed: number = 0
-): Promise<void> {
-  if (!videoId) return;
+): Promise<PlayHistoryItem | null> {
+  const videoId = track.videoId || track.id;
+  if (!videoId) return null;
+
+  const hasDetails = Boolean(track.title && track.artist);
+  const details = hasDetails
+    ? {
+        title: track.title.slice(0, MAX_TEXT_LENGTH),
+        artist: track.artist.slice(0, MAX_TEXT_LENGTH),
+        albumArt: track.thumbnail || null,
+        durationSec: track.duration > 0 ? Math.round(track.duration) : undefined,
+      }
+    : {};
+
   try {
-    await fetch('/api/history', {
+    const res = await fetch('/api/history', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ videoId, msPlayed }),
+      body: JSON.stringify({ videoId, msPlayed, ...details }),
     });
+    if (!res.ok) return null;
+    return {
+      videoId,
+      playedAt: new Date().toISOString(),
+      msPlayed,
+      title: details.title ?? null,
+      artist: details.artist ?? null,
+      albumArt: details.albumArt ?? null,
+      durationSec: details.durationSec ?? null,
+    };
   } catch (err) {
     console.debug('Failed to record history:', err);
+    return null;
   }
 }
 
