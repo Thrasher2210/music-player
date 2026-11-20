@@ -7,6 +7,10 @@ let cachedYt: any = null;
  * Resolves streams and SABR audio formats when standard endpoints are bot-checked.
  */
 export async function fetchWebPlayerFallback(videoId: string): Promise<PlayerResponse | null> {
+  // If running in browser without the companion extension, skip to avoid naked CORS preflight errors
+  if (typeof window !== 'undefined' && !(window as any).__MP_EXTENSION_ACTIVE__) {
+    return null;
+  }
   try {
     const { Innertube } = await import('youtubei.js/web');
     if (!cachedYt) {

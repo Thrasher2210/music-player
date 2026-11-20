@@ -17,10 +17,17 @@ export default defineConfig({
       "https://www.youtube.com/*",
       "https://youtube.com/*",
       "https://*.googlevideo.com/*",
+      "https://*.nip.io/*",
+      "http://localhost/*",
+      "http://127.0.0.1/*",
     ],
     // Origins allowed to message the extension (page bridge target)
     externally_connectable: {
-      matches: ["http://localhost:3000/*", "https://app.example.com/*"],
+      matches: [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://*.nip.io/*",
+      ],
     },
   },
   // Rebuild when the app's bridge code changes during development

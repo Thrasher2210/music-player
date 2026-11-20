@@ -23,6 +23,9 @@ ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" 'bash
   echo "--> Installing dependencies if needed..."
   pnpm install
 
+  echo "--> Packaging companion extension..."
+  pnpm package:ext
+
   echo "--> Building packages sequentially (memory-safe)..."
   pnpm --workspace-concurrency=1 build
 

@@ -88,6 +88,14 @@ export const useYouTubeAuthStore = create<YouTubeAuthState>((set, get) => ({
         isYouTubeAuthenticated: connected,
         youtubeAccount: account,
       });
+
+      if (typeof window !== 'undefined') {
+        import('./playerStore')
+          .then(({ usePlayerStore }) => {
+            usePlayerStore.getState().setNetworkAdapterType('web-extension');
+          })
+          .catch(() => {});
+      }
     } catch (err) {
       console.warn('[youtubeAuthStore] checkStatus failed:', err);
       set({

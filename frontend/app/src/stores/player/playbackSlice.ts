@@ -50,8 +50,19 @@ export const createPlaybackSlice = (set: StoreSet, get: StoreGet) => ({
     }
 
     if (mediaElement) setSharedMediaElement(mediaElement);
-    const adapterType: NetworkAdapterType = get().networkAdapterType || 'dev-proxy';
+    const hasExtension = Boolean((window as any).__MP_EXTENSION_ACTIVE__);
+    const adapterType: NetworkAdapterType =
+      get().networkAdapterType || (hasExtension ? 'web-extension' : 'dev-proxy');
     const adapter = createNetworkAdapter(adapterType);
+
+    if (!(window as any).__MP_EXT_LISTENER_BOUND__) {
+      (window as any).__MP_EXT_LISTENER_BOUND__ = true;
+      window.addEventListener('message', (event) => {
+        if (event.data?.type === 'MP_EXTENSION_READY') {
+          get().setNetworkAdapterType('web-extension');
+        }
+      });
+    }
 
     const engine = new PlayerEngine({
       networkAdapter: adapter,

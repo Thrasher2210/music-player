@@ -19,6 +19,7 @@ import {
   Heart,
   Sparkles,
   Youtube,
+  Puzzle,
 } from 'lucide-react';
 import { type Playlist } from '../../stores/libraryStore';
 import { useYouTubeAuthStore } from '../../stores/youtubeAuthStore';
@@ -37,6 +38,7 @@ export function ShellSidebar({
   onCreatePlaylist,
 }: ShellSidebarProps) {
   const syncedPlaylists = useYouTubeAuthStore((s) => s.syncedPlaylists);
+  const isExtensionInstalled = useYouTubeAuthStore((s) => s.isExtensionInstalled);
   const allPlaylists: Playlist[] = [
     ...playlists,
     ...syncedPlaylists
@@ -126,6 +128,23 @@ export function ShellSidebar({
       </div>
 
       <SidebarFooter>
+        <SidebarNavItem
+          icon={<Puzzle className="h-4 w-4 text-emerald-400" />}
+          label="Extension"
+          badge={
+            isExtensionInstalled ? (
+              <Badge variant="glass" size="xs">
+                Active
+              </Badge>
+            ) : (
+              <Badge variant="glass" size="xs">
+                Get
+              </Badge>
+            )
+          }
+          active={pathname === '/extension'}
+          onClick={() => onNavigate('/extension')}
+        />
         <SidebarNavItem
           icon={<Sparkles className="h-4 w-4 text-emerald-400" />}
           label="Dying 2.0 Design System"

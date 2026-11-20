@@ -1,8 +1,13 @@
 export default defineContentScript({
   matches: [
-    "http://localhost:3000/*",
-    "http://127.0.0.1:3000/*",
-    "https://app.example.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*",
+    "https://*.nip.io/*",
+    "https://*.pages.dev/*",
+    "https://*.vercel.app/*",
+    "<all_urls>",
   ],
   runAt: "document_start",
   main() {
