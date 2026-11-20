@@ -177,6 +177,9 @@ export class WebExtensionAdapter implements NetworkAdapter {
             settled = true;
             clearTimeout(timer);
             window.removeEventListener('message', handleMessage);
+            if (data.active) {
+              (window as any).__MP_EXTENSION_ACTIVE__ = true;
+            }
             resolve(Boolean(data.active));
           }
         }

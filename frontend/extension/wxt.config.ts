@@ -2,9 +2,15 @@ import { defineConfig } from "wxt";
 
 export default defineConfig({
   manifest: {
-    name: "Music Player Bridge",
+    name: "GaneGan — YouTube Music Bridge",
     description:
-      "Bridges your YouTube session to the Music Player web app. Cookies never leave your browser.",
+      "Bridges your YouTube session to GaneGan for ad-free music, personalized mixes, and synced playlists.",
+    icons: {
+      16: "icons/icon-16.png",
+      32: "icons/icon-32.png",
+      48: "icons/icon-48.png",
+      128: "icons/icon-128.png",
+    },
     permissions: ["cookies", "declarativeNetRequest", "storage"],
     host_permissions: [
       "https://music.youtube.com/*",

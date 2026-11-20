@@ -9,15 +9,13 @@ export default defineContentScript({
     // Set property on window in extension context
     (window as any).__MP_EXTENSION_ACTIVE__ = true;
 
-    // Inject into DOM main world as well to guarantee page-level access
-    try {
-      const script = document.createElement("script");
-      script.textContent =
-        "window.__MP_EXTENSION_ACTIVE__ = true; window.dispatchEvent(new CustomEvent('mp-extension-active'));";
-      (document.head || document.documentElement).appendChild(script);
-      script.remove();
-    } catch {
-      // Ignore if document not ready or CSP blocks inline script
+    // Notify the page via postMessage without injecting inline scripts (preserves strict CSP)
+    const announceReady = () => {
+      window.postMessage({ type: "MP_EXTENSION_READY", active: true }, "*");
+    };
+    announceReady();
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", announceReady, { once: true });
     }
 
     const FORWARDED_TYPES = [
