@@ -10,9 +10,14 @@ import { likesRoutes } from "./routes/likes.js";
 import { historyRoutes } from "./routes/history.js";
 import { lyricsRoutes } from "./routes/lyrics.js";
 import { importRoutes } from "./routes/import.js";
-import { getRateLimitPluginOptions, type RateLimitOptions } from "./rateLimit.js";
+import {
+  createCredentialRateLimiter,
+  getRateLimitPluginOptions,
+  type RateLimitOptions,
+} from "./rateLimit.js";
+import { parseTrustProxy } from "./trustProxy.js";
 import { closeDb } from "@mp/db";
-import { closeRedis } from "./redis.js";
+import { closeRedis, waitForRedisReady } from "./redis.js";
 
 export interface BuildServerOptions {
   logger?: boolean;
@@ -23,7 +28,7 @@ export async function buildServer(opts?: BuildServerOptions): Promise<FastifyIns
   const isTest = process.env.NODE_ENV === "test";
   const app = Fastify({
     logger: opts?.logger ?? (isTest ? false : true),
-    trustProxy: true,
+    trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
   });
 
   await app.register(cors, {
@@ -37,18 +42,21 @@ export async function buildServer(opts?: BuildServerOptions): Promise<FastifyIns
   const rateLimitEnabled = opts?.rateLimit?.enabled ?? !isTest;
   if (rateLimitEnabled) {
     await app.register(rateLimit, getRateLimitPluginOptions(opts?.rateLimit));
+    await waitForRedisReady();
   }
+  const limitCredentials = rateLimitEnabled ? createCredentialRateLimiter(app) : undefined;
 
   // Better Auth mounts all of /api/auth/*. Handled in onRequest so Fastify's
   // body parser never consumes the stream — Better Auth parses it itself.
-  app.addHook("onRequest", (req, reply, done) => {
+  app.addHook("onRequest", async (req, reply) => {
     const url = req.raw.url?.split("?")[0];
-    if (url === "/api/auth" || url?.startsWith("/api/auth/")) {
-      void reply.hijack();
-      toNodeHandler(auth)(req.raw, reply.raw);
-      return;
-    }
-    done();
+    if (url !== "/api/auth" && !url?.startsWith("/api/auth/")) return;
+    if (await limitCredentials?.(req, reply)) return reply;
+    // Better Auth keys its own limiter on X-Forwarded-For and only accepts a
+    // single value, so hand it the address Fastify resolved through trustProxy.
+    req.raw.headers["x-forwarded-for"] = req.ip;
+    reply.hijack();
+    toNodeHandler(auth)(req.raw, reply.raw);
   });
 
   app.get("/healthz", async () => ({ ok: true, ts: Date.now() }));
