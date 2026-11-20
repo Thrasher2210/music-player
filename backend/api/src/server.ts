@@ -2,6 +2,7 @@ import { toNodeHandler } from "better-auth/node";
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
+import rateLimit from "@fastify/rate-limit";
 import { fileURLToPath } from "node:url";
 import { auth, trustedOrigins } from "./auth.js";
 import { playlistsRoutes } from "./routes/playlists.js";
@@ -9,11 +10,19 @@ import { likesRoutes } from "./routes/likes.js";
 import { historyRoutes } from "./routes/history.js";
 import { lyricsRoutes } from "./routes/lyrics.js";
 import { importRoutes } from "./routes/import.js";
+import { getRateLimitPluginOptions, type RateLimitOptions } from "./rateLimit.js";
 import { closeDb } from "@mp/db";
+import { closeRedis } from "./redis.js";
 
-export async function buildServer(opts?: { logger?: boolean }): Promise<FastifyInstance> {
+export interface BuildServerOptions {
+  logger?: boolean;
+  rateLimit?: RateLimitOptions;
+}
+
+export async function buildServer(opts?: BuildServerOptions): Promise<FastifyInstance> {
+  const isTest = process.env.NODE_ENV === "test";
   const app = Fastify({
-    logger: opts?.logger ?? (process.env.NODE_ENV === "test" ? false : true),
+    logger: opts?.logger ?? (isTest ? false : true),
     trustProxy: true,
   });
 
@@ -23,6 +32,12 @@ export async function buildServer(opts?: { logger?: boolean }): Promise<FastifyI
   });
 
   await app.register(cookie);
+
+  // Rate limiting: enabled by default in prod/dev, configurable in tests
+  const rateLimitEnabled = opts?.rateLimit?.enabled ?? !isTest;
+  if (rateLimitEnabled) {
+    await app.register(rateLimit, getRateLimitPluginOptions(opts?.rateLimit));
+  }
 
   // Better Auth mounts all of /api/auth/*. Handled in onRequest so Fastify's
   // body parser never consumes the stream — Better Auth parses it itself.
@@ -46,6 +61,7 @@ export async function buildServer(opts?: { logger?: boolean }): Promise<FastifyI
 
   app.addHook("onClose", async () => {
     await closeDb();
+    await closeRedis();
   });
 
   return app;

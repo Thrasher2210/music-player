@@ -1,4 +1,4 @@
-import { Redis } from "ioredis";
+import { getRedisClient } from "./redis.js";
 
 /**
  * Cache abstraction: Redis when REDIS_URL is set, in-memory LRU otherwise.
@@ -34,22 +34,13 @@ export interface Cache {
 }
 
 export function createCache(): Cache {
-  const url = process.env.REDIS_URL;
-  if (!url) {
-    console.warn("[cache] REDIS_URL not set — using in-memory cache (dev mode)");
+  const redis = getRedisClient();
+  if (!redis) {
     return {
       get: async (key) => memGet(key),
       set: async (key, value, ttl) => memSet(key, value, ttl),
     };
   }
-
-  const redis = new Redis(url, { maxRetriesPerRequest: 2, lazyConnect: true });
-  void redis.connect().catch((err) => {
-    console.error("[cache] Redis connect failed, falling back to memory:", err.message);
-  });
-  redis.on("error", () => {
-    /* handled via fallback below */
-  });
 
   return {
     get: async (key) => {

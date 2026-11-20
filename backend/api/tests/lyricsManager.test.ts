@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { lyricsResponseSchema } from '@mp/api-contract';
 import { LyricsManager } from '../src/lyrics/manager.js';
@@ -199,6 +199,12 @@ describe('7. LyricsManager Orchestration (Cache -> DB -> Cascade)', () => {
 });
 
 describe('8. Fastify Lyrics Route Handler', () => {
+  after(async () => {
+    const { closeDb } = await import('@mp/db');
+    const { closeRedis } = await import('../src/redis.js');
+    await closeDb();
+    await closeRedis();
+  });
   it('returns 400 when videoId is missing', async () => {
     const fastifyModule = await import('fastify');
     const Fastify = fastifyModule.default;

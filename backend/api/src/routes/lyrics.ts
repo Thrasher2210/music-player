@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { lyricsResponseSchema } from "@mp/api-contract";
 import { LyricsManager } from "../lyrics/index.js";
+import { lyricsRateLimitConfig } from "../rateLimit.js";
 
 const lyricsManager = new LyricsManager();
 
@@ -12,7 +13,7 @@ interface LyricsQueryParams {
 }
 
 export const lyricsRoutes: FastifyPluginAsync = async (app) => {
-  app.get("/", async (req, reply) => {
+  app.get("/", lyricsRateLimitConfig, async (req, reply) => {
     const { videoId, title, artist, durationSec } = req.query as LyricsQueryParams;
     if (!videoId) {
       return reply.status(400).send({ error: "videoId_required" });

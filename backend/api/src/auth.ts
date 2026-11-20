@@ -15,6 +15,20 @@ export const auth = betterAuth({
   database: drizzleAdapter(getDb(), {
     provider: "pg",
   }),
+  advanced: {
+    ipAddress: {
+      ipAddressHeaders: ["x-forwarded-for", "cf-connecting-ip", "x-real-ip"],
+    },
+  },
+  rateLimit: {
+    enabled: process.env.NODE_ENV !== "test",
+    window: 60,
+    max: 10,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+      "/sign-up/email": { window: 60, max: 5 },
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },
