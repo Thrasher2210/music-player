@@ -33,6 +33,8 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   private playbackRate = 1.0;
   private activeClient: InnerTubeClientName | null = null;
   private playRequestId = 0;
+  private loadedVideoId: string | null = null;
+  private reportedErrors = new WeakSet<object>();
 
   constructor(options: PlayerEngineOptions = {}) {
     super();
@@ -52,7 +54,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       onRateChange: (rate) => { this.playbackRate = rate; this.emit('playbackRateChange', rate); },
       onDurationChange: (dur) => { this.duration = dur; this.emit('durationChange', dur); },
       onEnded: () => this.emit('ended'),
-      onError: (err) => this.emit('error', err),
+      onError: (err) => this.emitError(err),
       getActiveClient: () => this.activeClient,
       getCurrentTime: () => this.currentTime,
       getDuration: () => this.duration,
@@ -63,8 +65,27 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     });
 
     if (options.mediaElement) {
-      this.audioDriver.initialize(options.mediaElement).catch((err) => { this.emit('error', err); });
+      this.audioDriver.initialize(options.mediaElement).catch((err) => { this.emitError(err); });
     }
+  }
+
+  /** Emits `error` once per Error object, however many callers surface it. */
+  private emitError(err: Error): void {
+    if (typeof err === 'object' && err !== null) {
+      if (this.reportedErrors.has(err)) return;
+      this.reportedErrors.add(err);
+    }
+    this.emit('error', err);
+  }
+
+  private isTrackLoaded(track: Track): boolean {
+    return (this.audioDriver.hasLoadedStream?.() ?? true) && this.loadedVideoId === track.videoId;
+  }
+
+  private async resumeLoaded(): Promise<void> {
+    this.playbackState = 'playing';
+    this.emit('stateChange', 'playing');
+    await this.audioDriver.play();
   }
 
   setNetworkAdapter(adapter: NetworkAdapter): void {
@@ -85,7 +106,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
     const { selectedIndex, selectedTrack } = this.queueManager.setQueue(tracks, startIndex);
     this.emit('queueChange', this.getQueue());
     if (selectedTrack) {
-      if (autoPlay) this.play(selectedIndex).catch((err) => this.emit('error', err));
+      if (autoPlay) this.play(selectedIndex).catch((err) => this.emitError(err));
       else this.emit('trackChange', selectedTrack, selectedIndex);
     } else {
       this.emit('trackChange', null, -1);
@@ -107,7 +128,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       this.pause();
       this.emit('trackChange', null, -1);
     } else if (nextAction === 'playNext') {
-      this.play(nextIndex).catch((err) => this.emit('error', err));
+      this.play(nextIndex).catch((err) => this.emitError(err));
     } else if (nextAction === 'shifted') {
       this.emit('trackChange', this.getCurrentTrack(), nextIndex);
     }
@@ -123,16 +144,8 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   async playTrack(track: Track): Promise<void> {
     const existingIndex = this.queueManager.findIndexByVideoId(track.videoId);
     if (existingIndex !== -1) {
-      if (existingIndex === this.getCurrentIndex()) {
-        const isLoaded = typeof (this.audioDriver as any).hasLoadedStream === 'function'
-          ? (this.audioDriver as any).hasLoadedStream()
-          : true;
-        if (isLoaded) {
-          this.playbackState = 'playing';
-          this.emit('stateChange', 'playing');
-          await this.audioDriver.play();
-          return;
-        }
+      if (existingIndex === this.getCurrentIndex() && this.isTrackLoaded(track)) {
+        return this.resumeLoaded();
       }
       await this.play(existingIndex);
     } else {
@@ -143,40 +156,24 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
   }
 
   async play(index?: number, startTime?: number): Promise<void> {
-    const prevTrack = this.getCurrentTrack();
     if (typeof index === 'number') {
-      if (index === this.getCurrentIndex() && this.getCurrentTrack() && startTime === undefined) {
-        const isLoaded = typeof (this.audioDriver as any).hasLoadedStream === 'function'
-          ? (this.audioDriver as any).hasLoadedStream()
-          : true;
-        if (isLoaded) {
-          this.playbackState = 'playing';
-          this.emit('stateChange', 'playing');
-          await this.audioDriver.play();
-          return;
-        }
+      const current = this.getCurrentTrack();
+      if (index === this.getCurrentIndex() && current && startTime === undefined && this.isTrackLoaded(current)) {
+        return this.resumeLoaded();
       }
       if (index < 0 || index >= this.queueManager.getLength()) return;
       this.queueManager.setCurrentIndex(index);
       this.driverCoordinator.resetPrefetch();
       this.driverCoordinator.resetRecovery();
     } else if (startTime === undefined) {
-      const isLoaded = typeof (this.audioDriver as any).hasLoadedStream === 'function'
-        ? (this.audioDriver as any).hasLoadedStream()
-        : true;
-
-      if (this.getCurrentTrack() && isLoaded) {
-        this.playbackState = 'playing';
-        this.emit('stateChange', 'playing');
-        await this.audioDriver.play();
-        return;
-      }
+      const current = this.getCurrentTrack();
+      if (current && this.isTrackLoaded(current)) return this.resumeLoaded();
     }
 
     const currentTrack = this.getCurrentTrack();
     if (!currentTrack) return;
 
-    const isNewTrack = !prevTrack || prevTrack.videoId !== currentTrack.videoId;
+    const isNewTrack = this.loadedVideoId !== currentTrack.videoId;
     if (isNewTrack && startTime === undefined) {
       this.currentTime = 0;
       this.emit('timeUpdate', 0);
@@ -204,6 +201,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       );
       if (currentRequestId !== this.playRequestId) return;
 
+      this.loadedVideoId = currentTrack.videoId;
       this.activeClient = prep.client;
       this.emit('walkVerdict', prep.verdicts, prep.client);
       if (prep.updatedDuration) {
@@ -220,7 +218,7 @@ export class PlayerEngine extends TypedEventEmitter<PlayerEngineEvents> {
       this.playbackState = 'error';
       this.emit('stateChange', 'error');
       const error = new Error(`[PlayerEngine] Failed to play track "${currentTrack.title}": ${err?.message || err}`);
-      this.emit('error', error);
+      this.emitError(error);
       throw error;
     }
   }
