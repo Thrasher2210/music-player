@@ -1,7 +1,14 @@
 import type { FastifyPluginAsync } from "fastify";
 import { auth } from "../auth.js";
 import { getDb, schema } from "@mp/db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, gte, inArray } from "drizzle-orm";
+import {
+  addTracksBody,
+  createPlaylistBody,
+  idParams,
+  parseRequest,
+  playlistTrackParams,
+} from "./schemas.js";
 
 export const requireUser = async (req: any): Promise<string> => {
   const session = await auth.api.getSession({ headers: req.headers });
@@ -28,21 +35,12 @@ export const playlistsRoutes: FastifyPluginAsync = async (app) => {
 
   app.post("/", async (req, reply) => {
     const userId = await requireUser(req);
-    const body = (req.body ?? {}) as {
-      name?: string;
-      source?: "local" | "spotify" | "youtube";
-      ytPlaylistId?: string;
-      coverArt?: string;
-      description?: string;
-    };
-    if (!body.name?.trim()) {
-      return reply.status(400).send({ error: "name_required" });
-    }
+    const body = parseRequest(createPlaylistBody, req.body ?? {});
     const [row] = await db
       .insert(schema.playlists)
       .values({
         userId,
-        name: body.name.trim(),
+        name: body.name,
         source: body.source === "youtube" ? "youtube" : "local",
         ytPlaylistId: body.ytPlaylistId,
         coverArt: body.coverArt,
@@ -54,7 +52,7 @@ export const playlistsRoutes: FastifyPluginAsync = async (app) => {
 
   app.get("/:id/tracks", async (req, reply) => {
     const userId = await requireUser(req);
-    const { id } = req.params as { id: string };
+    const { id } = parseRequest(idParams, req.params);
     const [playlist] = await db
       .select()
       .from(schema.playlists)
@@ -73,20 +71,8 @@ export const playlistsRoutes: FastifyPluginAsync = async (app) => {
 
   app.post("/:id/tracks", async (req, reply) => {
     const userId = await requireUser(req);
-    const { id } = req.params as { id: string };
-    const body = (req.body ?? {}) as {
-      tracks?: Array<{
-        videoId: string;
-        title: string;
-        artist: string;
-        albumArt?: string | null;
-        durationMs?: number;
-      }>;
-      position?: number;
-    };
-    if (!body.tracks?.length) {
-      return reply.status(400).send({ error: "tracks_required" });
-    }
+    const { id } = parseRequest(idParams, req.params);
+    const body = parseRequest(addTracksBody, req.body ?? {});
     const [playlist] = await db
       .select()
       .from(schema.playlists)
@@ -95,27 +81,73 @@ export const playlistsRoutes: FastifyPluginAsync = async (app) => {
     if (!playlist || playlist.userId !== userId) {
       return reply.status(404).send({ error: "not_found" });
     }
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(schema.playlistTracks)
-      .where(eq(schema.playlistTracks.playlistId, id));
-    let pos = body.position ?? count;
-    const values = body.tracks.map((t) => ({
-      playlistId: id,
-      videoId: t.videoId,
-      title: t.title,
-      artist: t.artist,
-      albumArt: t.albumArt ?? null,
-      durationMs: t.durationMs ?? 0,
-      position: pos++,
-    }));
-    await db.insert(schema.playlistTracks).values(values);
-    return reply.status(201).send({ added: values.length });
+
+    const incoming = new Map<string, (typeof body.tracks)[number]>();
+    for (const t of body.tracks) {
+      if (!incoming.has(t.videoId)) incoming.set(t.videoId, t);
+    }
+
+    const added = await db.transaction(async (tx) => {
+      // Serialize concurrent adds to the same playlist so positions stay consistent.
+      await tx
+        .select({ id: schema.playlists.id })
+        .from(schema.playlists)
+        .where(eq(schema.playlists.id, id))
+        .for("update");
+
+      const existing = await tx
+        .select({ videoId: schema.playlistTracks.videoId })
+        .from(schema.playlistTracks)
+        .where(
+          and(
+            eq(schema.playlistTracks.playlistId, id),
+            inArray(schema.playlistTracks.videoId, [...incoming.keys()]),
+          ),
+        );
+      for (const row of existing) incoming.delete(row.videoId);
+      const fresh = [...incoming.values()];
+      if (fresh.length === 0) return 0;
+
+      const [{ next }] = await tx
+        .select({ next: sql<number>`coalesce(max(${schema.playlistTracks.position}) + 1, 0)::int` })
+        .from(schema.playlistTracks)
+        .where(eq(schema.playlistTracks.playlistId, id));
+      const start = Math.min(body.position ?? next, next);
+      if (start < next) {
+        await tx
+          .update(schema.playlistTracks)
+          .set({ position: sql`${schema.playlistTracks.position} + ${fresh.length}` })
+          .where(
+            and(
+              eq(schema.playlistTracks.playlistId, id),
+              gte(schema.playlistTracks.position, start),
+            ),
+          );
+      }
+
+      const inserted = await tx
+        .insert(schema.playlistTracks)
+        .values(
+          fresh.map((t, i) => ({
+            playlistId: id,
+            videoId: t.videoId,
+            title: t.title,
+            artist: t.artist,
+            albumArt: t.albumArt ?? null,
+            durationMs: t.durationMs ?? 0,
+            position: start + i,
+          })),
+        )
+        .onConflictDoNothing()
+        .returning();
+      return inserted.length;
+    });
+    return reply.status(201).send({ added });
   });
 
   app.delete("/:id/tracks/:videoId", async (req, reply) => {
     const userId = await requireUser(req);
-    const { id, videoId } = req.params as { id: string; videoId: string };
+    const { id, videoId } = parseRequest(playlistTrackParams, req.params);
     const [playlist] = await db
       .select()
       .from(schema.playlists)
@@ -137,7 +169,7 @@ export const playlistsRoutes: FastifyPluginAsync = async (app) => {
 
   app.delete("/:id", async (req, reply) => {
     const userId = await requireUser(req);
-    const { id } = req.params as { id: string };
+    const { id } = parseRequest(idParams, req.params);
     const [playlist] = await db
       .select()
       .from(schema.playlists)

@@ -3,6 +3,7 @@ import { getDb, schema } from "@mp/db";
 import { eq } from "drizzle-orm";
 import { requireUser } from "./playlists.js";
 import { importRateLimitConfig } from "../rateLimit.js";
+import { idParams, importBody, parseRequest } from "./schemas.js";
 
 // Phase 4: Spotify OAuth + BullMQ import pipeline.
 // Scaffold enqueues nothing yet — routes + job-status shape only.
@@ -11,8 +12,7 @@ export const importRoutes: FastifyPluginAsync = async (app) => {
 
   app.post("/spotify", importRateLimitConfig, async (req, reply) => {
     const userId = await requireUser(req);
-    const body = (req.body ?? {}) as { kind?: "liked_songs" | "playlists" };
-    const kind = body.kind ?? "liked_songs";
+    const { kind } = parseRequest(importBody, req.body ?? {});
     const [job] = await db
       .insert(schema.importJobs)
       .values({ userId, kind, status: "queued" })
@@ -23,7 +23,7 @@ export const importRoutes: FastifyPluginAsync = async (app) => {
 
   app.get("/:id", importRateLimitConfig, async (req, reply) => {
     const userId = await requireUser(req);
-    const { id } = req.params as { id: string };
+    const { id } = parseRequest(idParams, req.params);
     const [job] = await db
       .select()
       .from(schema.importJobs)

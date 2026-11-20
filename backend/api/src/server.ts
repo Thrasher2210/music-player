@@ -5,6 +5,7 @@ import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
 import { fileURLToPath } from "node:url";
 import { auth, trustedOrigins } from "./auth.js";
+import { errorHandler } from "./errorHandler.js";
 import { playlistsRoutes } from "./routes/playlists.js";
 import { likesRoutes } from "./routes/likes.js";
 import { historyRoutes } from "./routes/history.js";
@@ -50,6 +51,8 @@ export async function buildServer(opts?: BuildServerOptions): Promise<FastifyIns
     }
     done();
   });
+
+  app.setErrorHandler(errorHandler);
 
   app.get("/healthz", async () => ({ ok: true, ts: Date.now() }));
 
