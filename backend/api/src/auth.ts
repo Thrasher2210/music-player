@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { bearer } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { getDb } from "@mp/db";
+import { resolveAuthSecret } from "./authSecret.js";
 
 const defaultOrigins = ["http://localhost:3000", "http://localhost:4000"];
 const envOrigins = process.env.CORS_ORIGIN
@@ -11,7 +12,7 @@ export const trustedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigi
 
 export const auth = betterAuth({
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:4000",
-  secret: process.env.BETTER_AUTH_SECRET ?? "mp-dev-secret-key-at-least-32-chars-long",
+  secret: resolveAuthSecret(),
   database: drizzleAdapter(getDb(), {
     provider: "pg",
   }),
