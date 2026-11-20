@@ -17,6 +17,8 @@ import {
   EmptyState,
 } from '@mp/dying';
 import { usePlayerStore, toTrackData } from '@/stores/playerStore';
+import { useLibraryStore } from '@/stores/libraryStore';
+import { useTrackMenu } from '@/components/track-menu/useTrackMenu';
 import { type ArtistDetails, type Track } from '@mp/player-core';
 import { ArtistHeader } from '../components/ArtistHeader';
 
@@ -42,6 +44,9 @@ export default function ArtistPage() {
     pause,
     togglePlay,
   } = usePlayerStore();
+
+  const isLiked = useLibraryStore((s) => s.isLiked);
+  const renderTrackMenu = useTrackMenu();
 
   const isArtistActive = Boolean(
     artist && currentTrack && artist.topSongs.some((t) => (t.videoId || t.id) === (currentTrack.videoId || currentTrack.id))
@@ -171,9 +176,10 @@ export default function ArtistPage() {
                 <TrackRow
                   key={track.videoId || track.id || idx}
                   index={idx}
-                  track={toTrackData(track)}
+                  track={toTrackData(track, isLiked(track.videoId || track.id))}
                   isActive={isTrackActive}
                   isPlaying={isTrackActive && isPlaying}
+                  actions={renderTrackMenu(track)}
                   onSelect={() => handleTrackSelect(track, idx)}
                   onPlay={() => {
                     if (isTrackActive) {

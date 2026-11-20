@@ -1,20 +1,18 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CreatePlaylistDialog } from '../CreatePlaylistDialog';
 import { AddToPlaylistModal } from '../AddToPlaylistModal';
 import { AccountModal } from '../AccountModal';
 import { PlaybackOptionsModal } from '../PlaybackOptionsModal';
 import { type Track } from '../../stores/playerStore';
+import { useLibraryStore, type Playlist } from '../../stores/libraryStore';
+import { useTrackActionsStore } from '../../stores/trackActionsStore';
 
 export interface ShellModalsProps {
   isCreatePlaylistOpen: boolean;
   setIsCreatePlaylistOpen: (open: boolean) => void;
-  isAddToPlaylistOpen: boolean;
-  setIsAddToPlaylistOpen: (open: boolean) => void;
-  trackToAddToPlaylist: Track | null;
-  setTrackToAddToPlaylist: (track: Track | null) => void;
   isAccountModalOpen: boolean;
   setIsAccountModalOpen: (open: boolean) => void;
   isPlaybackOptionsOpen: boolean;
@@ -24,37 +22,46 @@ export interface ShellModalsProps {
 export function ShellModals({
   isCreatePlaylistOpen,
   setIsCreatePlaylistOpen,
-  isAddToPlaylistOpen,
-  setIsAddToPlaylistOpen,
-  trackToAddToPlaylist,
-  setTrackToAddToPlaylist,
   isAccountModalOpen,
   setIsAccountModalOpen,
   isPlaybackOptionsOpen,
   setIsPlaybackOptionsOpen,
 }: ShellModalsProps) {
   const router = useRouter();
+  const addToPlaylistTrack = useTrackActionsStore((s) => s.addToPlaylistTrack);
+  const closeAddToPlaylist = useTrackActionsStore((s) => s.closeAddToPlaylist);
+  const addTracksToPlaylist = useLibraryStore((s) => s.addTracksToPlaylist);
+  // Track picked in "Add to playlist" before choosing "Create new playlist"; it goes into the new playlist.
+  const [trackForNewPlaylist, setTrackForNewPlaylist] = useState<Track | null>(null);
+
+  const handlePlaylistCreated = async (playlist: Playlist) => {
+    const pending = trackForNewPlaylist;
+    if (pending) {
+      await addTracksToPlaylist(playlist.id, [pending]);
+    }
+    setIsCreatePlaylistOpen(false);
+    router.push(`/playlist/${playlist.id}`);
+  };
 
   return (
     <>
       <CreatePlaylistDialog
         open={isCreatePlaylistOpen}
-        onOpenChange={setIsCreatePlaylistOpen}
-        onPlaylistCreated={(pl: any) => {
-          setIsCreatePlaylistOpen(false);
-          router.push(`/playlist/${pl.id}`);
+        onOpenChange={(open) => {
+          setIsCreatePlaylistOpen(open);
+          if (!open) setTrackForNewPlaylist(null);
         }}
+        onPlaylistCreated={handlePlaylistCreated}
       />
 
       <AddToPlaylistModal
-        open={isAddToPlaylistOpen}
+        open={addToPlaylistTrack !== null}
         onOpenChange={(open) => {
-          setIsAddToPlaylistOpen(open);
-          if (!open) setTrackToAddToPlaylist(null);
+          if (!open) closeAddToPlaylist();
         }}
-        track={trackToAddToPlaylist}
+        track={addToPlaylistTrack}
         onCreateNewPlaylist={() => {
-          setIsAddToPlaylistOpen(false);
+          setTrackForNewPlaylist(addToPlaylistTrack);
           setIsCreatePlaylistOpen(true);
         }}
       />

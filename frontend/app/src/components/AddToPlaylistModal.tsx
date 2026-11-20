@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -35,15 +36,29 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
   const { playlists, addTracksToPlaylist } = useLibraryStore();
   const [addedPlaylistIds, setAddedPlaylistIds] = useState<Set<string>>(new Set());
   const [isSubmittingId, setIsSubmittingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const trackId = track?.videoId ?? null;
+  useEffect(() => {
+    if (open) {
+      setAddedPlaylistIds(new Set());
+      setError(null);
+    }
+  }, [open, trackId]);
 
   const handleAddToPlaylist = async (playlist: Playlist) => {
     if (!track || isSubmittingId) return;
     setIsSubmittingId(playlist.id);
+    setError(null);
     try {
       const ok = await addTracksToPlaylist(playlist.id, [track]);
       if (ok) {
         setAddedPlaylistIds((prev) => new Set(prev).add(playlist.id));
+      } else {
+        setError(`Could not add this song to "${playlist.name}". Check that you are signed in and try again.`);
       }
+    } catch {
+      setError(`Could not add this song to "${playlist.name}". Check your connection and try again.`);
     } finally {
       setIsSubmittingId(null);
     }
@@ -52,6 +67,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
   const handleClose = () => {
     setAddedPlaylistIds(new Set());
     setIsSubmittingId(null);
+    setError(null);
     onOpenChange(false);
   };
 
@@ -74,6 +90,12 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
         </DialogHeader>
 
         <Stack gap="3" className="py-2">
+          {error && (
+            <Alert variant="error" onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+
           {/* Quick Action: Create New Playlist */}
           <Button
             variant="secondary"

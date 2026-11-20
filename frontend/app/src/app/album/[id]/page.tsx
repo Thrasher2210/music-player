@@ -17,6 +17,8 @@ import {
   EmptyState,
 } from '@mp/dying';
 import { usePlayerStore, toTrackData } from '@/stores/playerStore';
+import { useLibraryStore } from '@/stores/libraryStore';
+import { useTrackMenu } from '@/components/track-menu/useTrackMenu';
 import { type AlbumDetails, type Track } from '@mp/player-core';
 
 export default function AlbumPage() {
@@ -41,6 +43,9 @@ export default function AlbumPage() {
     pause,
     togglePlay,
   } = usePlayerStore();
+
+  const isLiked = useLibraryStore((s) => s.isLiked);
+  const renderTrackMenu = useTrackMenu();
 
   const isAlbumActive = Boolean(
     album && currentTrack && album.tracks.some((t) => (t.videoId || t.id) === (currentTrack.videoId || currentTrack.id))
@@ -255,9 +260,10 @@ export default function AlbumPage() {
               <TrackRow
                 key={track.videoId || track.id || idx}
                 index={idx}
-                track={toTrackData(track)}
+                track={toTrackData(track, isLiked(track.videoId || track.id))}
                 isActive={isTrackActive}
                 isPlaying={isTrackActive && isPlaying}
+                actions={renderTrackMenu(track)}
                 showAlbum={false}
                 onSelect={() => handleTrackSelect(track, idx)}
                 onPlay={() => {

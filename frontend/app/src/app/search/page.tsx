@@ -15,6 +15,7 @@ import {
 } from '@mp/dying';
 import { usePlayerStore, type Track } from '../../stores/playerStore';
 import { useLibraryStore } from '../../stores/libraryStore';
+import { useTrackMenu } from '../../components/track-menu/useTrackMenu';
 
 function SearchContent() {
   const router = useRouter();
@@ -33,6 +34,7 @@ function SearchContent() {
   } = usePlayerStore();
 
   const { isLiked, toggleLike } = useLibraryStore();
+  const renderTrackMenu = useTrackMenu();
 
   const [results, setResults] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -132,6 +134,10 @@ function SearchContent() {
             if (matched) handlePlayTrack(matched);
           }}
           onTrackPause={pause}
+          renderActions={(trackData) => {
+            const matched = results.find((x) => (x.id || x.videoId) === trackData.id);
+            return matched ? renderTrackMenu(matched) : null;
+          }}
           onLikeToggle={(trackData) => {
             const matched = results.find((x) => (x.id || x.videoId) === trackData.id);
             if (matched) toggleLike(matched);

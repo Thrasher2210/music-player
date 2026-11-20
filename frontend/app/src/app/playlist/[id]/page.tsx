@@ -16,6 +16,8 @@ import {
 import { usePlayerStore, toTrackData } from '@/stores/playerStore';
 import { useLibraryStore } from '@/stores/libraryStore';
 import { type Track } from '@mp/player-core';
+import { useTrackMenu } from '@/components/track-menu/useTrackMenu';
+import { isLibraryPlaylistId } from '@/components/track-menu/isLibraryPlaylistId';
 import { PlaylistHeader } from '../components/PlaylistHeader';
 import { loadPlaylistData } from '../utils/loadPlaylistData';
 
@@ -46,7 +48,15 @@ export default function PlaylistPage() {
     togglePlay,
   } = usePlayerStore();
 
-  const { fetchLibrary, fetchPlaylistTracks } = useLibraryStore();
+  const { fetchLibrary, fetchPlaylistTracks, isLiked } = useLibraryStore();
+
+  const renderTrackMenu = useTrackMenu({
+    playlistId: isLibraryPlaylistId(playlistId) ? playlistId : undefined,
+    onRemovedFromPlaylist: (removed) =>
+      setTracks((prev) =>
+        prev.filter((t) => (t.videoId || t.id) !== (removed.videoId || removed.id))
+      ),
+  });
 
   const isPlaylistActive = Boolean(
     currentTrack && tracks.some((t) => (t.videoId || t.id) === (currentTrack.videoId || currentTrack.id))
@@ -212,9 +222,10 @@ export default function PlaylistPage() {
                 <TrackRow
                   key={track.videoId || track.id || idx}
                   index={idx}
-                  track={toTrackData(track)}
+                  track={toTrackData(track, isLiked(track.videoId || track.id))}
                   isActive={isTrackActive}
                   isPlaying={isTrackActive && isPlaying}
+                  actions={renderTrackMenu(track)}
                   onSelect={() => handleTrackSelect(track, idx)}
                   onPlay={() => {
                     if (isTrackActive) {

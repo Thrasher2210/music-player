@@ -15,6 +15,7 @@ import {
   type TrackData,
 } from '@mp/dying';
 import { type Track } from '../../stores/playerStore';
+import { useTrackMenu } from '../track-menu/useTrackMenu';
 
 export interface HomeQuickPicksProps {
   quickPicks: Track[];
@@ -36,6 +37,7 @@ export function HomeQuickPicks({
   onAddToQueue,
 }: HomeQuickPicksProps) {
   const router = useRouter();
+  const renderTrackMenu = useTrackMenu();
 
   // Split quickPicks into 4 columns of up to 4 tracks each
   const quickPickClusters = useMemo(() => {
@@ -92,6 +94,7 @@ export function HomeQuickPicks({
                   onPause={onPause}
                   onSelect={() => onPlayTrack(track)}
                   onQueue={() => onAddToQueue(track)}
+                  actions={renderTrackMenu(track)}
                   onArtistClick={(_artist, artistId) => {
                     if (artistId) {
                       router.push(`/artist/${artistId}`);
