@@ -17,6 +17,9 @@ echo "==> Deploying updates to production ($REMOTE_HOST)..."
 ssh -i "$KEY_PATH" -o StrictHostKeyChecking=no "$REMOTE_USER@$REMOTE_HOST" 'bash -s' << 'EOF'
   set -e
   cd ~/music-player/music-player
+  echo "--> Discarding local build artifact diffs..."
+  git checkout -- . 2>/dev/null || true
+
   echo "--> Pulling latest code..."
   git pull origin main
 
