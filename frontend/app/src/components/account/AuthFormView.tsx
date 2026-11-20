@@ -15,6 +15,7 @@ import {
   Separator,
 } from '@mp/dying';
 import { useAuthStore } from '../../stores/authStore';
+import { createDemoCredentials } from '../../stores/demoCredentials';
 import {
   User,
   Check,
@@ -91,9 +92,8 @@ export function AuthFormView({ onSuccess, onClose }: AuthFormViewProps) {
   const handleDemoAccount = async () => {
     setIsLoading(true);
     setErrorMessage(null);
-    const demoEmail = `listener.${Date.now().toString().slice(-4)}@ganegan.app`;
-    const demoPass = 'DemoPassword123!';
-    const res = await register('GaneGan Listener', demoEmail, demoPass);
+    const demo = createDemoCredentials();
+    const res = await register(demo.name, demo.email, demo.password);
     setIsLoading(false);
     if (res.success) {
       setStatusMessage('Demo account created and signed in!');

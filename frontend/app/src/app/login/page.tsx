@@ -15,7 +15,9 @@ import {
   Text,
 } from '@mp/dying';
 import { useAuthStore } from '../../stores/authStore';
+import { createDemoCredentials } from '../../stores/demoCredentials';
 import { OAuthButtons } from './components/OAuthButtons';
+import { enabledOAuthProviders, type OAuthProvider } from './oauthProviders';
 import { AuthHeroFeatures } from './components/AuthHeroFeatures';
 import { AuthAlerts } from './components/AuthAlerts';
 import { EmailCredentialsForm } from './components/EmailCredentialsForm';
@@ -36,28 +38,23 @@ function LoginForm() {
 
   const { login, register, loginWithProvider, loginAsGuest } = useAuthStore();
 
-  const handleProviderLogin = async (
-    provider: 'google' | 'github' | 'apple' | 'discord',
-    label: string
-  ) => {
+  const handleProviderLogin = async (provider: OAuthProvider, label: string) => {
     setErrorMessage(null);
     setStatusMessage(null);
     setOauthWarning(null);
     setIsLoading(true);
 
-    try {
-      const res = await loginWithProvider(provider);
-      if (res?.error) {
-        setOauthWarning({
-          provider: label,
-          message: `${label} OAuth is not configured in this development environment (missing client credentials).`,
-        });
-      }
-    } catch {
+    const warnUnavailable = () =>
       setOauthWarning({
         provider: label,
-        message: `${label} OAuth is not configured in this development environment (missing client credentials).`,
+        message: `${label} sign-in is not configured on this server.`,
       });
+
+    try {
+      const res = await loginWithProvider(provider);
+      if (res?.error) warnUnavailable();
+    } catch {
+      warnUnavailable();
     } finally {
       setIsLoading(false);
     }
@@ -67,12 +64,11 @@ function LoginForm() {
     setIsLoading(true);
     setErrorMessage(null);
     setOauthWarning(null);
-    const demoEmail = `listener.${Date.now().toString().slice(-4)}@ganegan.app`;
-    const demoPass = 'DemoPassword123!';
-    const res = await register('GaneGan Listener', demoEmail, demoPass);
+    const demo = createDemoCredentials();
+    const res = await register(demo.name, demo.email, demo.password);
     setIsLoading(false);
     if (res.success) {
-      setStatusMessage(`Demo account ready (${demoEmail})! Redirecting...`);
+      setStatusMessage('Demo account ready! Redirecting...');
       setTimeout(() => router.push('/'), 400);
     } else {
       setErrorMessage(res.error || 'Failed to create demo account.');
@@ -193,18 +189,23 @@ function LoginForm() {
             isLoading={isLoading}
           />
 
-          <OAuthButtons
-            isLoading={isLoading}
-            onProviderLogin={handleProviderLogin}
-          />
+          {enabledOAuthProviders.length > 0 && (
+            <>
+              <OAuthButtons
+                providers={enabledOAuthProviders}
+                isLoading={isLoading}
+                onProviderLogin={handleProviderLogin}
+              />
 
-          <Flex align="center" gap="3">
-            <Separator className="flex-1" />
-            <Text variant="kicker" size="xs">
-              OR EMAIL
-            </Text>
-            <Separator className="flex-1" />
-          </Flex>
+              <Flex align="center" gap="3">
+                <Separator className="flex-1" />
+                <Text variant="kicker" size="xs">
+                  OR EMAIL
+                </Text>
+                <Separator className="flex-1" />
+              </Flex>
+            </>
+          )}
 
           <EmailCredentialsForm
             mode={mode}
