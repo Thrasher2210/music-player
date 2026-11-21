@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { getDb, schema } from "@mp/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireUser } from "./playlists.js";
+import { likeBody, parseRequest, videoIdParams } from "./schemas.js";
 
 export const likesRoutes: FastifyPluginAsync = async (app) => {
   const db = getDb();
@@ -18,15 +19,8 @@ export const likesRoutes: FastifyPluginAsync = async (app) => {
 
   app.put("/:videoId", async (req, reply) => {
     const userId = await requireUser(req);
-    const { videoId } = req.params as { videoId: string };
-    const body = (req.body ?? {}) as {
-      title?: string;
-      artist?: string;
-      albumArt?: string | null;
-    };
-    if (!body.title || !body.artist) {
-      return reply.status(400).send({ error: "title_artist_required" });
-    }
+    const { videoId } = parseRequest(videoIdParams, req.params);
+    const body = parseRequest(likeBody, req.body ?? {});
     await db
       .insert(schema.likes)
       .values({
@@ -42,7 +36,7 @@ export const likesRoutes: FastifyPluginAsync = async (app) => {
 
   app.delete("/:videoId", async (req) => {
     const userId = await requireUser(req);
-    const { videoId } = req.params as { videoId: string };
+    const { videoId } = parseRequest(videoIdParams, req.params);
     await db
       .delete(schema.likes)
       .where(and(eq(schema.likes.userId, userId), eq(schema.likes.videoId, videoId)));

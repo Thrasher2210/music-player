@@ -2,23 +2,18 @@ import type { FastifyPluginAsync } from "fastify";
 import { getDb, schema } from "@mp/db";
 import { sql, eq } from "drizzle-orm";
 import { requireUser } from "./playlists.js";
+import { historyBody, parseRequest } from "./schemas.js";
 
 export const historyRoutes: FastifyPluginAsync = async (app) => {
   const db = getDb();
 
   app.post("/", async (req, reply) => {
     const userId = await requireUser(req);
-    const body = (req.body ?? {}) as {
-      videoId?: string;
-      msPlayed?: number;
-    };
-    if (!body.videoId) {
-      return reply.status(400).send({ error: "videoId_required" });
-    }
+    const body = parseRequest(historyBody, req.body ?? {});
     await db.insert(schema.playHistory).values({
       userId,
       videoId: body.videoId,
-      msPlayed: body.msPlayed ?? 0,
+      msPlayed: body.msPlayed,
     });
     return reply.status(201).send({ ok: true });
   });
