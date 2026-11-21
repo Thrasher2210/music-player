@@ -47,7 +47,7 @@
 - **Dying Design System (`@mp/dying`)** — Custom tokenized dark design system engineered specifically for high-contrast OLED media streaming.
 - **Desktop 3-Panel Layout** — Ergonomic Spotify-grade navigation paired with Apple Music luxury aesthetics.
 - **Accessible & Responsive** — Strict WCAG 2.2 AA contrast compliance, Radix focus management, and fluid mobile drawer navigation.
-- **Synchronized Lyrics** — High-precision time-aligned lyric display integrated with LRCLIB multi-provider resolution.
+- **Synchronized Lyrics** — High-precision time-aligned lyric display integrated with LRCLIB multi-provider resolution. 
 
     </td>
     <td width="50%" valign="top">
