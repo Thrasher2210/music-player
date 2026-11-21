@@ -19,7 +19,7 @@ backend/shared      zod API contract (@mp/api-contract)
 corepack enable                  # activates pnpm 10
 pnpm install
 
-cp .env.example .env             # fill in OAuth creds later (Phase 0/4)
+cp .env.example .env.local       # fill in OAuth creds later (Phase 0/4)
 
 pnpm db:up                       # start Postgres + Redis (Docker)
 pnpm db:migrate                  # run Drizzle migrations
@@ -29,6 +29,8 @@ pnpm dev:api                     # http://localhost:4000 (healthz: /healthz)
 pnpm dev:worker
 pnpm dev:ext                     # WXT dev build → load in browser
 ```
+
+The API, worker, `pnpm db:migrate` and the API tests read `.env.local` from the repo root. With `NODE_ENV=production` the API refuses to start unless `BETTER_AUTH_SECRET` is a real secret of at least 32 characters (`openssl rand -base64 32`).
 
 ## Verify
 

@@ -69,7 +69,7 @@ Traditional music/media players proxy streams through their servers, racking up 
    NODE_ENV=production
    DATABASE_URL=<your-neon-url>
    REDIS_URL=<your-upstash-url>
-   BETTER_AUTH_SECRET=<generate-random-32-chars>
+   BETTER_AUTH_SECRET=<random-string-of-at-least-32-chars>   # required when NODE_ENV=production, e.g. openssl rand -base64 32
    BETTER_AUTH_URL=https://<your-render-app>.onrender.com
    CORS_ORIGIN=https://<your-vercel-app>.vercel.app
    ```
