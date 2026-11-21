@@ -61,7 +61,7 @@ export function ShellHeader({
                 onClick={onClearSearch}
               />
             ) : (
-              <Badge variant="glass" size="sm">
+              <Badge variant="glass" size="sm" className="pointer-coarse:hidden">
                 ⌘K
               </Badge>
             )

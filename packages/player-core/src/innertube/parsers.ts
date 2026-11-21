@@ -1,18 +1,9 @@
 import { Track } from '../types';
-export { parseShelfItem } from './shelfParsers';
+import { parseDuration } from './duration';
+import { readResponsiveSubtitle } from './subtitleRuns';
 
-export function parseDuration(timeStr?: string): number {
-  if (!timeStr) return 0;
-  const parts = timeStr.trim().split(':').map((p) => parseInt(p, 10));
-  if (parts.some((n) => isNaN(n))) return 0;
-  if (parts.length === 2) {
-    return parts[0] * 60 + parts[1];
-  }
-  if (parts.length === 3) {
-    return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  }
-  return 0;
-}
+export { parseShelfItem } from './shelfParsers';
+export { parseDuration } from './duration';
 
 export function parseTrackFromRenderer(item: any): Track | null {
   if (!item || typeof item !== 'object') return null;
@@ -60,54 +51,7 @@ export function parseTrackFromRenderer(item: any): Track | null {
       }
     }
 
-    let artist = 'Unknown Artist';
-    let artistId: string | undefined;
-    let album: string | undefined;
-    let albumId: string | undefined;
-    let duration = 0;
-    const subRuns = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-
-    for (const r of subRuns) {
-      const bId = r.navigationEndpoint?.browseEndpoint?.browseId;
-      if (bId?.startsWith('UC')) {
-        artist = r.text;
-        artistId = bId;
-      } else if (bId?.startsWith('MPREb_')) {
-        album = r.text;
-        albumId = bId;
-      }
-    }
-
-    if (artist === 'Unknown Artist' && subRuns.length > 0) {
-      const filtered = subRuns
-        .filter((r: any) => r.text && r.text !== ' • ' && r.text !== '•' && !/^(song|video)$/i.test(r.text.trim()));
-      if (filtered.length > 0) {
-        artist = filtered[0].text;
-        artistId = filtered[0].navigationEndpoint?.browseEndpoint?.browseId;
-        if (filtered.length > 1 && !album) {
-          album = filtered[1].text;
-          albumId = filtered[1].navigationEndpoint?.browseEndpoint?.browseId;
-        }
-      }
-    }
-
-    for (const r of subRuns) {
-      if (/^\d+:\d+(:\d+)?$/.test(r.text?.trim())) {
-        duration = parseDuration(r.text);
-        break;
-      }
-    }
-
-    if (duration === 0 && flexColumns.length > 2) {
-      const extraRuns =
-        flexColumns[flexColumns.length - 1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
-      if (extraRuns && extraRuns.length > 0) {
-        const lastText = extraRuns[0].text;
-        if (/^\d+:\d+(:\d+)?$/.test(lastText.trim())) {
-          duration = parseDuration(lastText);
-        }
-      }
-    }
+    const { artist, artistId, album, albumId, duration } = readResponsiveSubtitle(renderer, title);
 
     const rawThumbs = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
     const thumbnail = rawThumbs.length > 0 ? rawThumbs[rawThumbs.length - 1].url : '';

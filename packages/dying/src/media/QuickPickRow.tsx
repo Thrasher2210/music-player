@@ -4,12 +4,12 @@ import { TrackData } from "../music/TrackRow";
 import { TrackActionsMenu } from "../music/TrackActionsMenu";
 import { SoundWave } from "../effects/SoundWave";
 import { cn } from "../utils/cn";
+import { SHOW_ON_ROW_HOVER } from "../music/revealOnRowHover";
 
 const MORE_BUTTON_CLASS = cn(
   "flex h-8 w-8 items-center justify-center rounded-full text-text-secondary transition-all cursor-pointer",
   "hover:text-white hover:bg-white/[0.1] active:scale-95",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
-  "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
 );
 
 export interface QuickPickRowProps
@@ -192,7 +192,7 @@ export const QuickPickRow = React.forwardRef<HTMLDivElement, QuickPickRowProps>(
         </div>
 
         {/* Right: Add to Queue & More Options Buttons */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className={cn("items-center gap-1 shrink-0", SHOW_ON_ROW_HOVER)}>
           {onQueue && (
             <button
               type="button"
@@ -201,8 +201,7 @@ export const QuickPickRow = React.forwardRef<HTMLDivElement, QuickPickRowProps>(
               className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-full text-text-secondary transition-all cursor-pointer",
                 "hover:text-white hover:bg-white/[0.1] active:scale-95",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
-                "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
               )}
             >
               <ListPlus size={18} />

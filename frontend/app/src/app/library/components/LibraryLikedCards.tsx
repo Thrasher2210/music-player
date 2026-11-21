@@ -64,7 +64,7 @@ export const LibraryLikedCards: React.FC<LibraryLikedCardsProps> = ({
                 aria-label="Play liked songs"
                 variant="primary"
                 size="md"
-                className="rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                className="rounded-full shadow-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 transition-opacity"
                 icon={<Play size={18} className="fill-current ml-0.5" />}
                 onClick={handlePlayLiked}
               />
@@ -76,7 +76,7 @@ export const LibraryLikedCards: React.FC<LibraryLikedCardsProps> = ({
               Liked Music
             </Heading>
             <Text size="sm" className="text-white/70">
-              Local collection • {likedTracks.length} {likedTracks.length === 1 ? 'song' : 'songs'}
+              Your library • {likedTracks.length} {likedTracks.length === 1 ? 'song' : 'songs'}
             </Text>
           </Stack>
         </Flex>
@@ -99,7 +99,7 @@ export const LibraryLikedCards: React.FC<LibraryLikedCardsProps> = ({
                   aria-label="Play YouTube liked songs"
                   variant="primary"
                   size="md"
-                  className="rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="rounded-full shadow-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 transition-opacity"
                   icon={<Play size={18} className="fill-current ml-0.5" />}
                   onClick={handlePlayYouTubeLiked}
                 />

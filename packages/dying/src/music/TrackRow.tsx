@@ -3,6 +3,7 @@ import { Play, Pause, Heart, MoreHorizontal } from "lucide-react";
 import { SoundWave } from "../effects/SoundWave";
 import { TrackActionsMenu } from "./TrackActionsMenu";
 import { cn } from "../utils/cn";
+import { REVEAL_ON_ROW_HOVER } from "./revealOnRowHover";
 
 export interface TrackData {
   id: string;
@@ -38,8 +39,10 @@ export interface TrackRowProps
   compact?: boolean;
 }
 
-const ACTION_BUTTON_CLASS =
-  "opacity-0 group-hover:opacity-100 p-1.5 text-text-tertiary hover:text-white rounded-lg hover:bg-white/[0.08] transition-all";
+const ACTION_BUTTON_CLASS = cn(
+  REVEAL_ON_ROW_HOVER,
+  "p-1.5 text-text-tertiary hover:text-white rounded-lg hover:bg-white/[0.08] transition-all"
+);
 
 function formatDuration(seconds: number = 0): string {
   const mins = Math.floor(seconds / 60);
@@ -245,7 +248,7 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
               "p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
               liked
                 ? "text-status-error opacity-100 hover:scale-110"
-                : "text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-white hover:scale-110"
+                : cn(REVEAL_ON_ROW_HOVER, "text-text-tertiary hover:text-white hover:scale-110")
             )}
           >
             <Heart size={16} className={liked ? "fill-current" : ""} />
@@ -253,7 +256,7 @@ export const TrackRow = React.forwardRef<HTMLDivElement, TrackRowProps>(
 
           {/* Duration */}
           <span className="w-12 text-right font-mono text-xs tabular-nums text-text-tertiary group-hover:text-text-secondary">
-            {formatDuration(track.duration)}
+            {track.duration ? formatDuration(track.duration) : ""}
           </span>
 
           {/* Action Menu Button */}

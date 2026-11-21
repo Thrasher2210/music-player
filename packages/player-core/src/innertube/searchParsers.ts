@@ -1,5 +1,6 @@
 import { Track } from '../types';
-import { parseDuration } from './parsers';
+import { parseDuration } from './duration';
+import { readResponsiveSubtitle } from './subtitleRuns';
 
 /**
  * Robust parser extracting Track[] from various InnerTube response layouts
@@ -31,57 +32,7 @@ export function parseSearchResults(data: any): Track[] {
         }
       }
 
-      // Extract artist, album & duration from columns
-      let artist = 'Unknown Artist';
-      let artistId: string | undefined;
-      let album: string | undefined;
-      let albumId: string | undefined;
-      let duration = 0;
-      const subRuns =
-        flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-
-      for (const r of subRuns) {
-        const bId = r.navigationEndpoint?.browseEndpoint?.browseId;
-        if (bId?.startsWith('UC')) {
-          artist = r.text;
-          artistId = bId;
-        } else if (bId?.startsWith('MPREb_')) {
-          album = r.text;
-          albumId = bId;
-        }
-      }
-
-      if (artist === 'Unknown Artist' && subRuns.length > 0) {
-        const filtered = subRuns
-          .filter((r: any) => r.text && r.text !== ' • ' && r.text !== '•' && !/^(song|video)$/i.test(r.text.trim()));
-        if (filtered.length > 0) {
-          artist = filtered[0].text;
-          artistId = filtered[0].navigationEndpoint?.browseEndpoint?.browseId;
-          if (filtered.length > 1 && !album) {
-            album = filtered[1].text;
-            albumId = filtered[1].navigationEndpoint?.browseEndpoint?.browseId;
-          }
-        }
-      }
-
-      for (const r of subRuns) {
-        if (/^\d+:\d+(:\d+)?$/.test(r.text?.trim())) {
-          duration = parseDuration(r.text);
-          break;
-        }
-      }
-
-      // Check additional columns for duration if not found
-      if (duration === 0 && flexColumns.length > 2) {
-        const extraRuns =
-          flexColumns[flexColumns.length - 1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs;
-        if (extraRuns && extraRuns.length > 0) {
-          const lastText = extraRuns[0].text;
-          if (/^\d+:\d+(:\d+)?$/.test(lastText.trim())) {
-            duration = parseDuration(lastText);
-          }
-        }
-      }
+      const { artist, artistId, album, albumId, duration } = readResponsiveSubtitle(renderer, title);
 
       // Extract thumbnails
       const rawThumbs =
