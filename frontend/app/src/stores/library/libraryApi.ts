@@ -5,7 +5,12 @@ import {
   saveGuestLike,
   removeGuestLike,
   getGuestPlaylists,
-  saveGuestPlaylist,
+  createGuestPlaylist,
+  removeGuestPlaylist,
+  isGuestPlaylistId,
+  getGuestPlaylistTracks,
+  addGuestPlaylistTracks,
+  removeGuestPlaylistTrack,
 } from './guestStorage';
 
 export interface LibraryFetchResult {
@@ -127,27 +132,16 @@ export async function createPlaylistApi(
   name: string,
   extra?: { source?: 'local' | 'youtube'; ytPlaylistId?: string; coverArt?: string }
 ): Promise<Playlist | null> {
-  if (!name.trim()) return null;
+  const trimmed = name.trim();
+  if (!trimmed) return null;
   try {
     const res = await fetch('/api/playlists', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ name: name.trim(), ...extra }),
+      body: JSON.stringify({ name: trimmed, ...extra }),
     });
-    if (res.status === 401) {
-      const guestPl: Playlist = {
-        id: `guest-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        name: name.trim(),
-        source: extra?.source || 'local',
-        trackCount: 0,
-        coverArt: extra?.coverArt,
-        ytPlaylistId: extra?.ytPlaylistId,
-        createdAt: new Date().toISOString(),
-      };
-      saveGuestPlaylist(guestPl);
-      return guestPl;
-    }
+    if (res.status === 401) return createGuestPlaylist(trimmed, extra);
     if (!res.ok) return null;
     const data = await res.json();
     if (data?.playlist) {
@@ -162,22 +156,16 @@ export async function createPlaylistApi(
       };
     }
   } catch {
-    const guestPl: Playlist = {
-      id: `guest-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      name: name.trim(),
-      source: extra?.source || 'local',
-      trackCount: 0,
-      coverArt: extra?.coverArt,
-      ytPlaylistId: extra?.ytPlaylistId,
-      createdAt: new Date().toISOString(),
-    };
-    saveGuestPlaylist(guestPl);
-    return guestPl;
+    return createGuestPlaylist(trimmed, extra);
   }
   return null;
 }
 
 export async function deletePlaylistApi(id: string): Promise<boolean> {
+  if (isGuestPlaylistId(id)) {
+    removeGuestPlaylist(id);
+    return true;
+  }
   const res = await fetch(`/api/playlists/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     credentials: 'include',
@@ -185,11 +173,14 @@ export async function deletePlaylistApi(id: string): Promise<boolean> {
   return res.ok;
 }
 
+/** Returns how many tracks were added, or null if the request failed. */
 export async function addTracksToPlaylistApi(
   playlistId: string,
   tracks: Track[]
-): Promise<boolean> {
-  if (!tracks.length) return false;
+): Promise<number | null> {
+  if (!tracks.length) return null;
+  if (isGuestPlaylistId(playlistId)) return addGuestPlaylistTracks(playlistId, tracks);
+
   const payloadTracks = tracks.map((t) => ({
     videoId: t.videoId || t.id,
     title: t.title,
@@ -204,13 +195,16 @@ export async function addTracksToPlaylistApi(
     credentials: 'include',
     body: JSON.stringify({ tracks: payloadTracks }),
   });
-  return res.ok;
+  if (!res.ok) return null;
+  const data = await res.json().catch(() => null);
+  return typeof data?.added === 'number' ? data.added : tracks.length;
 }
 
 export async function removeTrackFromPlaylistApi(
   playlistId: string,
   videoId: string
 ): Promise<boolean> {
+  if (isGuestPlaylistId(playlistId)) return removeGuestPlaylistTrack(playlistId, videoId);
   const res = await fetch(
     `/api/playlists/${encodeURIComponent(playlistId)}/tracks/${encodeURIComponent(videoId)}`,
     {
@@ -239,6 +233,7 @@ export async function recordPlayHistoryApi(
 }
 
 export async function fetchPlaylistTracksApi(playlistId: string): Promise<Track[]> {
+  if (isGuestPlaylistId(playlistId)) return getGuestPlaylistTracks(playlistId);
   const res = await fetch(`/api/playlists/${encodeURIComponent(playlistId)}/tracks`, {
     credentials: 'include',
   });

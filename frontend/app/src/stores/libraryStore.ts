@@ -136,16 +136,14 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   addTracksToPlaylist: async (playlistId: string, tracks: Track[]): Promise<boolean> => {
-    const ok = await addTracksToPlaylistApi(playlistId, tracks);
-    if (ok) {
-      set((state) => ({
-        playlists: state.playlists.map((p) =>
-          p.id === playlistId ? { ...p, trackCount: (p.trackCount || 0) + tracks.length } : p
-        ),
-      }));
-      return true;
-    }
-    return false;
+    const added = await addTracksToPlaylistApi(playlistId, tracks);
+    if (added === null) return false;
+    set((state) => ({
+      playlists: state.playlists.map((p) =>
+        p.id === playlistId ? { ...p, trackCount: (p.trackCount || 0) + added } : p
+      ),
+    }));
+    return true;
   },
 
   removeTrackFromPlaylist: async (playlistId: string, videoId: string): Promise<boolean> => {

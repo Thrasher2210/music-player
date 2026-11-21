@@ -59,6 +59,9 @@ export function AuthAlerts({
                 Create Demo Account (1-Click)
               </Button>
             </Box>
+            <Text size="xs" color="tertiary">
+              Demo accounts are temporary. Once you sign out you cannot sign back in.
+            </Text>
           </Stack>
         </Alert>
       )}
