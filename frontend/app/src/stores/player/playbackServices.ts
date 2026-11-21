@@ -67,7 +67,7 @@ export async function fetchLyricsService(
   set({ isLyricsLoading: true, lyricsError: null });
 
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const apiUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
     const durationSec = track.duration || 0;
     const url = `${apiUrl}/api/lyrics?videoId=${encodeURIComponent(track.videoId)}&title=${encodeURIComponent(track.title || '')}&artist=${encodeURIComponent(track.artist || '')}&durationSec=${durationSec}`;
 
