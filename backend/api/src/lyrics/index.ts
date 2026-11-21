@@ -4,4 +4,5 @@ export * from './parser.js';
 export * from './providers/lrclib.js';
 export * from './providers/innertube.js';
 export * from './providers/kugou.js';
+export * from './metadata.js';
 export * from './manager.js';

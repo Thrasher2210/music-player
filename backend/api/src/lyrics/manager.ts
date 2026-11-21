@@ -6,12 +6,22 @@ import { sanitizeTrackMetadata } from './sanitizer.js';
 import { LrclibProvider } from './providers/lrclib.js';
 import { InnertubeProvider } from './providers/innertube.js';
 import { KugouProvider } from './providers/kugou.js';
+import {
+  OembedMetadataResolver,
+  type MetadataResolver,
+  type VideoMetadata,
+} from './metadata.js';
+
+// Empty results are kept briefly so a provider outage, or lyrics that appear
+// later, do not stay hidden for a full day.
+export const NEGATIVE_CACHE_TTL_SECONDS = 5 * 60;
 
 export interface LyricsManagerOptions {
   cache?: Cache;
   cacheTtl?: number; // default 24h (86400s)
   db?: ReturnType<typeof getDb>;
   providers?: LyricsProvider[];
+  metadataResolver?: MetadataResolver;
 }
 
 export class LyricsManager {
@@ -19,6 +29,7 @@ export class LyricsManager {
   private cacheTtl: number;
   private customDb?: ReturnType<typeof getDb>;
   private providers: LyricsProvider[];
+  private metadataResolver: MetadataResolver;
 
   constructor(options?: LyricsManagerOptions) {
     this.cache = options?.cache ?? createCache();
@@ -29,6 +40,16 @@ export class LyricsManager {
       new InnertubeProvider(),
       new KugouProvider(),
     ];
+    this.metadataResolver = options?.metadataResolver ?? new OembedMetadataResolver();
+  }
+
+  private async resolveVerifiedMetadata(videoId: string): Promise<VideoMetadata | null> {
+    try {
+      return await this.metadataResolver.resolve(videoId);
+    } catch (err) {
+      console.warn('[lyrics-manager] Metadata lookup error:', err);
+      return null;
+    }
   }
 
   private getDbInstance(): ReturnType<typeof getDb> | null {
@@ -89,21 +110,23 @@ export class LyricsManager {
       console.warn('[lyrics-manager] DB fetch error:', err);
     }
 
-    // 3. Sanitize Query for Providers
-    const sanitized = sanitizeTrackMetadata({
-      title: query.title,
-      artist: query.artist,
-    });
+    // 3. Sanitize Query for Providers. Client supplied title/artist are only a
+    // fallback: when the video can be verified its own metadata is used, and
+    // only then may the result be stored for everyone else.
+    const verified = await this.resolveVerifiedMetadata(query.videoId);
+    const metadata = verified ?? { title: query.title, artist: query.artist };
+    const sanitized = sanitizeTrackMetadata(metadata);
 
     const effectiveQuery: LyricsQuery = {
       videoId: query.videoId,
-      title: sanitized.cleanTitle || query.title,
-      artist: sanitized.cleanArtist || query.artist,
+      title: sanitized.cleanTitle || metadata.title,
+      artist: sanitized.cleanArtist || metadata.artist,
       durationSec: query.durationSec,
     };
 
     // 4. Providers Cascade: LRCLIB -> InnerTube -> KuGou
     let lyricsResult: LyricsResult | null = null;
+    let failedProviders = 0;
 
     for (const provider of this.providers) {
       try {
@@ -116,9 +139,13 @@ export class LyricsManager {
           break;
         }
       } catch (err) {
+        failedProviders++;
         console.warn(`[lyrics-manager] Provider ${provider.name} failed:`, err);
       }
     }
+
+    const allProvidersFailed =
+      !lyricsResult && this.providers.length > 0 && failedProviders === this.providers.length;
 
     // Fallback if no provider succeeded
     if (!lyricsResult) {
@@ -128,6 +155,11 @@ export class LyricsManager {
         lines: [],
         source: 'none',
       };
+    }
+
+    // Nothing derived from unverified metadata or from a provider outage is stored
+    if (!verified || allProvidersFailed) {
+      return lyricsResult;
     }
 
     // 5. Persist in DB and Cache
@@ -162,7 +194,8 @@ export class LyricsManager {
     }
 
     try {
-      await this.cache.set(cacheKey, JSON.stringify(lyricsResult), this.cacheTtl);
+      const ttl = lyricsResult.source === 'none' ? NEGATIVE_CACHE_TTL_SECONDS : this.cacheTtl;
+      await this.cache.set(cacheKey, JSON.stringify(lyricsResult), ttl);
     } catch (err) {
       console.warn('[lyrics-manager] Cache set error:', err);
     }
