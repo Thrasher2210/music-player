@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isValidInnerTubeKey, parseInnerTubeSubpath } from '@/lib/yt-proxy/innertubePath';
 
 export async function POST(
   req: NextRequest,
@@ -6,15 +7,25 @@ export async function POST(
 ) {
   try {
     const { path } = await params;
-    const rawSubpath = path ? path.join('/') : '';
-    const subpath = rawSubpath.replace(/^youtubei\/v1\/?/, '');
+    const subpath = parseInnerTubeSubpath(path);
+    if (!subpath) {
+      return NextResponse.json(
+        { error: 'Bad Request', message: 'Invalid InnerTube endpoint path' },
+        { status: 400 }
+      );
+    }
     const search = req.nextUrl.search;
-    
+
     // Ensure InnerTube public key is always present
     const defaultKey = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
     const queryParams = new URLSearchParams(search);
     if (!queryParams.has('key')) {
       queryParams.set('key', defaultKey);
+    } else if (!isValidInnerTubeKey(queryParams.get('key') ?? '')) {
+      return NextResponse.json(
+        { error: 'Bad Request', message: 'Invalid InnerTube key' },
+        { status: 400 }
+      );
     }
     queryParams.set('prettyPrint', 'false');
 
