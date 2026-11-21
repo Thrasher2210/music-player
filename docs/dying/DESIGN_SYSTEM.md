@@ -52,7 +52,8 @@ packages/dying/
     │   ├── Avatar.tsx         # Image & fallback avatar (Radix Avatar)
     │   ├── Forms.tsx          # Input, Textarea, Select, Label, FormField
     │   ├── Controls.tsx       # Checkbox, Switch (Radix Checkbox & Switch)
-    │   └── Overlays.tsx       # Tooltip, Dialog (Radix Tooltip & Dialog)
+    │   ├── Overlays.tsx       # Tooltip, Dialog (Radix Tooltip & Dialog)
+    │   └── Menu.tsx           # DropdownMenu (Radix DropdownMenu)
     ├── layout/                # Layout Framing
     │   ├── AppShell.tsx       # Responsive frame with Radix Dialog drawer & player dock
     │   ├── Sidebar.tsx        # Brand, SearchInput, SidebarNav, NavItem, Footer
@@ -172,6 +173,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 | | `Alert` | Accessible banner callout | `variant: "info" \| "success" \| "warning" \| "error"`, `title` |
 | **Overlays** | `Dialog` | Modal dialog (Radix) | `open`, `onOpenChange`, `children` |
 | | `Tooltip` | Floating tooltip (Radix) | `content`, `side`, `children` |
+| | `DropdownMenu` | Action menu (Radix) | `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem` (`icon`, `destructive`) |
 | **Surfaces** | `Card` | Compound card container | `variant: "default" \| "glass" \| "elevated" \| "outline"` |
 | | `GlassPanel` | Frosted acrylic panel | `variant: "subtle" \| "default" \| "elevated" \| "heavy"` |
 | | `GlassCard` | Interactive card with glow | `interactive`, `active`, `glowOnHover` |

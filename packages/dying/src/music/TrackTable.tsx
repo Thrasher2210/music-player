@@ -13,6 +13,8 @@ export interface TrackTableProps extends React.HTMLAttributes<HTMLDivElement> {
   onTrackPause?: () => void;
   onLikeToggle?: (track: TrackData, liked: boolean) => void;
   onActionClick?: (track: TrackData, event: React.MouseEvent) => void;
+  /** Returns the `DropdownMenuItem`s for a row's "..." menu. Takes precedence over `onActionClick`. */
+  renderActions?: (track: TrackData) => React.ReactNode;
   onArtistClick?: (artist: string, artistId?: string, event?: React.MouseEvent) => void;
   onAlbumClick?: (album: string, albumId?: string, event?: React.MouseEvent) => void;
   showHeader?: boolean;
@@ -34,6 +36,7 @@ export const TrackTable = React.forwardRef<HTMLDivElement, TrackTableProps>(
       onTrackPause,
       onLikeToggle,
       onActionClick,
+      renderActions,
       onArtistClick,
       onAlbumClick,
       showHeader = true,
@@ -101,6 +104,7 @@ export const TrackTable = React.forwardRef<HTMLDivElement, TrackTableProps>(
                   onPause={onTrackPause}
                   onLikeToggle={onLikeToggle}
                   onActionClick={onActionClick}
+                  actions={renderActions?.(track)}
                   onArtistClick={onArtistClick}
                   onAlbumClick={onAlbumClick}
                   showThumbnail={showThumbnails}

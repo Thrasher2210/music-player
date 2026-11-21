@@ -1,8 +1,16 @@
 import React, { useState } from "react";
 import { Play, Pause, ListPlus, MoreVertical, Music2 } from "lucide-react";
 import { TrackData } from "../music/TrackRow";
+import { TrackActionsMenu } from "../music/TrackActionsMenu";
 import { SoundWave } from "../effects/SoundWave";
 import { cn } from "../utils/cn";
+
+const MORE_BUTTON_CLASS = cn(
+  "flex h-8 w-8 items-center justify-center rounded-full text-text-secondary transition-all cursor-pointer",
+  "hover:text-white hover:bg-white/[0.1] active:scale-95",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
+  "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+);
 
 export interface QuickPickRowProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "onPlay" | "onSelect"> {
@@ -14,6 +22,8 @@ export interface QuickPickRowProps
   onQueue?: (track: TrackData) => void;
   onSelect?: (track: TrackData) => void;
   onActionClick?: (track: TrackData, e: React.MouseEvent) => void;
+  /** `DropdownMenuItem`s for the row's "more options" menu. Takes precedence over `onActionClick`. */
+  actions?: React.ReactNode;
   onArtistClick?: (artist: string, artistId?: string, e?: React.MouseEvent) => void;
   onAlbumClick?: (album: string, albumId?: string, e?: React.MouseEvent) => void;
   className?: string;
@@ -30,6 +40,7 @@ export const QuickPickRow = React.forwardRef<HTMLDivElement, QuickPickRowProps>(
       onQueue,
       onSelect,
       onActionClick,
+      actions,
       onArtistClick,
       onAlbumClick,
       className,
@@ -198,19 +209,26 @@ export const QuickPickRow = React.forwardRef<HTMLDivElement, QuickPickRowProps>(
             </button>
           )}
 
-          <button
-            type="button"
-            aria-label={`More options for ${track.title}`}
-            onClick={handleActionClick}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-full text-text-secondary transition-all cursor-pointer",
-              "hover:text-white hover:bg-white/[0.1] active:scale-95",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus",
-              "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-            )}
-          >
-            <MoreVertical size={18} />
-          </button>
+          {actions ? (
+            <TrackActionsMenu
+              label={`More options for ${track.title}`}
+              icon={<MoreVertical size={18} />}
+              className={MORE_BUTTON_CLASS}
+            >
+              {actions}
+            </TrackActionsMenu>
+          ) : (
+            onActionClick && (
+              <button
+                type="button"
+                aria-label={`More options for ${track.title}`}
+                onClick={handleActionClick}
+                className={MORE_BUTTON_CLASS}
+              >
+                <MoreVertical size={18} />
+              </button>
+            )
+          )}
         </div>
       </div>
     );

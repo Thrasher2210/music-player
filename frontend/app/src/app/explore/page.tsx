@@ -17,6 +17,8 @@ import {
 } from '@mp/dying';
 import { usePlayerStore, toTrackData } from '@/stores/playerStore';
 import { useYouTubeAuthStore } from '@/stores/youtubeAuthStore';
+import { useLibraryStore } from '@/stores/libraryStore';
+import { useTrackMenu } from '@/components/track-menu/useTrackMenu';
 import { type HomeFeedData, type Track } from '@mp/player-core';
 
 export default function ExplorePage() {
@@ -39,6 +41,8 @@ export default function ExplorePage() {
   } = usePlayerStore();
 
   const isYouTubeAuthenticated = useYouTubeAuthStore((s) => s.isYouTubeAuthenticated);
+  const isLiked = useLibraryStore((s) => s.isLiked);
+  const renderTrackMenu = useTrackMenu();
   const isPlaying = playbackState === 'playing';
 
   useEffect(() => {
@@ -131,9 +135,10 @@ export default function ExplorePage() {
                   return (
                     <QuickPickRow
                       key={track.videoId || track.id || idx}
-                      track={toTrackData(track)}
+                      track={toTrackData(track, isLiked(track.videoId || track.id))}
                       isActive={isTrackActive}
                       isPlaying={isTrackActive && isPlaying}
+                      actions={renderTrackMenu(track)}
                       onSelect={() => handleTrackSelect(track, idx)}
                       onPlay={() => {
                         if (isTrackActive) {

@@ -116,6 +116,13 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  type DropdownMenuItemProps,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "./components/index";
 
 // Layout Components

@@ -18,8 +18,9 @@ import {
   SoundWave,
   FloatingPlayerPill,
   FullImmersionLyrics,
+  DropdownMenuItem,
 } from '@mp/dying';
-import { Maximize2 } from 'lucide-react';
+import { ListEnd, ListPlus, Maximize2 } from 'lucide-react';
 import { SAMPLE_LYRICS, SHOWCASE_TRACKS } from '../data/mockData';
 
 export function MusicSection() {
@@ -81,7 +82,9 @@ export function MusicSection() {
         <Card variant="glass" className="overflow-hidden">
           <CardHeader>
             <CardTitle>Interactive Track Table</CardTitle>
-            <CardDescription>Hover over rows to preview pure geometric play/pause transitions.</CardDescription>
+            <CardDescription>
+              Hover over rows to preview play/pause transitions. The "..." button opens a row actions menu.
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <TrackTable
@@ -94,6 +97,12 @@ export function MusicSection() {
                 setIsPlaying(true);
               }}
               onTrackPause={() => setIsPlaying(false)}
+              renderActions={() => (
+                <>
+                  <DropdownMenuItem icon={<ListEnd size={16} />}>Add to queue</DropdownMenuItem>
+                  <DropdownMenuItem icon={<ListPlus size={16} />}>Add to playlist</DropdownMenuItem>
+                </>
+              )}
             />
           </CardContent>
         </Card>

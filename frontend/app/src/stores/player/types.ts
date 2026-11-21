@@ -96,6 +96,7 @@ export interface PlayerStoreState {
   setSleepTimer: (mode: SleepTimerMode) => void;
   setQueue: (tracks: Track[], startIndex?: number, autoPlay?: boolean) => void;
   addToQueue: (track: Track) => void;
+  playNext: (track: Track) => void;
   removeFromQueue: (index: number) => void;
   clearQueue: () => void;
   search: (query: string) => Promise<Track[]>;
@@ -116,7 +117,7 @@ export type StoreSet = (
 
 export type StoreGet = () => PlayerStoreState;
 
-export function toTrackData(track: Track): TrackData {
+export function toTrackData(track: Track, isLiked?: boolean): TrackData {
   return {
     id: track.id || track.videoId,
     title: track.title,
@@ -126,5 +127,6 @@ export function toTrackData(track: Track): TrackData {
     albumId: track.albumId,
     duration: track.duration,
     thumbnailUrl: track.thumbnail,
+    isLiked,
   };
 }

@@ -21,6 +21,10 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return false;
 }
 
+function isInsideMenu(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest('[role="menu"]') !== null;
+}
+
 export function useKeyboardShortcuts(options?: UseKeyboardShortcutsOptions): void {
   const optionsRef = useRef(options);
   optionsRef.current = options;
@@ -29,6 +33,9 @@ export function useKeyboardShortcuts(options?: UseKeyboardShortcutsOptions): voi
     if (typeof window === 'undefined') return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Open menus own their keys (arrows, typeahead, Enter, Space, Escape)
+      if (isInsideMenu(e.target)) return;
+
       // Escape: close full player / modals or blur inputs
       if (e.key === 'Escape') {
         if (e.target instanceof HTMLElement) {

@@ -11,6 +11,7 @@ import {
 import { usePlayerStore, type Track } from '../../stores/playerStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useLibraryStore } from '../../stores/libraryStore';
+import { useTrackActionsStore } from '../../stores/trackActionsStore';
 import { useMediaSession, useKeyboardShortcuts, useUrlSync, useYouTubeSyncInit } from '../../hooks';
 import { ShellHeader } from './ShellHeader';
 import { ShellSidebar } from './ShellSidebar';
@@ -32,9 +33,9 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
   // Dialog & Modal State
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
-  const [isAddToPlaylistOpen, setIsAddToPlaylistOpen] = useState(false);
-  const [trackToAddToPlaylist, setTrackToAddToPlaylist] = useState<Track | null>(null);
   const [isPlaybackOptionsOpen, setIsPlaybackOptionsOpen] = useState(false);
+  const isAddToPlaylistOpen = useTrackActionsStore((s) => s.addToPlaylistTrack !== null);
+  const { openAddToPlaylist, closeAddToPlaylist } = useTrackActionsStore.getState();
 
   // Full Player Modal State
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
@@ -102,11 +103,11 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
     } else if (isCreatePlaylistOpen) {
       setIsCreatePlaylistOpen(false);
     } else if (isAddToPlaylistOpen) {
-      setIsAddToPlaylistOpen(false);
+      closeAddToPlaylist();
     } else if (isFullPlayerOpen) {
       setIsFullPlayerOpen(false);
     }
-  }, [isAccountModalOpen, isCreatePlaylistOpen, isAddToPlaylistOpen, isFullPlayerOpen]);
+  }, [isAccountModalOpen, isCreatePlaylistOpen, isAddToPlaylistOpen, isFullPlayerOpen, closeAddToPlaylist]);
 
   useKeyboardShortcuts({
     toggleLyrics: handleToggleLyrics,
@@ -233,6 +234,7 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
               }}
               onToggleShuffle={toggleShuffle}
               onToggleRepeat={toggleRepeat}
+              onAddToPlaylist={() => openAddToPlaylist(currentTrack)}
               onMoreOptions={() => setIsPlaybackOptionsOpen(true)}
             />
           ) : null
@@ -279,10 +281,6 @@ export function PersistentAppShell({ children }: PersistentAppShellProps) {
       <ShellModals
         isCreatePlaylistOpen={isCreatePlaylistOpen}
         setIsCreatePlaylistOpen={setIsCreatePlaylistOpen}
-        isAddToPlaylistOpen={isAddToPlaylistOpen}
-        setIsAddToPlaylistOpen={setIsAddToPlaylistOpen}
-        trackToAddToPlaylist={trackToAddToPlaylist}
-        setTrackToAddToPlaylist={setTrackToAddToPlaylist}
         isAccountModalOpen={isAccountModalOpen}
         setIsAccountModalOpen={setIsAccountModalOpen}
         isPlaybackOptionsOpen={isPlaybackOptionsOpen}

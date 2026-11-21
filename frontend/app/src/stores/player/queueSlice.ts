@@ -31,6 +31,17 @@ export const createQueueSlice = (set: StoreSet, get: StoreGet) => ({
     }
   },
 
+  playNext: (track: Track) => {
+    const { queue, currentIndex } = get();
+    if (currentIndex < 0 || queue.length === 0) {
+      get().addToQueue(track);
+      return;
+    }
+    const upcoming = [...queue];
+    upcoming.splice(currentIndex + 1, 0, track);
+    get().setQueue(upcoming, currentIndex, false);
+  },
+
   removeFromQueue: (index: number) => {
     const engine = get().engine;
     if (engine) {
