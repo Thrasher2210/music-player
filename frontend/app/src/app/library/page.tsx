@@ -9,15 +9,18 @@ import {
   Button,
 } from '@mp/dying';
 import { useLibraryStore } from '@/stores/libraryStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useYouTubeAuthStore } from '@/stores/youtubeAuthStore';
 import { ConnectYouTubeModal } from '@/components/ConnectYouTubeModal';
 import { LibraryLikedCards } from './components/LibraryLikedCards';
 import { LibraryPlaylistsSection } from './components/LibraryPlaylistsSection';
+import { LibraryRecentlyPlayed } from './components/LibraryRecentlyPlayed';
 
 export default function LibraryPage() {
   const [connectModalOpen, setConnectModalOpen] = useState(false);
 
-  const { likedTracks, playlists, fetchLibrary } = useLibraryStore();
+  const { likedTracks, playlists, history, fetchLibrary } = useLibraryStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const {
     isYouTubeAuthenticated,
     youtubeAccount,
@@ -80,6 +83,8 @@ export default function LibraryPage() {
         isYouTubeAuthenticated={isYouTubeAuthenticated}
         onCreatePlaylist={handleCreatePlaylist}
       />
+
+      {isAuthenticated && <LibraryRecentlyPlayed history={history} />}
 
       <ConnectYouTubeModal
         open={connectModalOpen}

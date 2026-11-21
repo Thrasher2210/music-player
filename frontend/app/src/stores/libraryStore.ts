@@ -22,6 +22,8 @@ import {
 
 export type { Playlist, PlayHistoryItem, LibraryState };
 
+const HISTORY_LIMIT = 100;
+
 export const useLibraryStore = create<LibraryState>((set, get) => ({
   likedVideoIds: new Set<string>(),
   likedTracks: [],
@@ -161,8 +163,11 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     return false;
   },
 
-  recordPlayHistory: async (videoId: string, msPlayed: number = 0): Promise<void> => {
-    await recordPlayHistoryApi(videoId, msPlayed);
+  recordPlayHistory: async (track: Track, msPlayed: number = 0): Promise<void> => {
+    const item = await recordPlayHistoryApi(track, msPlayed);
+    if (item) {
+      set((state) => ({ history: [item, ...state.history].slice(0, HISTORY_LIMIT) }));
+    }
   },
 
   fetchPlaylistTracks: async (playlistId: string): Promise<Track[]> => {

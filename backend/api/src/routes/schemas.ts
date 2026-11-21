@@ -53,10 +53,19 @@ export const likeBody = z.object({
   albumArt: url.nullish(),
 });
 
-export const historyBody = z.object({
-  videoId,
-  msPlayed: z.number().int().min(0).max(MAX_MS_PLAYED).default(0),
-});
+export const historyBody = z
+  .object({
+    videoId,
+    msPlayed: z.number().int().min(0).max(MAX_MS_PLAYED).default(0),
+    title: z.string().min(1).max(500).optional(),
+    artist: z.string().min(1).max(500).optional(),
+    albumArt: url.nullish(),
+    durationSec: z.number().int().min(0).max(MAX_MS_PLAYED / 1000).optional(),
+  })
+  .refine((body) => (body.title === undefined) === (body.artist === undefined), {
+    message: "title_artist_required",
+    path: ["title"],
+  });
 
 export const importBody = z.object({
   kind: z.enum(["liked_songs", "playlists"]).default("liked_songs"),
