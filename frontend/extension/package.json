@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "wxt",
+    "test": "tsx --test tests/**/*.test.ts",
     "build": "wxt build",
     "zip": "wxt zip",
     "typecheck": "wxt prepare && tsc --noEmit",
@@ -16,6 +17,7 @@
   "devDependencies": {
     "@types/webextension-polyfill": "^0.12.3",
     "typescript": "^5.9.2",
+    "tsx": "^4.20.5",
     "wxt": "^0.20.0"
   }
 }

@@ -17,17 +17,16 @@ export default defineConfig({
       "https://www.youtube.com/*",
       "https://youtube.com/*",
       "https://*.googlevideo.com/*",
-      "https://*.nip.io/*",
-      "http://localhost/*",
-      "http://127.0.0.1/*",
     ],
-    // Origins allowed to message the extension (page bridge target)
-    externally_connectable: {
-      matches: [
-        "http://localhost/*",
-        "http://127.0.0.1/*",
-        "https://*.nip.io/*",
-      ],
+  },
+  hooks: {
+    // Origins allowed to message the extension (page bridge target). Reuses the
+    // content script matches so both come from VITE_APP_ORIGINS, which Vite
+    // only resolves for entrypoints and not in this config file.
+    "build:manifestGenerated": (_wxt, manifest) => {
+      manifest.externally_connectable = {
+        matches: manifest.content_scripts?.flatMap((script) => script.matches ?? []) ?? [],
+      };
     },
   },
   // Rebuild when the app's bridge code changes during development

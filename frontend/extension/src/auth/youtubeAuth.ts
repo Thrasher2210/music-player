@@ -1,4 +1,5 @@
 import { computeSapisidHash } from "../signer/sapisid";
+import { parseFetchTarget } from "../security/fetchTarget";
 
 export const YTM_URL = "https://music.youtube.com/";
 export const SAPISID_COOKIE_NAMES = [
@@ -205,19 +206,29 @@ export async function getAccount(): Promise<AccountDetails> {
   }
 }
 
-export async function authenticatedFetch(msg: any): Promise<FetchResult> {
-  let targetUrl = msg?.url || YTM_URL;
+function fetchFailure(error: string): FetchResult {
+  return { status: 0, statusText: "Error", ok: false, headers: {}, data: null, error };
+}
+
+export async function authenticatedFetch(
+  msg: any,
+  appOrigin: string | null = null,
+): Promise<FetchResult> {
+  let targetUrl: string = typeof msg?.url === "string" && msg.url ? msg.url : YTM_URL;
   if (targetUrl.startsWith("/")) {
     targetUrl = `https://music.youtube.com${targetUrl}`;
   }
+
+  const target = parseFetchTarget(targetUrl, appOrigin);
+  if (!target) return fetchFailure("fetch target not allowed");
 
   const cookie = await getSapisidCookie();
   const requestHeaders: Record<string, string> = {
     ...(msg?.headers || {}),
   };
 
-  const origin = new URL(targetUrl).origin;
-  if (origin.includes("youtube.com")) {
+  const origin = target.url.origin;
+  if (target.kind === "youtube") {
     let isMobile = false;
     if (msg?.body) {
       try {
@@ -248,11 +259,11 @@ export async function authenticatedFetch(msg: any): Promise<FetchResult> {
   }
 
   try {
-    const res = await fetch(targetUrl, {
+    const res = await fetch(target.url, {
       method: msg?.method || (body ? "POST" : "GET"),
       headers: requestHeaders,
       body: body || undefined,
-      credentials: "include",
+      credentials: target.kind === "app" ? "omit" : "include",
     });
 
     const contentType = res.headers.get("content-type") || "";
@@ -276,13 +287,6 @@ export async function authenticatedFetch(msg: any): Promise<FetchResult> {
       data,
     };
   } catch (err: any) {
-    return {
-      status: 0,
-      statusText: "Error",
-      ok: false,
-      headers: {},
-      data: null,
-      error: err?.message || "Authenticated fetch failed",
-    };
+    return fetchFailure(err?.message || "Authenticated fetch failed");
   }
 }
